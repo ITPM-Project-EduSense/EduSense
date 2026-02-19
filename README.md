@@ -10,32 +10,11 @@ python --version
 # Check Node version (need 18+)
 node --version
 
-# Check PostgreSQL (should return version)
-psql --version
-```
-
-### 2. Database Setup (5 minutes)
-```bash
-# Start PostgreSQL (if not running)
-# Mac: brew services start postgresql
-# Linux: sudo systemctl start postgresql
-# Windows: Services → PostgreSQL → Start
-
-# Create database
-psql -U postgres
-# Enter password when prompted
-# Then run:
-CREATE DATABASE edusense_db;
-\c edusense_db
-# Paste all SQL from setup.sql file
-\q
-```
-
-### 3. Backend Setup (3 minutes)
+### 2. Backend Setup (3 minutes)
 ```bash
 # Create folder and copy files
-mkdir edusense-backend
-cd edusense-backend
+mkdir backend
+cd backend
 # Copy: main.py, .env, requirements.txt to this folder
 
 # Edit .env - add your postgres password
@@ -57,7 +36,7 @@ python main.py
 npx create-next-app@latest edusense-frontend
 # Choose: TypeScript=Yes, Tailwind=Yes, App Router=Yes
 
-cd edusense-frontend
+cd frontend
 # Replace app/page.tsx with provided page.tsx file
 
 # Run frontend
@@ -73,9 +52,6 @@ You should see 8 students listed!
 
 ## Common Issues
 
-**"Can't connect to database"**
-→ Check PostgreSQL is running and .env password is correct
-
 **"CORS error in browser"**
 → Make sure backend is running on port 8000
 
@@ -89,29 +65,26 @@ You should see 8 students listed!
 ### Starting Work
 ```bash
 # Terminal 1 - Backend
-cd edusense-backend
+cd backend
 source venv/bin/activate  # Windows: venv\Scripts\activate
 python main.py
 
 # Terminal 2 - Frontend
-cd edusense-frontend
+cd frontend
 npm run dev
 ```
 
 ### Stopping
 - Press Ctrl+C in both terminals
-- PostgreSQL can stay running
-
----
 
 ## File Locations
 
 **Backend:**
-- `edusense-backend/main.py` - All API code
-- `edusense-backend/.env` - Database password
+- `backend/main.py` - All API code
+- `backend/.env` - Database password
 
 **Frontend:**
-- `edusense-frontend/app/page.tsx` - Main page
+- `frontend/app/page.tsx` - Main page
 
 **Database:**
 - Database name: `edusense_db`
@@ -130,9 +103,5 @@ npm run dev
 curl http://localhost:8000/api/students
 ```
 
----
 
-## Need Help?
-1. Check SETUP_INSTRUCTIONS.md for detailed guide
-2. Look at troubleshooting section
-3. Check if PostgreSQL/backend/frontend are all running
+
