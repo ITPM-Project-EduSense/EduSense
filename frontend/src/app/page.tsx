@@ -158,6 +158,14 @@ export default function Dashboard() {
     }
   };
 
+  const getPriorityStyle = (score: number | null) => {
+    if (!score) return { bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400", label: "—" };
+    if (score >= 8.0) return { bg: "bg-red-50", text: "text-red-600", dot: "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.4)]", label: "Critical" };
+    if (score >= 6.0) return { bg: "bg-orange-50", text: "text-orange-600", dot: "bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.4)]", label: "High" };
+    if (score >= 4.0) return { bg: "bg-amber-50", text: "text-amber-600", dot: "bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]", label: "Medium" };
+    return { bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]", label: "Low" };
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
       month: "short",
@@ -388,6 +396,15 @@ export default function Dashboard() {
 
                 {/* Right */}
                 <div className="flex items-center gap-2.5 flex-shrink-0">
+                  {/* Priority Indicator */}
+                  {task.priority_score !== null && (
+                    <div className="flex items-center gap-1.5" title={`Priority: ${task.priority_score}/10`}>
+                      <span className={`w-2 h-2 rounded-full ${getPriorityStyle(task.priority_score).dot}`} />
+                      <span className={`text-[11px] font-semibold ${getPriorityStyle(task.priority_score).text}`}>
+                        {task.priority_score}
+                      </span>
+                    </div>
+                  )}
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${getDifficultyStyle(
                       task.difficulty
