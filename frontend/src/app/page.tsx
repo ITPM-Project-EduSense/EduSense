@@ -12,6 +12,11 @@ import {
   BookOpen,
   Calendar,
   X,
+  Brain,
+  Target,
+  AlertCircle,
+  Zap,
+  Info,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -29,11 +34,29 @@ interface Task {
   updated_at: string;
 }
 
+interface PriorityBreakdown {
+  task_id: string;
+  task_title: string;
+  final_score: number;
+  priority_label: string;
+  days_remaining: number;
+  breakdown: {
+    deadline_proximity: { score: number; weight: number; weighted_score: number; reason: string };
+    difficulty: { score: number; weight: number; weighted_score: number; reason: string };
+    status: { score: number; weight: number; weighted_score: number; reason: string };
+    overdue_penalty: { score: number; weight: number; weighted_score: number; reason: string };
+  };
+  suggestion: string;
+}
+
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [priorityData, setPriorityData] = useState<PriorityBreakdown | null>(null);
+  const [showPriorityPanel, setShowPriorityPanel] = useState(false);
+  const [loadingPriority, setLoadingPriority] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -107,6 +130,21 @@ export default function Dashboard() {
       fetchTasks();
     } catch (err) {
       console.error("Failed to delete task:", err);
+    }
+  };
+
+  // Fetch priority breakdown for a task
+  const fetchPriority = async (taskId: string) => {
+    setLoadingPriority(true);
+    setShowPriorityPanel(true);
+    try {
+      const res = await fetch(`${API}/api/tasks/${taskId}/priority`);
+      const data = await res.json();
+      setPriorityData(data);
+    } catch (err) {
+      console.error("Failed to fetch priority:", err);
+    } finally {
+      setLoadingPriority(false);
     }
   };
 
@@ -344,7 +382,8 @@ export default function Dashboard() {
             filteredTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center gap-3.5 px-5 py-3.5 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-all duration-200 group"
+                onClick={() => fetchPriority(task.id)}
+                className="flex items-center gap-3.5 px-5 py-3.5 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-all duration-200 group cursor-pointer"
               >
                 {/* Checkbox */}
                 <button
@@ -654,6 +693,154 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Priority Breakdown Panel ─── */}
+      {showPriorityPanel && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
+          onClick={(e) => e.target === e.currentTarget && setShowPriorityPanel(false)}
+        >
+          <div className="bg-white rounded-2xl w-[480px] max-h-[85vh] overflow-y-auto shadow-[0_12px_40px_rgba(0,0,0,0.1)] animate-[scaleIn_0.25s_ease]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                  <Brain size={20} className="text-indigo-500" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 font-[family-name:var(--font-playfair)]">
+                    AI Priority Analysis
+                  </h2>
+                  <p className="text-xs text-slate-400">Powered by EduSense AI Engine</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPriorityPanel(false)}
+                className="w-[34px] h-[34px] rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-red-50 hover:border-red-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {loadingPriority ? (
+              <div className="px-6 py-12 text-center">
+                <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-slate-400">Analyzing task priority...</p>
+              </div>
+            ) : priorityData ? (
+              <div className="px-6 py-5">
+                {/* Task Title */}
+                <div className="mb-5">
+                  <p className="text-xs text-slate-400 mb-1">Task</p>
+                  <p className="text-[15px] font-semibold text-slate-800">{priorityData.task_title}</p>
+                </div>
+
+                {/* Score Circle */}
+                <div className="flex items-center gap-6 mb-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="relative w-[90px] h-[90px] flex-shrink-0">
+                    <svg viewBox="0 0 36 36" className="-rotate-90">
+                      <path
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="#E2E8F0"
+                        strokeWidth="3"
+                      />
+                      <path
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke={
+                          priorityData.final_score >= 8 ? "#EF4444" :
+                          priorityData.final_score >= 6 ? "#F97316" :
+                          priorityData.final_score >= 4 ? "#F59E0B" : "#10B981"
+                        }
+                        strokeWidth="3"
+                        strokeDasharray={`${priorityData.final_score * 10}, 100`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                      <div className="text-2xl font-bold text-slate-800">{priorityData.final_score}</div>
+                      <div className="text-[9px] text-slate-400 uppercase tracking-wider">/ 10</div>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-2 ${
+                      priorityData.priority_label === "critical" ? "bg-red-100 text-red-600" :
+                      priorityData.priority_label === "high" ? "bg-orange-100 text-orange-600" :
+                      priorityData.priority_label === "medium" ? "bg-amber-100 text-amber-600" :
+                      "bg-emerald-100 text-emerald-600"
+                    }`}>
+                      {priorityData.priority_label} Priority
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      {priorityData.days_remaining < 0
+                        ? `Overdue by ${Math.abs(Math.round(priorityData.days_remaining))} days`
+                        : priorityData.days_remaining < 1
+                        ? "Due today"
+                        : `${Math.round(priorityData.days_remaining)} days remaining`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Score Breakdown */}
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Score Breakdown</p>
+                  <div className="space-y-3">
+                    {[
+                      { key: "deadline_proximity", icon: <Clock size={16} />, label: "Deadline Proximity", color: "indigo" },
+                      { key: "difficulty", icon: <Target size={16} />, label: "Task Difficulty", color: "amber" },
+                      { key: "status", icon: <Zap size={16} />, label: "Current Status", color: "emerald" },
+                      { key: "overdue_penalty", icon: <AlertCircle size={16} />, label: "Overdue Penalty", color: "red" },
+                    ].map((item) => {
+                      const data = priorityData.breakdown[item.key as keyof typeof priorityData.breakdown];
+                      return (
+                        <div key={item.key} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-white">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            item.color === "indigo" ? "bg-indigo-50 text-indigo-500" :
+                            item.color === "amber" ? "bg-amber-50 text-amber-500" :
+                            item.color === "emerald" ? "bg-emerald-50 text-emerald-500" :
+                            "bg-red-50 text-red-500"
+                          }`}>
+                            {item.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[13px] font-medium text-slate-700">{item.label}</span>
+                              <span className="text-[13px] font-bold text-slate-800">{data.score}<span className="text-[10px] text-slate-400 font-normal"> × {(data.weight * 100).toFixed(0)}%</span></span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  item.color === "indigo" ? "bg-indigo-500" :
+                                  item.color === "amber" ? "bg-amber-500" :
+                                  item.color === "emerald" ? "bg-emerald-500" :
+                                  "bg-red-500"
+                                }`}
+                                style={{ width: `${(data.score / 10) * 100}%` }}
+                              />
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-1">{data.reason}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* AI Suggestion */}
+                <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info size={14} className="text-indigo-500" />
+                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">AI Suggestion</span>
+                  </div>
+                  <p className="text-[13px] text-indigo-700 leading-relaxed">{priorityData.suggestion}</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
