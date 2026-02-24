@@ -641,26 +641,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.95) translateY(10px); opacity: 0; }
-          to { transform: scale(1) translateY(0); opacity: 1; }
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes wave {
-          0%, 60%, 100% { transform: rotate(0); }
-          10%, 30% { transform: rotate(14deg); }
-          20% { transform: rotate(-8deg); }
-          40% { transform: rotate(-4deg); }
-        }
-      `}</style>
     </>
   );
 }
