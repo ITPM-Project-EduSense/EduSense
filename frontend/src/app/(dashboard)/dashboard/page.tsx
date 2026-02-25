@@ -259,509 +259,477 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="flex items-start justify-between mb-7 animate-[fadeInUp_0.45s_ease_forwards]">
-        <div>
-          <h1 className="text-[28px] font-bold text-slate-800 tracking-tight mb-1 font-[family-name:var(--font-playfair)]">
-            Good Morning, Sadumina{" "}
-            <span className="inline-block animate-[wave_2s_ease-in-out_infinite] origin-[70%_70%]">
-              👋
-            </span>
-          </h1>
-          <p className="text-sm text-slate-500">
-            You have <strong className="text-slate-700">{pendingTasks} tasks</strong> pending.
-            Stay focused!
-          </p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 hover:shadow-[0_4px_16px_rgba(99,102,241,0.4)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-        >
-          <Plus size={18} />
-          New Task
-        </button>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-4 mb-7">
-        {[
-          {
-            icon: <ClipboardList size={20} />,
-            label: "Total Tasks",
-            value: totalTasks,
-            change: `${pendingTasks} pending`,
-            positive: true,
-            color: "indigo",
-          },
-          {
-            icon: <CheckCircle2 size={20} />,
-            label: "Completed",
-            value: completedTasks,
-            change: `${completionRate}% rate`,
-            positive: true,
-            color: "emerald",
-          },
-          {
-            icon: <Clock size={20} />,
-            label: "In Progress",
-            value: inProgressTasks,
-            change: `${pendingTasks} pending`,
-            positive: false,
-            color: "amber",
-          },
-          {
-            icon: <Flame size={20} />,
-            label: "Overdue",
-            value: overdueTasks,
-            change: overdueTasks > 0 ? "Needs attention" : "All on track",
-            positive: overdueTasks === 0,
-            color: "red",
-          },
-        ].map((stat, i) => (
-          <div
-            key={stat.label}
-            className="bg-white border border-slate-100 rounded-xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden"
-            style={{ animationDelay: `${i * 0.06}s` }}
-          >
-            <div
-              className={`absolute top-0 left-0 right-0 h-[3px] ${
-                stat.color === "indigo"
-                  ? "bg-indigo-500"
-                  : stat.color === "emerald"
-                  ? "bg-emerald-500"
-                  : stat.color === "amber"
-                  ? "bg-amber-500"
-                  : "bg-red-500"
-              }`}
-            />
-            <div className="flex items-center justify-between mb-3">
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  stat.color === "indigo"
-                    ? "bg-indigo-50 text-indigo-500"
-                    : stat.color === "emerald"
-                    ? "bg-emerald-50 text-emerald-500"
-                    : stat.color === "amber"
-                    ? "bg-amber-50 text-amber-500"
-                    : "bg-red-50 text-red-500"
-                }`}
-              >
-                {stat.icon}
-              </div>
-              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wide">
-                {stat.label}
-              </span>
-            </div>
-            <div className="text-[30px] font-bold text-slate-800 tracking-tight leading-none">
-              {stat.value}
-            </div>
-            <div
-              className={`text-xs font-medium mt-1 flex items-center gap-1 ${
-                stat.positive ? "text-emerald-500" : "text-red-500"
-              }`}
-            >
-              {stat.positive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-              {stat.change}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Overload Risk Alert Banner */}
-      {overloadRisk && overloadRisk.risk_score >= 4.0 && (
-        <div
-          onClick={() => setShowOverloadPanel(true)}
-          className={`mb-7 p-4 rounded-xl border cursor-pointer hover:shadow-md transition-all duration-200 ${
-            overloadRisk.risk_level === "critical"
-              ? "bg-red-50 border-red-200"
-              : overloadRisk.risk_level === "high"
-              ? "bg-orange-50 border-orange-200"
-              : "bg-amber-50 border-amber-200"
-          }`}
-        >
-          <div className="flex items-center gap-4">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              overloadRisk.risk_level === "critical"
-                ? "bg-red-100 text-red-600"
-                : overloadRisk.risk_level === "high"
-                ? "bg-orange-100 text-orange-600"
-                : "bg-amber-100 text-amber-600"
-            }`}>
-              <ShieldAlert size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className={`text-[13px] font-bold uppercase tracking-wide ${
-                  overloadRisk.risk_level === "critical"
-                    ? "text-red-700"
-                    : overloadRisk.risk_level === "high"
-                    ? "text-orange-700"
-                    : "text-amber-700"
-                }`}>
-                  {overloadRisk.risk_level} Overload Risk — Score: {overloadRisk.risk_score}/10
-                </span>
-              </div>
-              <p className={`text-[12.5px] leading-relaxed ${
-                overloadRisk.risk_level === "critical"
-                  ? "text-red-600"
-                  : overloadRisk.risk_level === "high"
-                  ? "text-orange-600"
-                  : "text-amber-600"
-              }`}>
-                {overloadRisk.warnings.length > 0
-                  ? overloadRisk.warnings[0].message
-                  : overloadRisk.suggestion}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-10 py-10">
+        {/* Hero Section - Modern Colorful SaaS */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-12 text-white shadow-xl mb-12 animate-[fadeInUp_0.5s_ease_forwards]">
+          {/* Floating blurred blobs */}
+          <div className="absolute w-96 h-96 bg-white/20 blur-3xl rounded-full top-[-100px] right-[-100px] animate-pulse" />
+          <div className="absolute w-72 h-72 bg-purple-400/20 blur-3xl rounded-full bottom-[-50px] left-[-50px]" />
+          
+          <div className="flex items-start justify-between relative z-10">
+            <div className="flex-1">
+              <h1 className="text-5xl font-bold tracking-tight mb-3">
+                Good Morning, Sadumina ✨
+              </h1>
+              <p className="text-white/90 text-lg">
+                You have <span className="font-semibold text-white">{pendingTasks} tasks</span> pending. Keep pushing to stay focused and productive.
               </p>
             </div>
-            <span className={`text-[12px] font-medium flex-shrink-0 ${
-              overloadRisk.risk_level === "critical"
-                ? "text-red-500"
-                : overloadRisk.risk_level === "high"
-                ? "text-orange-500"
-                : "text-amber-500"
-            }`}>
-              View Details →
-            </span>
+            <button
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-600 rounded-full text-sm font-semibold hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer flex-shrink-0 ml-6 hover:bg-slate-50"
+            >
+              <Plus size={20} />
+              New Task
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-[1fr_380px] gap-5">
-        {/* Task List */}
-        <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <span className="text-[15px] font-semibold text-slate-800">Recent Tasks</span>
-            <span className="text-[13px] text-indigo-500 font-medium cursor-pointer hover:text-indigo-600 transition-colors">
-              View All →
-            </span>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-1.5 px-5 py-3 border-b border-slate-100">
-            {[
-              { key: "all", label: "All" },
-              { key: "pending", label: "Pending" },
-              { key: "in_progress", label: "In Progress" },
-              { key: "completed", label: "Completed" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-medium transition-all duration-200 cursor-pointer border-0 ${
-                  filter === f.key
-                    ? "bg-indigo-500 text-white shadow-[0_2px_6px_rgba(99,102,241,0.25)]"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Task Items */}
-          {loading ? (
-            <div className="p-10 text-center text-slate-400 text-sm">Loading tasks...</div>
-          ) : filteredTasks.length === 0 ? (
-            <div className="p-10 text-center">
-              <div className="text-slate-400 text-sm mb-2">No tasks found</div>
-              <button
-                onClick={() => setShowModal(true)}
-                className="text-indigo-500 text-sm font-medium hover:text-indigo-600 cursor-pointer"
-              >
-                + Create your first task
-              </button>
-            </div>
-          ) : (
-            filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => fetchPriority(task.id)}
-                className="flex items-center gap-3.5 px-5 py-3.5 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-all duration-200 group cursor-pointer"
-              >
-                {/* Checkbox */}
-                <button
-                  onClick={() => toggleTaskStatus(task)}
-                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer ${
-                    task.status === "completed"
-                      ? "bg-emerald-500 border-emerald-500"
-                      : "border-slate-300 hover:border-indigo-500"
-                  }`}
-                >
-                  {task.status === "completed" && (
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div
-                    className={`text-sm font-medium truncate ${
-                      task.status === "completed"
-                        ? "line-through text-slate-400"
-                        : "text-slate-800"
-                    }`}
-                  >
-                    {task.title}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                    <span className="flex items-center gap-1">
-                      <BookOpen size={12} />
-                      {task.subject}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      {formatDate(task.deadline)}
-                    </span>
-                  </div>
+        {/* Stat Cards - Modern Floating SaaS Style */}
+        <div className="grid grid-cols-4 gap-8 mb-12">
+          {[
+            {
+              icon: <ClipboardList size={20} />,
+              label: "Total Tasks",
+              value: totalTasks,
+              color: "from-indigo-500 to-purple-500",
+            },
+            {
+              icon: <CheckCircle2 size={20} />,
+              label: "Completed",
+              value: completedTasks,
+              color: "from-emerald-500 to-teal-500",
+            },
+            {
+              icon: <Clock size={20} />,
+              label: "In Progress",
+              value: inProgressTasks,
+              color: "from-amber-500 to-orange-500",
+            },
+            {
+              icon: <Flame size={20} />,
+              label: "Overdue",
+              value: overdueTasks,
+              color: "from-rose-500 to-pink-500",
+            },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer group"
+              style={{ animationDelay: `${i * 0.08}s` }}
+            >
+              {/* Gradient top strip */}
+              <div className={`h-1.5 bg-gradient-to-r ${stat.color}`} />
+              
+              <div className="p-8">
+                <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} text-white mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  {stat.icon}
                 </div>
-
-                {/* Right */}
-                <div className="flex items-center gap-2.5 flex-shrink-0">
-                  {/* Priority Indicator */}
-                  {task.priority_score !== null && (
-                    <div className="flex items-center gap-1.5" title={`Priority: ${task.priority_score}/10`}>
-                      <span className={`w-2 h-2 rounded-full ${getPriorityStyle(task.priority_score).dot}`} />
-                      <span className={`text-[11px] font-semibold ${getPriorityStyle(task.priority_score).text}`}>
-                        {task.priority_score}
-                      </span>
-                    </div>
-                  )}
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${getDifficultyStyle(
-                      task.difficulty
-                    )}`}
-                  >
-                    {task.difficulty}
-                  </span>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
-                  >
-                    <X size={16} />
-                  </button>
+                <div className="text-4xl font-extrabold text-neutral-900 mb-2">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-neutral-500 font-medium">
+                  {stat.label}
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-5">
-          {/* Upcoming Deadlines */}
-          <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <span className="text-[15px] font-semibold text-slate-800">
-                Upcoming Deadlines
-              </span>
-              <span className="text-[13px] text-indigo-500 font-medium cursor-pointer hover:text-indigo-600 transition-colors">
-                Calendar →
+        {/* Overload Risk Alert - Modern Gradient */}
+        {overloadRisk && overloadRisk.risk_score >= 4.0 && (
+          <div
+            onClick={() => setShowOverloadPanel(true)}
+            className="mb-12 p-6 rounded-2xl bg-white shadow-md hover:shadow-lg hover:-translate-y-1 cursor-pointer group transition-all duration-300 border-l-4 border-rose-500"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <ShieldAlert size={24} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold text-neutral-900">
+                    Overload Risk Detected
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">
+                    Score: {overloadRisk.risk_score}/10
+                  </span>
+                </div>
+                <p className="text-sm text-neutral-600">
+                  {overloadRisk.warnings.length > 0
+                    ? overloadRisk.warnings[0].message
+                    : overloadRisk.suggestion}
+                </p>
+              </div>
+              <span className="text-2xl text-neutral-300 flex-shrink-0 group-hover:text-neutral-900 transition-colors duration-300">→</span>
+            </div>
+          </div>
+        )}
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-[1fr_380px] gap-12">
+          {/* Task List - Modern Clean Card */}
+          <div className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-neutral-100">
+              <span className="text-lg font-bold text-neutral-900">Tasks</span>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                {filteredTasks.length}
               </span>
             </div>
-            <div className="px-5 py-3">
-              {upcomingDeadlines.length === 0 ? (
-                <div className="py-6 text-center text-slate-400 text-sm">
-                  No upcoming deadlines
+
+            {/* Filters - Modern Pill Segmented Control */}
+            <div className="px-8 py-5 bg-neutral-50/50">
+              <div className="inline-flex items-center gap-2 bg-neutral-100 rounded-full p-1.5">
+                {[
+                  { key: "all", label: "All" },
+                  { key: "pending", label: "Pending" },
+                  { key: "in_progress", label: "In Progress" },
+                  { key: "completed", label: "Completed" },
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 cursor-pointer ${
+                      filter === f.key
+                        ? "bg-gradient-to-r from-indigo-500 to-purple-500 shadow-md text-white scale-105"
+                        : "text-neutral-600 hover:bg-white hover:text-neutral-900"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-neutral-100" />
+
+            {/* Task Items */}
+            <div className="py-3">
+              {loading ? (
+                <div className="p-12 text-center">
+                  <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-neutral-400">Loading tasks...</p>
+                </div>
+              ) : filteredTasks.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-3">
+                    <BookOpen size={32} className="text-neutral-300" />
+                  </div>
+                  <div className="text-neutral-500 text-sm font-medium mb-3">No tasks found</div>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="text-indigo-600 text-sm font-semibold hover:text-indigo-700 cursor-pointer"
+                  >
+                    + Create your first task
+                  </button>
                 </div>
               ) : (
-                upcomingDeadlines.map((task) => {
-                  const { month, day } = formatDeadlineDate(task.deadline);
-                  const daysUntil = getDaysUntil(task.deadline);
-                  return (
-                    <div
-                      key={task.id}
-                      className="flex items-center gap-3.5 py-3 border-b border-slate-100 last:border-b-0"
+                filteredTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => fetchPriority(task.id)}
+                    className="flex items-center gap-4 px-8 py-4 hover:bg-indigo-50/30 transition-all duration-200 group cursor-pointer border-b border-neutral-100 last:border-b-0"
+                  >
+                    {/* Checkbox */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTaskStatus(task);
+                      }}
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer ${
+                        task.status === "completed"
+                          ? "bg-gradient-to-br from-emerald-500 to-teal-500 border-emerald-500 shadow-md"
+                          : "border-neutral-300 hover:border-indigo-500 hover:shadow-md"
+                      }`}
                     >
-                      <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide leading-none">
-                          {month}
-                        </span>
-                        <span className="text-lg font-bold text-slate-800 leading-tight">
-                          {day}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13.5px] font-medium text-slate-800 truncate">
-                          {task.title}
-                        </div>
-                        <div className="text-xs text-slate-400">{task.subject}</div>
-                      </div>
-                      <span
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${getCountdownStyle(
-                          daysUntil
-                        )}`}
+                      {task.status === "completed" && (
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`text-sm font-semibold truncate ${
+                          task.status === "completed"
+                            ? "line-through text-neutral-400"
+                            : "text-neutral-900"
+                        }`}
                       >
-                        {daysUntil < 0
-                          ? `${Math.abs(daysUntil)}d overdue`
-                          : daysUntil === 0
-                          ? "Today"
-                          : `${daysUntil} days`}
-                      </span>
+                        {task.title}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-neutral-500 mt-1.5">
+                        <span className="flex items-center gap-1">
+                          <BookOpen size={12} />
+                          {task.subject}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} />
+                          {formatDate(task.deadline)}
+                        </span>
+                      </div>
                     </div>
-                  );
-                })
+
+                    {/* Right */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {/* Priority Indicator */}
+                      {task.priority_score !== null && (
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${getPriorityStyle(task.priority_score).bg} ${getPriorityStyle(task.priority_score).text}`} title={`Priority: ${task.priority_score}/10`}>
+                          <span className={`w-2 h-2 rounded-full ${getPriorityStyle(task.priority_score).dot}`} />
+                          {task.priority_score}
+                        </div>
+                      )}
+                      <span
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${getDifficultyStyle(task.difficulty)}`}
+                      >
+                        {task.difficulty}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTask(task.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-rose-500 hover:scale-110 transition-all duration-200 cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
 
-          {/* Productivity Score */}
-          <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <span className="text-[15px] font-semibold text-slate-800">
-                Productivity Score
-              </span>
+          {/* Right Column */}
+          <div className="space-y-12">
+            {/* Upcoming Deadlines - Modern SaaS Card */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center justify-between px-8 py-6 border-b border-neutral-100 bg-neutral-50/50">
+                <span className="text-lg font-bold text-neutral-900">
+                  Upcoming Deadlines
+                </span>
+                <Calendar size={20} className="text-indigo-600" />
+              </div>
+              <div className="px-8 py-6">
+                {upcomingDeadlines.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-3">
+                      <Calendar size={24} className="text-neutral-300" />
+                    </div>
+                    <p className="text-sm text-neutral-400">No upcoming deadlines</p>
+                  </div>
+                ) : (
+                  upcomingDeadlines.map((task) => {
+                    const { month, day } = formatDeadlineDate(task.deadline);
+                    const daysUntil = getDaysUntil(task.deadline);
+                    return (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-4 py-4 hover:bg-indigo-50/30 px-3 rounded-xl transition-all duration-200 group cursor-pointer border-b border-neutral-100 last:border-b-0 last:mb-0 last:pb-0"
+                      >
+                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex flex-col items-center justify-center flex-shrink-0 shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-300">
+                          <span className="text-xs font-bold uppercase tracking-wide leading-none">
+                            {month}
+                          </span>
+                          <span className="text-2xl font-extrabold leading-tight">
+                            {day}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-neutral-900 truncate">
+                            {task.title}
+                          </div>
+                          <div className="text-xs text-neutral-500 mt-1">{task.subject}</div>
+                        </div>
+                        <span
+                          className={`text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0 transition-all duration-200 ${getCountdownStyle(daysUntil)}`}
+                        >
+                          {daysUntil < 0
+                            ? `${Math.abs(daysUntil)}d ago`
+                            : daysUntil === 0
+                            ? "Today!"
+                            : `${daysUntil}d`}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
-            <div className="px-5 py-7 text-center">
-              <div className="relative w-[120px] h-[120px] mx-auto mb-4">
-                <svg viewBox="0 0 36 36" className="-rotate-90">
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="#E2E8F0"
-                    strokeWidth="2.8"
-                  />
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="#6366F1"
-                    strokeWidth="2.8"
-                    strokeDasharray={`${completionRate}, 100`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[28px] font-bold text-indigo-500">
-                  {completionRate}
-                  <span className="text-sm font-medium">%</span>
+
+            {/* Progress - Modern SaaS Card */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
+              <div className="px-8 py-6 border-b border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
+                <span className="text-lg font-bold text-neutral-900">
+                  Progress
+                </span>
+                <TrendingUp size={20} className="text-emerald-500" />
+              </div>
+              <div className="px-8 py-10 text-center">
+                <div className="relative w-[140px] h-[140px] mx-auto mb-6">
+                  <svg viewBox="0 0 36 36" className="-rotate-90">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#E5E5E5"
+                      strokeWidth="2.8"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="url(#progressGradient)"
+                      strokeWidth="2.8"
+                      strokeDasharray={`${completionRate}, 100`}
+                      strokeLinecap="round"
+                    />
+                    <defs>
+                      <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#6366f1" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                    <div className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      {completionRate}
+                      <span className="text-lg">%</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="text-sm font-medium text-slate-800 mb-1">
-                {completionRate >= 75
-                  ? "Great Progress!"
-                  : completionRate >= 50
-                  ? "Keep Going!"
-                  : "Let's Get Started!"}
-              </div>
-              <div className="text-[12.5px] text-slate-500 leading-relaxed">
-                {completedTasks} of {totalTasks} tasks completed. You&apos;re doing well!
+                <div className="text-lg font-bold text-neutral-900 mb-2">
+                  {completionRate >= 75
+                    ? "🎉 Excellent Progress"
+                    : completionRate >= 50
+                    ? "💪 Keep Going"
+                    : "🚀 Just Getting Started"}
+                </div>
+                <div className="text-sm text-neutral-600 leading-relaxed">
+                  <span className="font-semibold text-indigo-600">{completedTasks}</span> of{" "}
+                  <span className="font-semibold text-indigo-600">{totalTasks}</span> tasks completed
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      {/* ─── Create Task Modal ─── */}
+      {/* ─── Create Task Modal - Modern Design ─── */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
+          className="fixed inset-0 bg-black/30 backdrop-blur-md z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
         >
-          <div className="bg-white rounded-2xl w-[520px] max-h-[85vh] overflow-y-auto shadow-[0_12px_40px_rgba(0,0,0,0.1)] animate-[scaleIn_0.25s_ease]">
+          <div className="bg-white rounded-3xl w-[540px] max-h-[90vh] overflow-y-auto shadow-2xl animate-[scaleIn_0.25s_ease]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 pt-6">
-              <h2 className="text-[22px] font-bold text-slate-800 font-[family-name:var(--font-playfair)]">
-                Create New Task
+            <div className="flex items-center justify-between px-10 pt-10 pb-3 border-b border-neutral-100">
+              <h2 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                ✨ Create New Task
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="w-[34px] h-[34px] rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-red-50 hover:border-red-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 transition-all duration-200 cursor-pointer hover:scale-110"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleCreateTask} className="px-6 py-5">
+            <form onSubmit={handleCreateTask} className="px-10 py-8 space-y-6">
               {/* Title */}
-              <div className="mb-4">
-                <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                  Task Title <span className="text-red-500">*</span>
+              <div>
+                <label className="block text-sm font-bold text-neutral-900 mb-3">
+                  Task Title
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g., Complete ITPM Assignment 3"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)] placeholder:text-slate-400"
+                  placeholder="e.g., Complete Math Assignment"
+                  className="w-full px-5 py-3 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 placeholder:text-neutral-400 hover:border-neutral-300"
                 />
               </div>
 
               {/* Description */}
-              <div className="mb-4">
-                <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                  Description
+              <div>
+                <label className="block text-sm font-bold text-neutral-900 mb-3">
+                  Description <span className="text-neutral-400 font-normal">(optional)</span>
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Add details about this task..."
+                  placeholder="Add any details or notes..."
                   rows={3}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none resize-y min-h-[80px] transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)] placeholder:text-slate-400"
+                  className="w-full px-5 py-3 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none resize-y min-h-[100px] transition-all duration-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 placeholder:text-neutral-400 hover:border-neutral-300"
                 />
               </div>
 
               {/* Subject + Deadline */}
-              <div className="grid grid-cols-2 gap-3.5 mb-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                    Subject <span className="text-red-500">*</span>
+                  <label className="block text-sm font-bold text-neutral-900 mb-3">
+                    Subject
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    placeholder="e.g., Data Structures"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)] placeholder:text-slate-400"
+                    placeholder="e.g., Mathematics"
+                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 placeholder:text-neutral-400 hover:border-neutral-300"
                   />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                    Deadline <span className="text-red-500">*</span>
+                  <label className="block text-sm font-bold text-neutral-900 mb-3">
+                    Deadline
                   </label>
                   <input
                     type="datetime-local"
                     required
                     value={formData.deadline}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
+                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 hover:border-neutral-300"
                   />
                 </div>
               </div>
 
               {/* Difficulty */}
-              <div className="mb-6">
-                <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                  Difficulty <span className="text-red-500">*</span>
+              <div>
+                <label className="block text-sm font-bold text-neutral-900 mb-3">
+                  Difficulty Level
                 </label>
-                <div className="flex gap-2.5">
+                <div className="flex gap-3">
                   {(["easy", "medium", "hard"] as const).map((level) => (
                     <button
                       key={level}
                       type="button"
                       onClick={() => setFormData({ ...formData, difficulty: level })}
-                      className={`flex-1 py-2.5 rounded-lg border-[1.5px] text-[13px] font-medium text-center transition-all duration-200 cursor-pointer ${
+                      className={`flex-1 py-3 rounded-xl font-semibold text-center transition-all duration-300 cursor-pointer text-sm ${
                         formData.difficulty === level
-                          ? level === "easy"
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-600"
-                            : level === "medium"
-                            ? "border-amber-500 bg-amber-50 text-amber-600"
-                            : "border-red-500 bg-red-50 text-red-600"
-                          : "border-slate-200 text-slate-500 hover:border-slate-300"
+                          ? `bg-gradient-to-r ${
+                              level === "easy"
+                                ? "from-emerald-500 to-teal-500"
+                                : level === "medium"
+                                ? "from-amber-500 to-orange-500"
+                                : "from-rose-500 to-pink-500"
+                            } text-white shadow-md scale-105`
+                          : "border-2 border-neutral-200 text-neutral-600 hover:border-neutral-300 bg-neutral-50"
                       }`}
                     >
-                      {level === "easy" ? "🟢" : level === "medium" ? "🟡" : "🔴"}{" "}
                       {level.charAt(0).toUpperCase() + level.slice(1)}
                     </button>
                   ))}
@@ -769,20 +737,20 @@ export default function Dashboard() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2.5 justify-end">
+              <div className="flex gap-3 justify-end pt-4 border-t border-neutral-100">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 cursor-pointer"
+                  className="px-8 py-3 rounded-full text-sm font-semibold text-neutral-700 hover:bg-neutral-100 transition-all duration-300 cursor-pointer hover:scale-105"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 hover:shadow-[0_4px_16px_rgba(99,102,241,0.4)] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full text-sm font-semibold hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                 >
-                  <Plus size={16} />
+                  <Plus size={18} />
                   {submitting ? "Creating..." : "Create Task"}
                 </button>
               </div>
@@ -791,134 +759,118 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ─── Priority Breakdown Panel ─── */}
+      {/* ─── Priority Breakdown Panel - Modern Design ─── */}
       {showPriorityPanel && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
+          className="fixed inset-0 bg-black/30 backdrop-blur-md z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
           onClick={(e) => e.target === e.currentTarget && setShowPriorityPanel(false)}
         >
-          <div className="bg-white rounded-2xl w-[480px] max-h-[85vh] overflow-y-auto shadow-[0_12px_40px_rgba(0,0,0,0.1)] animate-[scaleIn_0.25s_ease]">
+          <div className="bg-white rounded-3xl w-[500px] max-h-[90vh] overflow-y-auto shadow-2xl animate-[scaleIn_0.25s_ease]">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Brain size={20} className="text-indigo-500" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 font-[family-name:var(--font-playfair)]">
-                    AI Priority Analysis
-                  </h2>
-                  <p className="text-xs text-slate-400">Powered by EduSense AI Engine</p>
-                </div>
+            <div className="flex items-center justify-between px-8 pt-8 pb-2 border-b border-neutral-100">
+              <div>
+                <h2 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                  🎯 Priority Analysis
+                </h2>
+                <p className="text-xs text-neutral-500 mt-1">AI-powered insights</p>
               </div>
               <button
                 onClick={() => setShowPriorityPanel(false)}
-                className="w-[34px] h-[34px] rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-red-50 hover:border-red-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 transition-all duration-200 cursor-pointer hover:scale-110"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             {loadingPriority ? (
-              <div className="px-6 py-12 text-center">
-                <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm text-slate-400">Analyzing task priority...</p>
+              <div className="px-8 py-16 text-center">
+                <div className="relative w-12 h-12 mx-auto mb-4">
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full opacity-20 animate-pulse" />
+                  <div className="absolute inset-1 rounded-full border-3 border-transparent border-t-indigo-500 border-r-purple-500 animate-spin" />
+                </div>
+                <p className="text-sm text-neutral-500 font-medium">Analyzing priority...</p>
               </div>
             ) : priorityData ? (
-              <div className="px-6 py-5">
+              <div className="px-8 py-6 space-y-6">
                 {/* Task Title */}
-                <div className="mb-5">
-                  <p className="text-xs text-slate-400 mb-1">Task</p>
-                  <p className="text-[15px] font-semibold text-slate-800">{priorityData.task_title}</p>
+                <div>
+                  <p className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-2">Task</p>
+                  <p className="text-lg font-bold text-neutral-900">{priorityData.task_title}</p>
                 </div>
 
                 {/* Score Circle */}
-                <div className="flex items-center gap-6 mb-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="relative w-[90px] h-[90px] flex-shrink-0">
+                <div className="flex items-center gap-6 p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100">
+                  <div className="relative w-[100px] h-[100px] flex-shrink-0">
                     <svg viewBox="0 0 36 36" className="-rotate-90">
                       <path
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
-                        stroke="#E2E8F0"
+                        stroke="#E5E5E5"
                         strokeWidth="3"
                       />
                       <path
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
-                        stroke={
-                          priorityData.final_score >= 8 ? "#EF4444" :
-                          priorityData.final_score >= 6 ? "#F97316" :
-                          priorityData.final_score >= 4 ? "#F59E0B" : "#10B981"
-                        }
+                        stroke="url(#priorityGradient)"
                         strokeWidth="3"
                         strokeDasharray={`${priorityData.final_score * 10}, 100`}
                         strokeLinecap="round"
                       />
+                      <defs>
+                        <linearGradient id="priorityGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#6366f1" />
+                          <stop offset="100%" stopColor="#8b5cf6" />
+                        </linearGradient>
+                      </defs>
                     </svg>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                      <div className="text-2xl font-bold text-slate-800">{priorityData.final_score}</div>
-                      <div className="text-[9px] text-slate-400 uppercase tracking-wider">/ 10</div>
+                      <div className="text-3xl font-extrabold text-neutral-900">{priorityData.final_score}</div>
+                      <div className="text-xs text-neutral-500 font-bold">/ 10</div>
                     </div>
                   </div>
                   <div className="flex-1">
-                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-2 ${
-                      priorityData.priority_label === "critical" ? "bg-red-100 text-red-600" :
-                      priorityData.priority_label === "high" ? "bg-orange-100 text-orange-600" :
-                      priorityData.priority_label === "medium" ? "bg-amber-100 text-amber-600" :
-                      "bg-emerald-100 text-emerald-600"
-                    }`}>
-                      {priorityData.priority_label} Priority
+                    <div className="inline-block px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-500 text-white mb-3 shadow-md">
+                      {priorityData.priority_label}
                     </div>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm font-semibold text-neutral-900">
                       {priorityData.days_remaining < 0
-                        ? `Overdue by ${Math.abs(Math.round(priorityData.days_remaining))} days`
+                        ? `⚠️ Overdue by ${Math.abs(Math.round(priorityData.days_remaining))} days`
                         : priorityData.days_remaining < 1
-                        ? "Due today"
-                        : `${Math.round(priorityData.days_remaining)} days remaining`}
+                        ? "🔔 Due today"
+                        : `📅 ${Math.round(priorityData.days_remaining)} days remaining`}
                     </p>
                   </div>
                 </div>
 
                 {/* Score Breakdown */}
-                <div className="mb-5">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Score Breakdown</p>
+                <div>
+                  <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide mb-4">Breakdown</p>
                   <div className="space-y-3">
                     {[
-                      { key: "deadline_proximity", icon: <Clock size={16} />, label: "Deadline Proximity", color: "indigo" },
-                      { key: "difficulty", icon: <Target size={16} />, label: "Task Difficulty", color: "amber" },
-                      { key: "status", icon: <Zap size={16} />, label: "Current Status", color: "emerald" },
-                      { key: "overdue_penalty", icon: <AlertCircle size={16} />, label: "Overdue Penalty", color: "red" },
+                      { key: "deadline_proximity", icon: <Clock size={16} />, label: "Deadline" },
+                      { key: "difficulty", icon: <Target size={16} />, label: "Difficulty" },
+                      { key: "status", icon: <Zap size={16} />, label: "Status" },
+                      { key: "overdue_penalty", icon: <AlertCircle size={16} />, label: "Overdue" },
                     ].map((item) => {
                       const data = priorityData.breakdown[item.key as keyof typeof priorityData.breakdown];
                       return (
-                        <div key={item.key} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-white">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            item.color === "indigo" ? "bg-indigo-50 text-indigo-500" :
-                            item.color === "amber" ? "bg-amber-50 text-amber-500" :
-                            item.color === "emerald" ? "bg-emerald-50 text-emerald-500" :
-                            "bg-red-50 text-red-500"
-                          }`}>
-                            {item.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[13px] font-medium text-slate-700">{item.label}</span>
-                              <span className="text-[13px] font-bold text-slate-800">{data.score}<span className="text-[10px] text-slate-400 font-normal"> × {(data.weight * 100).toFixed(0)}%</span></span>
+                        <div key={item.key} className="p-4 rounded-xl bg-neutral-50 border border-neutral-100 hover:border-indigo-200 transition-all duration-300 group">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0 text-white group-hover:scale-110 transition-transform duration-300">
+                              {item.icon}
                             </div>
-                            {/* Progress bar */}
-                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  item.color === "indigo" ? "bg-indigo-500" :
-                                  item.color === "amber" ? "bg-amber-500" :
-                                  item.color === "emerald" ? "bg-emerald-500" :
-                                  "bg-red-500"
-                                }`}
-                                style={{ width: `${(data.score / 10) * 100}%` }}
-                              />
+                            <div className="flex items-center justify-between flex-1">
+                              <span className="text-sm font-bold text-neutral-900">{item.label}</span>
+                              <span className="text-sm font-bold text-indigo-600">{data.score}<span className="text-xs text-neutral-400 font-normal"> / 10</span></span>
                             </div>
-                            <p className="text-[11px] text-slate-400 mt-1">{data.reason}</p>
                           </div>
+                          <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden mb-2">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                              style={{ width: `${(data.score / 10) * 100}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-neutral-600">{data.reason}</p>
                         </div>
                       );
                     })}
@@ -926,12 +878,12 @@ export default function Dashboard() {
                 </div>
 
                 {/* AI Suggestion */}
-                <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Info size={14} className="text-indigo-500" />
-                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">AI Suggestion</span>
+                <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Info size={16} className="text-amber-600" />
+                    <span className="text-xs font-bold text-amber-900 uppercase tracking-wide">AI Suggestion</span>
                   </div>
-                  <p className="text-[13px] text-indigo-700 leading-relaxed">{priorityData.suggestion}</p>
+                  <p className="text-sm text-amber-900 leading-relaxed">{priorityData.suggestion}</p>
                 </div>
               </div>
             ) : null}
@@ -939,94 +891,78 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ─── Overload Risk Detail Panel ─── */}
+      {/* ─── Overload Risk Detail Panel - Modern Design ─── */}
       {showOverloadPanel && overloadRisk && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
+          className="fixed inset-0 bg-black/30 backdrop-blur-md z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
           onClick={(e) => e.target === e.currentTarget && setShowOverloadPanel(false)}
         >
-          <div className="bg-white rounded-2xl w-[500px] max-h-[85vh] overflow-y-auto shadow-[0_12px_40px_rgba(0,0,0,0.1)] animate-[scaleIn_0.25s_ease]">
+          <div className="bg-white rounded-3xl w-[540px] max-h-[90vh] overflow-y-auto shadow-2xl animate-[scaleIn_0.25s_ease]">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  overloadRisk.risk_level === "critical" ? "bg-red-100 text-red-600" :
-                  overloadRisk.risk_level === "high" ? "bg-orange-100 text-orange-600" :
-                  overloadRisk.risk_level === "moderate" ? "bg-amber-100 text-amber-600" :
-                  "bg-emerald-100 text-emerald-600"
-                }`}>
-                  <ShieldAlert size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 font-[family-name:var(--font-playfair)]">
-                    Overload Risk Analysis
-                  </h2>
-                  <p className="text-xs text-slate-400">Powered by EduSense AI Engine</p>
-                </div>
+            <div className="flex items-center justify-between px-8 pt-8 pb-2 border-b border-neutral-100">
+              <div>
+                <h2 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                  ⚠️ Overload Analysis
+                </h2>
+                <p className="text-xs text-neutral-500 mt-1">Workload assessment</p>
               </div>
               <button
                 onClick={() => setShowOverloadPanel(false)}
-                className="w-[34px] h-[34px] rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-red-50 hover:border-red-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 transition-all duration-200 cursor-pointer hover:scale-110"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            <div className="px-6 py-5">
+            <div className="px-8 py-6 space-y-6">
               {/* Risk Score */}
-              <div className="flex items-center gap-6 mb-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="relative w-[90px] h-[90px] flex-shrink-0">
+              <div className="flex items-center gap-6 p-6 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-100">
+                <div className="relative w-[100px] h-[100px] flex-shrink-0">
                   <svg viewBox="0 0 36 36" className="-rotate-90">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E2E8F0" strokeWidth="3" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E5E5E5" strokeWidth="3" />
                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
-                      stroke={
-                        overloadRisk.risk_score >= 8 ? "#EF4444" :
-                        overloadRisk.risk_score >= 6 ? "#F97316" :
-                        overloadRisk.risk_score >= 4 ? "#F59E0B" : "#10B981"
-                      }
+                      stroke="url(#riskGradient)"
                       strokeWidth="3"
                       strokeDasharray={`${overloadRisk.risk_score * 10}, 100`}
                       strokeLinecap="round"
                     />
+                    <defs>
+                      <linearGradient id="riskGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f43f5e" />
+                        <stop offset="100%" stopColor="#ec4899" />
+                      </linearGradient>
+                    </defs>
                   </svg>
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                    <div className="text-2xl font-bold text-slate-800">{overloadRisk.risk_score}</div>
-                    <div className="text-[9px] text-slate-400 uppercase tracking-wider">/ 10</div>
+                    <div className="text-3xl font-extrabold text-neutral-900">{overloadRisk.risk_score}</div>
+                    <div className="text-xs text-neutral-500 font-bold">/ 10</div>
                   </div>
                 </div>
                 <div className="flex-1">
-                  <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-2 ${
-                    overloadRisk.risk_level === "critical" ? "bg-red-100 text-red-600" :
-                    overloadRisk.risk_level === "high" ? "bg-orange-100 text-orange-600" :
-                    overloadRisk.risk_level === "moderate" ? "bg-amber-100 text-amber-600" :
-                    "bg-emerald-100 text-emerald-600"
-                  }`}>
-                    {overloadRisk.risk_level} risk
+                  <div className="inline-block px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-rose-500 to-pink-500 text-white mb-3 shadow-md">
+                    {overloadRisk.risk_level} Risk
                   </div>
-                  <p className="text-sm text-slate-600">{overloadRisk.active_tasks} active tasks being analyzed</p>
+                  <p className="text-sm font-semibold text-neutral-900 mb-1">
+                    💼 {overloadRisk.active_tasks} active tasks
+                  </p>
+                  <p className="text-xs text-neutral-600">Adjust your schedule if needed</p>
                 </div>
               </div>
 
               {/* Warnings */}
               {overloadRisk.warnings.length > 0 && (
-                <div className="mb-5">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Warnings</p>
-                  <div className="space-y-2.5">
+                <div>
+                  <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide mb-4">⚡ Warnings</p>
+                  <div className="space-y-3">
                     {overloadRisk.warnings.map((warning, i) => (
-                      <div key={i} className={`p-3.5 rounded-lg border ${
-                        warning.severity === "high" ? "bg-red-50 border-red-100" : "bg-amber-50 border-amber-100"
-                      }`}>
-                        <p className={`text-[13px] font-medium leading-relaxed ${
-                          warning.severity === "high" ? "text-red-700" : "text-amber-700"
-                        }`}>
+                      <div key={i} className="p-4 rounded-xl bg-rose-50 border border-rose-200 hover:border-rose-300 transition-all duration-300">
+                        <p className="text-sm font-semibold text-rose-900 leading-relaxed mb-2">
                           {warning.message}
                         </p>
                         {warning.tasks && warning.tasks.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
+                          <div className="flex flex-wrap gap-2">
                             {warning.tasks.map((t, j) => (
-                              <span key={j} className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                                warning.severity === "high" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
-                              }`}>
+                              <span key={j} className="px-3 py-1 rounded-full text-xs font-semibold bg-white text-rose-700 border border-rose-200">
                                 {t}
                               </span>
                             ))}
@@ -1039,80 +975,48 @@ export default function Dashboard() {
               )}
 
               {/* Score Breakdown */}
-              <div className="mb-5">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Risk Factors</p>
+              <div>
+                <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide mb-4">📊 Risk Factors</p>
                 <div className="space-y-3">
                   {[
-                    { key: "task_density", icon: <Activity size={16} />, label: "Task Density (3 days)", color: "indigo" },
-                    { key: "difficulty_cluster", icon: <AlertTriangle size={16} />, label: "Hard Tasks Cluster", color: "red" },
-                    { key: "weekly_load", icon: <ClipboardList size={16} />, label: "Weekly Load", color: "amber" },
-                    { key: "deadline_spacing", icon: <Timer size={16} />, label: "Deadline Spacing", color: "emerald" },
+                    { key: "task_density", icon: <Activity size={16} />, label: "Task Density" },
+                    { key: "difficulty_cluster", icon: <AlertTriangle size={16} />, label: "Hard Tasks" },
+                    { key: "weekly_load", icon: <ClipboardList size={16} />, label: "Weekly Load" },
+                    { key: "deadline_spacing", icon: <Timer size={16} />, label: "Spacing" },
                   ].map((item) => {
                     const data = overloadRisk.breakdown[item.key];
                     if (!data) return null;
                     return (
-                      <div key={item.key} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-white">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          item.color === "indigo" ? "bg-indigo-50 text-indigo-500" :
-                          item.color === "red" ? "bg-red-50 text-red-500" :
-                          item.color === "amber" ? "bg-amber-50 text-amber-500" :
-                          "bg-emerald-50 text-emerald-500"
-                        }`}>
-                          {item.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[13px] font-medium text-slate-700">{item.label}</span>
-                            <span className="text-[13px] font-bold text-slate-800">
-                              {data.score}<span className="text-[10px] text-slate-400 font-normal"> × {(data.weight * 100).toFixed(0)}%</span>
-                            </span>
+                      <div key={item.key} className="p-4 rounded-xl bg-neutral-50 border border-neutral-100 hover:border-rose-200 transition-all duration-300 group">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center flex-shrink-0 text-white group-hover:scale-110 transition-transform duration-300">
+                            {item.icon}
                           </div>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                item.color === "indigo" ? "bg-indigo-500" :
-                                item.color === "red" ? "bg-red-500" :
-                                item.color === "amber" ? "bg-amber-500" :
-                                "bg-emerald-500"
-                              }`}
-                              style={{ width: `${(data.score / 10) * 100}%` }}
-                            />
+                          <div className="flex items-center justify-between flex-1">
+                            <span className="text-sm font-bold text-neutral-900">{item.label}</span>
+                            <span className="text-sm font-bold text-rose-600">{data.score}<span className="text-xs text-neutral-400 font-normal"> / 10</span></span>
                           </div>
-                          <p className="text-[11px] text-slate-400 mt-1">{data.reason}</p>
                         </div>
+                        <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden mb-2">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
+                            style={{ width: `${(data.score / 10) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-neutral-600">{data.reason}</p>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* AI Suggestion */}
-              <div className={`p-4 rounded-xl border ${
-                overloadRisk.risk_level === "critical" ? "bg-red-50 border-red-100" :
-                overloadRisk.risk_level === "high" ? "bg-orange-50 border-orange-100" :
-                overloadRisk.risk_level === "moderate" ? "bg-amber-50 border-amber-100" :
-                "bg-emerald-50 border-emerald-100"
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Info size={14} className={
-                    overloadRisk.risk_level === "critical" ? "text-red-500" :
-                    overloadRisk.risk_level === "high" ? "text-orange-500" :
-                    overloadRisk.risk_level === "moderate" ? "text-amber-500" :
-                    "text-emerald-500"
-                  } />
-                  <span className={`text-xs font-semibold uppercase tracking-wide ${
-                    overloadRisk.risk_level === "critical" ? "text-red-600" :
-                    overloadRisk.risk_level === "high" ? "text-orange-600" :
-                    overloadRisk.risk_level === "moderate" ? "text-amber-600" :
-                    "text-emerald-600"
-                  }`}>AI Recommendation</span>
+              {/* AI Recommendation */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info size={16} className="text-emerald-600" />
+                  <span className="text-xs font-bold text-emerald-900 uppercase tracking-wide">Recommendation</span>
                 </div>
-                <p className={`text-[13px] leading-relaxed ${
-                  overloadRisk.risk_level === "critical" ? "text-red-700" :
-                  overloadRisk.risk_level === "high" ? "text-orange-700" :
-                  overloadRisk.risk_level === "moderate" ? "text-amber-700" :
-                  "text-emerald-700"
-                }`}>
+                <p className="text-sm text-emerald-900 leading-relaxed">
                   {overloadRisk.suggestion}
                 </p>
               </div>

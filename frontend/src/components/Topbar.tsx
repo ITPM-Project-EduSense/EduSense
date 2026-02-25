@@ -18,35 +18,35 @@ export default function Topbar() {
   const pageTitle = pageTitles[pathname] || "Dashboard";
 
   return (
-    <header className="sticky top-0 z-40 h-16 bg-[#FAFBFD]/85 backdrop-blur-xl border-b border-slate-100 px-8 flex items-center justify-between">
+    <header className="sticky top-0 z-40 h-16 bg-gradient-to-r from-slate-50 to-indigo-50/50 backdrop-blur-lg px-8 flex items-center justify-between border-b border-white/50">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-[13px]">
-        <span className="text-slate-500">EduSense</span>
-        <span className="text-slate-400">/</span>
-        <span className="text-slate-800 font-medium">{pageTitle}</span>
+        <span className="font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">EduSense</span>
+        <span className="text-neutral-300">/</span>
+        <span className="text-neutral-700 font-semibold">{pageTitle}</span>
       </div>
 
       {/* Right Side */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {/* Search */}
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3.5 py-2 w-[280px] transition-all duration-200 focus-within:border-indigo-500 focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.1)]">
-          <Search size={16} className="text-slate-400 flex-shrink-0" />
+        <div className="flex items-center gap-3 bg-white border border-neutral-200 rounded-xl px-4 py-2.5 w-[300px] transition-all duration-300 focus-within:border-indigo-500 focus-within:shadow-md focus-within:border-opacity-50 hover:border-neutral-300 group">
+          <Search size={16} className="text-neutral-400 flex-shrink-0 group-focus-within:text-indigo-600 transition-colors duration-300" />
           <input
             type="text"
             placeholder="Search tasks, subjects..."
-            className="border-none outline-none bg-transparent text-[13px] text-slate-800 w-full placeholder:text-slate-400"
+            className="border-none outline-none bg-transparent text-[13px] text-neutral-800 w-full placeholder:text-neutral-400"
           />
         </div>
 
         {/* Notification */}
-        <button className="relative w-[38px] h-[38px] rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:border-indigo-500 hover:text-indigo-500 hover:shadow-sm transition-all duration-200">
-          <Bell size={18} />
-          <span className="absolute top-2 right-2 w-[7px] h-[7px] bg-red-500 rounded-full border-[1.5px] border-white" />
+        <button className="relative w-40 h-10 rounded-lg border border-neutral-200 bg-white flex items-center justify-center text-neutral-600 hover:border-indigo-300 hover:text-indigo-600 hover:shadow-md hover:shadow-indigo-200/50 transition-all duration-300 group">
+          <Bell size={18} className="group-hover:scale-110 transition-transform duration-300" />
+          <span className="absolute top-2 right-2 w-[7px] h-[7px] bg-gradient-to-r from-rose-500 to-pink-500 rounded-full border-[1.5px] border-white shadow-lg shadow-rose-500/30 animate-pulse" />
         </button>
 
         {/* Settings */}
-        <button className="w-[38px] h-[38px] rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:border-indigo-500 hover:text-indigo-500 hover:shadow-sm transition-all duration-200">
-          <Settings size={18} />
+        <button className="w-10 h-10 rounded-lg border border-neutral-200 bg-white flex items-center justify-center text-neutral-600 hover:border-purple-300 hover:text-purple-600 hover:shadow-md hover:shadow-purple-200/50 transition-all duration-300 group">
+          <Settings size={18} className="group-hover:rotate-90 group-hover:scale-110 transition-all duration-300" />
         </button>
       </div>
     </header>

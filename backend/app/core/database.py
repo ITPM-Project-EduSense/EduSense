@@ -14,11 +14,12 @@ async def connect_db():
 
     # 🔥 Import ALL document models here
     from app.models.task import Task
-    from app.models.user_model import User   # 👈 ADD THIS
+    from app.models.user_model import User
+    from app.models.study_material import StudyMaterial, Concept
 
     await init_beanie(
         database=db,
-        document_models=[Task, User]   # 👈 ADD USER HERE
+        document_models=[Task, User, StudyMaterial, Concept]
     )
 
     print(f"✅ Connected to MongoDB: {settings.DATABASE_NAME}")
