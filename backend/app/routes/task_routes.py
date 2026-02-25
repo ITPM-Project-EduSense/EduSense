@@ -8,6 +8,7 @@ from app.services.priority_service import (
     get_priority_breakdown,
     get_priority_label,
 )
+from app.services.overload_service import detect_overload_risk
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -149,6 +150,21 @@ async def recalculate_all_priorities():
         "total_tasks": len(tasks),
         "updated": updated_count,
     }
+
+
+# ─── GET /tasks/overload-risk ─── Detect overload risk ───
+@router.get(
+    "/overload-risk",
+    summary="Detect academic overload risk",
+)
+async def get_overload_risk():
+    """
+    Analyze all active tasks and detect potential overload situations.
+    Returns risk score, warnings, and actionable suggestions.
+    """
+    tasks = await Task.find_all().to_list()
+    risk_data = detect_overload_risk(tasks)
+    return risk_data
 
 
 # ─── PUT /tasks/{task_id} ─── Update a task ───
