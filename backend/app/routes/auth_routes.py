@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Response, Request, HTTPException
 from jose import jwt, JWTError
-from bson import ObjectId
 
-from app.core.config import settings
-from app.core.database import get_db
+from app.models.user import User
 from app.models.user_model import UserCreate, UserLogin
 from app.services.auth_service import AuthService
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -48,29 +47,31 @@ async def logout(response: Response):
 
 @router.get("/me")
 async def me(request: Request):
-    token = request.cookies.get(COOKIE_NAME)
+    token = request.cookies.get("edusense_token")
+
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
         user_id = payload.get("user_id")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not authenticated")
+
     except JWTError:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    db = get_db()
-    users = db["users"]
-    user = await users.find_one({"_id": ObjectId(user_id)})
+    user = await User.get(user_id)
 
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     return {
         "user": {
-            "id": str(user["_id"]),
-            "full_name": user["full_name"],
-            "email": user["email"],
+            "id": str(user.id),
+            "full_name": user.full_name,
+            "email": user.email,
         }
     }
