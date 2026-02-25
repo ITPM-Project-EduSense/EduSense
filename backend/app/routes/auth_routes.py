@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Response, Request, HTTPException
 from jose import jwt, JWTError
 
-from app.models.user import User
-from app.models.user_model import UserCreate, UserLogin
+from app.models.user_model import User, UserCreate, UserLogin
 from app.services.auth_service import AuthService
 from app.core.config import settings
 

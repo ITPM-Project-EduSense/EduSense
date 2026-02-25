@@ -12,13 +12,15 @@ async def connect_db():
     client = AsyncIOMotorClient(settings.DATABASE_URL)
     db = client[settings.DATABASE_NAME]
 
-    # Import all document models here
+    # 🔥 Import ALL document models here
     from app.models.task import Task
+    from app.models.user_model import User   # 👈 ADD THIS
 
     await init_beanie(
         database=db,
-        document_models=[Task]
+        document_models=[Task, User]   # 👈 ADD USER HERE
     )
+
     print(f"✅ Connected to MongoDB: {settings.DATABASE_NAME}")
 
 
