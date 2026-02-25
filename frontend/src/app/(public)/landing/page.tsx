@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Brain,
@@ -20,6 +21,8 @@ import {
   TrendingUp,
   Clock,
   Star,
+  User,
+  LogOut,
 } from "lucide-react";
 
 /* ─── Intersection Observer Hook ─── */
@@ -153,13 +156,264 @@ function AnimatedNotification({ delay, className }: { delay: string; className: 
   );
 }
 
+/* ─── User Menu Dropdown ─── */
+interface UserMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onEditProfile: () => void;
+  onLogout: () => void;
+}
+
+function UserMenu({ isOpen, onClose, onEditProfile, onLogout }: UserMenuProps) {
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute top-16 right-0 w-52 bg-white rounded-lg shadow-xl border border-slate-100 z-40 py-1">
+          <button
+            onClick={onEditProfile}
+            className="w-full text-left px-4 py-2.5 text-[13px] text-slate-700 hover:bg-indigo-50 transition-colors flex items-center gap-2"
+          >
+            <User size={14} className="text-indigo-500" />
+            Edit Profile
+          </button>
+          <div className="border-t border-slate-100" />
+          <button
+            onClick={onLogout}
+            className="w-full text-left px-4 py-2.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+          >
+            <LogOut size={14} />
+            Logout
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ─────────────────────── MAIN PAGE ─────────────────────── */
+
+interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  bio?: string;
+}
+
+interface ProfileFormState {
+  fullName: string;
+  email: string;
+  bio: string;
+}
+
 export default function LandingPage() {
+  const router = useRouter();
   const hero = useInView(0.1);
   const features = useInView(0.1);
   const vision = useInView(0.1);
   const stats = useInView(0.1);
   const cta = useInView(0.1);
+
+  // Authentication state
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({
+    fullName: "",
+    email: "",
+    bio: "",
+  });
+
+  // Check if user is logged in by calling /api/auth/me
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+        
+        const response = await fetch(`${apiBase}/auth/me`, {
+          method: "GET",
+          credentials: "include", // Send cookies with request
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          // User is authenticated
+          const data = await response.json();
+          const userData = data.user;
+          setUser(userData);
+          setIsLoggedIn(true);
+          console.log("User authenticated:", userData);
+        } else if (response.status === 401) {
+          // User is not authenticated
+          setIsLoggedIn(false);
+          setUser(null);
+          console.log("User not authenticated (401)");
+        } else {
+          // Unexpected error
+          setIsLoggedIn(false);
+          setUser(null);
+          console.log("Auth check failed:", response.status);
+        }
+      } catch (error) {
+        // API endpoint doesn't exist or network error
+        console.log("Auth API call failed:", error);
+        setIsLoggedIn(false);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!isProfileOpen) return;
+    const loadProfile = async () => {
+      setIsProfileLoading(true);
+      setProfileError(null);
+
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+        const response = await fetch(`${apiBase}/auth/me`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to load profile");
+        }
+
+        const data = await response.json();
+        const userData: User = data.user;
+        setUser(userData);
+        setProfileForm({
+          fullName: userData.full_name || "",
+          email: userData.email || "",
+          bio: userData.bio || "",
+        });
+      } catch (error) {
+        setProfileError("Failed to load profile. Please try again.");
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [isProfileOpen]);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+      
+      const response = await fetch(`${apiBase}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        setIsLoggedIn(false);
+        setUser(null);
+        setIsMenuOpen(false);
+        router.push("/landing");
+        console.log("Logged out successfully");
+      } else {
+        console.error("Logout failed with status:", response.status);
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const handleOpenProfile = () => {
+    setIsMenuOpen(false);
+    setIsProfileOpen(true);
+  };
+
+  const handleCloseProfile = () => {
+    if (isSavingProfile) return;
+    setIsProfileOpen(false);
+  };
+
+  const handleProfileChange = (
+    field: keyof ProfileFormState,
+    value: string
+  ) => {
+    setProfileForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfileSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+    setProfileError(null);
+
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+      const response = await fetch(`${apiBase}/users/update-profile`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: profileForm.fullName,
+          bio: profileForm.bio,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      const data = await response.json();
+      const updatedUser: User = data.user || {
+        id: user?.id || "",
+        email: profileForm.email,
+        full_name: profileForm.fullName,
+        bio: profileForm.bio,
+      };
+
+      setUser(updatedUser);
+      setIsProfileOpen(false);
+    } catch (error) {
+      setProfileError("Failed to update profile. Please try again.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleSignIn = () => {
+    console.log("Sign In clicked - navigating to /login");
+    router.push("/login");
+  };
+
+  const handleRegister = () => {
+    console.log("Register clicked - navigating to /register");
+    router.push("/register");
+  };
 
   return (
     <div className="min-h-screen bg-[#FAFBFD] overflow-hidden">
@@ -179,15 +433,138 @@ export default function LandingPage() {
             <a href="#features" className="text-[13px] text-slate-500 hover:text-indigo-500 transition-colors font-medium">Features</a>
             <a href="#vision" className="text-[13px] text-slate-500 hover:text-indigo-500 transition-colors font-medium">Vision</a>
             <a href="#modules" className="text-[13px] text-slate-500 hover:text-indigo-500 transition-colors font-medium">Modules</a>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-500 text-white rounded-lg text-[13px] font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 hover:-translate-y-0.5 transition-all duration-200"
-            >
-              Open Dashboard <ArrowRight size={14} />
-            </Link>
+
+            {/* Auth Section */}
+            {isLoading ? (
+              <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />
+            ) : isLoggedIn ? (
+              /* User Logged In - Show Avatar */
+              <div className="relative">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white hover:shadow-lg transition-shadow overflow-hidden"
+                  aria-label="User menu"
+                >
+                  {user?.full_name ? (
+                    <span className="text-xs font-semibold">
+                      {user.full_name
+                        .split(" ")
+                        .map((part) => part[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()}
+                    </span>
+                  ) : (
+                    <User size={18} />
+                  )}
+                </button>
+                <UserMenu
+                  isOpen={isMenuOpen}
+                  onClose={() => setIsMenuOpen(false)}
+                  onEditProfile={handleOpenProfile}
+                  onLogout={handleLogout}
+                />
+              </div>
+            ) : (
+              /* User Not Logged In - Show Sign In & Register */
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSignIn}
+                  className="px-4 py-2 text-slate-700 text-[13px] font-medium hover:text-indigo-600 transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={handleRegister}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-500 text-white rounded-lg text-[13px] font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Register <ArrowRight size={14} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </nav>
+
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={handleCloseProfile}
+          />
+          <div className="relative w-full max-w-lg mx-4 rounded-2xl bg-white shadow-2xl border border-slate-100 animate-[scaleIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Edit Profile</h3>
+                <p className="text-[12px] text-slate-500">Update your EduSense profile details</p>
+              </div>
+              <button
+                onClick={handleCloseProfile}
+                className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500"
+                aria-label="Close profile modal"
+              >
+                <span className="text-lg">×</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleProfileSubmit} className="px-6 py-5 space-y-4">
+              {profileError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-600">
+                  {profileError}
+                </div>
+              )}
+              <div>
+                <label className="text-[12px] font-medium text-slate-600">Full Name</label>
+                <input
+                  type="text"
+                  value={profileForm.fullName}
+                  onChange={(event) => handleProfileChange("fullName", event.target.value)}
+                  disabled={isProfileLoading}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50"
+                  placeholder="Your name"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  value={profileForm.email}
+                  readOnly
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[14px] text-slate-500"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-slate-600">Bio</label>
+                <textarea
+                  value={profileForm.bio}
+                  onChange={(event) => handleProfileChange("bio", event.target.value)}
+                  disabled={isProfileLoading}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50"
+                  rows={3}
+                  placeholder="Tell us about yourself"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseProfile}
+                  className="px-4 py-2 text-[13px] font-medium text-slate-600 hover:text-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile || isProfileLoading}
+                  className="px-5 py-2 rounded-lg bg-indigo-500 text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSavingProfile ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ─── HERO SECTION ─── */}
       <section ref={hero.ref} className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden">
@@ -242,13 +619,13 @@ export default function LandingPage() {
           <div
             className={`flex items-center justify-center gap-4 transition-all duration-700 delay-300 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
           >
-            <Link
-              href="/"
+            <button
+              onClick={() => router.push("/dashboard")}
               className="group inline-flex items-center gap-2 px-7 py-3.5 bg-indigo-500 text-white rounded-xl text-[15px] font-semibold shadow-[0_4px_20px_rgba(99,102,241,0.35)] hover:bg-indigo-600 hover:shadow-[0_8px_30px_rgba(99,102,241,0.45)] hover:-translate-y-1 transition-all duration-300"
             >
               Explore Dashboard
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </button>
             <a
               href="#features"
               className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-slate-700 rounded-xl text-[15px] font-semibold border border-slate-200 shadow-sm hover:border-indigo-300 hover:text-indigo-600 hover:-translate-y-1 transition-all duration-300"
@@ -507,13 +884,13 @@ export default function LandingPage() {
           <p className="text-lg text-slate-500 mb-10 max-w-lg mx-auto">
             Join EduSense and experience the future of AI-assisted academic planning.
           </p>
-          <Link
-            href="/"
+          <button
+            onClick={() => router.push("/dashboard")}
             className="group inline-flex items-center gap-2 px-8 py-4 bg-indigo-500 text-white rounded-xl text-[16px] font-semibold shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:bg-indigo-600 hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] hover:-translate-y-1 transition-all duration-300"
           >
             Go to Dashboard
             <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -573,27 +950,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-
-      {/* ─── Global Animations ─── */}
-      <style jsx>{`
-        @keyframes floatParticle {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          25% { transform: translateY(-20px) translateX(10px); }
-          50% { transform: translateY(-10px) translateX(-10px); }
-          75% { transform: translateY(-30px) translateX(5px); }
-        }
-        @keyframes floatCard {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-12px); }
-        }
-        @keyframes drawLine {
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes orbitPulse {
-          0%, 100% { transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px))) scale(1); }
-          50% { transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px))) scale(1.08); }
-        }
-      `}</style>
     </div>
   );
 }

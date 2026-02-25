@@ -6,6 +6,7 @@ from app.core.database import connect_db, close_db
 from app.routes.task_routes import router as task_router
 from app.routes.schedule_routes import router as schedule_router
 from app.routes.auth_routes import router as auth_router
+from app.routes.users_routes import router as users_router
 
 
 # -------------------------------
@@ -59,6 +60,7 @@ app.add_middleware(
 app.include_router(task_router, prefix="/api", tags=["Tasks"])
 app.include_router(schedule_router, prefix="/api", tags=["Schedule"])
 app.include_router(auth_router, prefix="/api", tags=["Auth"])
+app.include_router(users_router, prefix="/api", tags=["Users"])
 
 
 # -------------------------------

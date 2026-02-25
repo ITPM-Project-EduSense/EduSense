@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Response, Request, HTTPException
-from jose import jwt, JWTError
+from fastapi import APIRouter, Response, Depends
 
-from app.models.user_model import User, UserCreate, UserLogin
+from app.models.user_model import UserCreate, UserLogin, User
+from app.core.security import get_current_user
 from app.services.auth_service import AuthService
 from app.core.config import settings
 
@@ -45,32 +45,12 @@ async def logout(response: Response):
 
 
 @router.get("/me")
-async def me(request: Request):
-    token = request.cookies.get("edusense_token")
-
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM]
-        )
-        user_id = payload.get("user_id")
-
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    user = await User.get(user_id)
-
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
+async def me(current_user: User = Depends(get_current_user)):
     return {
         "user": {
-            "id": str(user.id),
-            "full_name": user.full_name,
-            "email": user.email,
+            "id": str(current_user.id),
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+            "bio": current_user.bio,
         }
     }

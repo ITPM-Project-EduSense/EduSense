@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import AppShell from "@/components/Appshell";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -17,18 +16,20 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "EduSense - Smart Study Planner",
-  description: "AI-powered student productivity and campus engagement platform",
+  description: "AI-powered student productivity platform",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body className={`${dmSans.variable} ${playfair.variable} font-[family-name:var(--font-dm-sans)]`}>
-        <AppShell>{children}</AppShell>
+      <body
+        className={`${dmSans.variable} ${playfair.variable} font-[family-name:var(--font-dm-sans)]`}
+      >
+        {children}
       </body>
     </html>
   );

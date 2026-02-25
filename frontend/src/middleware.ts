@@ -2,18 +2,21 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
+  // Check for edusense_token (set by backend after login)
   const token = request.cookies.get("edusense_token");
 
   const isAuthPage =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/register");
 
-  // Protect landing page
-  if (!token && request.nextUrl.pathname.startsWith("/landing")) {
+  const isDashboardPage = request.nextUrl.pathname.startsWith("/dashboard");
+
+  // Protect dashboard pages - require authentication
+  if (!token && isDashboardPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Prevent logged-in users from going back to login/register
+  // Prevent logged-in users from accessing login/register pages
   if (token && isAuthPage) {
     return NextResponse.redirect(new URL("/landing", request.url));
   }
@@ -22,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/landing/:path*", "/login", "/register"],
+  matcher: ["/dashboard/:path*", "/login", "/register"],
 };
