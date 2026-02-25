@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class Task(Document):
     """MongoDB document model for academic tasks."""
 
+    user_id: str = Field(..., description="ID of the user who owns this task")
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
     subject: str = Field(..., min_length=1, max_length=100)

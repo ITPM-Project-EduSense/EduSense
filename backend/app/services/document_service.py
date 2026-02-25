@@ -104,13 +104,14 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
     return "\n\n".join(text_parts) if text_parts else "No readable text found in document."
 
 
-async def process_uploaded_document(file: UploadFile, user_id: str) -> str:
+async def process_uploaded_document(file: UploadFile, user_id: str, subject: str) -> str:
     """
     Process an uploaded document: detect file type, extract text, and save to database.
     
     Args:
         file: The uploaded file from FastAPI
         user_id: ID of the user uploading the document
+        subject: Subject/course this material belongs to
         
     Returns:
         The ID of the created StudyMaterial document
@@ -154,6 +155,7 @@ async def process_uploaded_document(file: UploadFile, user_id: str) -> str:
         # Create and save StudyMaterial document
         study_material = StudyMaterial(
             user_id=user_id,
+            subject=subject,
             filename=file.filename,
             extracted_text=extracted_text
         )

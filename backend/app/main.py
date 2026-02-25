@@ -7,6 +7,7 @@ from app.routes.task_routes import router as task_router
 from app.routes.schedule_routes import router as schedule_router
 from app.routes.auth_routes import router as auth_router
 from app.routes.users_routes import router as users_router
+from app.routes.document_route import router as document_router
 
 
 # -------------------------------
@@ -47,10 +48,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Next.js frontend
+        "http://127.0.0.1:3000",  # Alternative localhost
     ],
     allow_credentials=True,  # Required for httpOnly cookies
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -61,6 +64,7 @@ app.include_router(task_router, prefix="/api", tags=["Tasks"])
 app.include_router(schedule_router, prefix="/api", tags=["Schedule"])
 app.include_router(auth_router, prefix="/api", tags=["Auth"])
 app.include_router(users_router, prefix="/api", tags=["Users"])
+app.include_router(document_router, prefix="/api", tags=["Documents"])
 
 
 # -------------------------------

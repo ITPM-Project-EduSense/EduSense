@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import {
   Plus,
   ClipboardList,
@@ -21,9 +23,8 @@ import {
   ShieldAlert,
   Activity,
   Timer,
+  Sparkles,
 } from "lucide-react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Task {
   id: string;
@@ -70,6 +71,7 @@ interface OverloadRisk {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -91,13 +93,14 @@ export default function Dashboard() {
   // Fetch tasks
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${API}/api/tasks/`);
-      const data = await res.json();
-      setTasks(data);
+      const data = await apiFetch("/tasks");
+      // Ensure data is an array; if it's wrapped or malformed, default to empty array
+      setTasks(Array.isArray(data) ? data : []);
       // Also fetch overload risk
       fetchOverloadRisk();
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -106,9 +109,11 @@ export default function Dashboard() {
   // Fetch overload risk
   const fetchOverloadRisk = async () => {
     try {
-      const res = await fetch(`${API}/api/tasks/overload-risk`);
-      const data = await res.json();
-      setOverloadRisk(data);
+      const data = await apiFetch("/tasks/overload-risk");
+      // Ensure data is an object with expected structure
+      if (data && typeof data === "object") {
+        setOverloadRisk(data);
+      }
     } catch (err) {
       console.error("Failed to fetch overload risk:", err);
     }
@@ -122,24 +127,40 @@ export default function Dashboard() {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    console.group("📝 Creating Task");
     try {
-      const res = await fetch(`${API}/api/tasks/`, {
+      console.log("Sending task data:", formData);
+      const data = await apiFetch("/tasks", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
           deadline: new Date(formData.deadline).toISOString(),
         }),
       });
-      if (res.ok) {
+      console.log("✅ Task created response:", data);
+      
+      if (data && data.id) {
+        const taskId = data.id;
+        console.log("📍 Task ID received:", taskId);
+        console.log("🔄 Redirecting to planner with taskId:", taskId);
+        
+        // Close modal and reset form
         setShowModal(false);
         setFormData({ title: "", description: "", subject: "", deadline: "", difficulty: "medium" });
-        fetchTasks();
+        
+        // Redirect to planner with taskId
+        router.push(`/planner?taskId=${taskId}`);
+        console.log("✅ Redirect initiated");
+      } else {
+        console.error("❌ Invalid response: missing task id", data);
+        alert("❌ Task created but no ID received");
       }
     } catch (err) {
-      console.error("Failed to create task:", err);
+      console.error("❌ Failed to create task:", err);
+      alert(`❌ Failed to create task: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setSubmitting(false);
+      console.groupEnd();
     }
   };
 
@@ -147,9 +168,8 @@ export default function Dashboard() {
   const toggleTaskStatus = async (task: Task) => {
     const newStatus = task.status === "completed" ? "pending" : "completed";
     try {
-      await fetch(`${API}/api/tasks/${task.id}`, {
+      await apiFetch(`/tasks/${task.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
       fetchTasks();
@@ -161,7 +181,7 @@ export default function Dashboard() {
   // Delete task
   const deleteTask = async (taskId: string) => {
     try {
-      await fetch(`${API}/api/tasks/${taskId}`, { method: "DELETE" });
+      await apiFetch(`/tasks/${taskId}`, { method: "DELETE" });
       fetchTasks();
     } catch (err) {
       console.error("Failed to delete task:", err);
@@ -173,9 +193,10 @@ export default function Dashboard() {
     setLoadingPriority(true);
     setShowPriorityPanel(true);
     try {
-      const res = await fetch(`${API}/api/tasks/${taskId}/priority`);
-      const data = await res.json();
-      setPriorityData(data);
+      const data = await apiFetch(`/tasks/${taskId}/priority`);
+      if (data && typeof data === "object") {
+        setPriorityData(data);
+      }
     } catch (err) {
       console.error("Failed to fetch priority:", err);
     } finally {
@@ -429,7 +450,7 @@ export default function Dashboard() {
                 filteredTasks.map((task) => (
                   <div
                     key={task.id}
-                    onClick={() => fetchPriority(task.id)}
+                    onClick={() => router.push(`/planner?taskId=${task.id}`)}
                     className="flex items-center gap-4 px-8 py-4 hover:bg-indigo-50/30 transition-all duration-200 group cursor-pointer border-b border-neutral-100 last:border-b-0"
                   >
                     {/* Checkbox */}
@@ -497,6 +518,16 @@ export default function Dashboard() {
                       >
                         {task.difficulty}
                       </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/planner?taskId=${task.id}`);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-indigo-600 hover:scale-110 transition-all duration-200 cursor-pointer"
+                        title="Generate study schedule"
+                      >
+                        <Sparkles size={16} />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

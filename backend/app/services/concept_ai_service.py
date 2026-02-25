@@ -1,188 +1,54 @@
 """
-EduSense - Concept Extraction AI Service
+EduSense - Concept Extraction Service
 
-Uses Google Gemini AI to:
-1. Analyze extracted study material text
-2. Identify and extract key concepts
-3. Categorize concepts by difficulty level
-4. Estimate study time for each concept
+Uses rule-based text analysis to extract concepts from study materials.
+NO AI API REQUIRED - Works offline and reliably.
 """
 
-import json
-import re
 import asyncio
 from typing import List, Dict
 from fastapi import HTTPException
-import google.genai as genai
-from app.core.config import settings
-
-
-# Configure Gemini client
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+from app.services.concept_rule_engine import extract_concepts_from_text, generate_embedding_simple
 
 
 async def generate_concepts_from_text(text: str, max_retries: int = 3) -> List[Dict]:
     """
-    Use Gemini AI to extract key concepts from study material text.
+    Extract key concepts from study material using rule-based text analysis.
     
     Args:
         text: The extracted text from a study material document
-        max_retries: Maximum number of retry attempts on failure (default: 3)
+        max_retries: Ignored (for compatibility), uses rule engine instead
         
     Returns:
         List of concept dictionaries with title, summary, difficulty, and estimated_minutes
-        
-    Raises:
-        HTTPException: If AI generation or JSON parsing fails after all retries
     """
-    # Truncate text if too long (to stay within token limits)
-    max_chars = 30000
-    if len(text) > max_chars:
-        text = text[:max_chars] + "\n\n[Content truncated for processing...]"
-    
-    # Build the prompt
-    prompt = f"""You are an expert educational content analyzer AI.
-
-TASK: Analyze the following study material text and extract the most important concepts that a student should learn.
-
-STUDY MATERIAL TEXT:
----
-{text}
----
-
-INSTRUCTIONS:
-1. Identify the 10-20 most important concepts, topics, or learning objectives from this material
-2. For each concept, provide:
-   - A clear, concise title
-   - A 2-3 sentence summary explaining what the student needs to understand
-   - Difficulty level: "easy", "medium", or "hard"
-   - Estimated study time in minutes (realistic estimate: 5-60 minutes per concept)
-3. Prioritize breadth - cover different areas of the material
-4. Order concepts from foundational (easier) to advanced (harder)
-
-RESPOND WITH ONLY VALID JSON (no markdown, no code blocks, no extra text before or after):
-{{
-  "concepts": [
-    {{
-      "title": "Clear concept title",
-      "summary": "2-3 sentence explanation of what to learn",
-      "difficulty": "easy",
-      "estimated_minutes": 15
-    }},
-    {{
-      "title": "Another concept",
-      "summary": "Explanation here",
-      "difficulty": "medium",
-      "estimated_minutes": 30
-    }}
-  ]
-}}
-
-RULES:
-- Extract between 10-20 concepts (more is better if material is rich)
-- title must be concise (max 100 characters)
-- summary must be informative (2-4 sentences)
-- difficulty must be EXACTLY one of: "easy", "medium", "hard"
-- estimated_minutes must be a number between 5 and 60
-- Order concepts logically from basic to advanced
-- Focus on concepts a student would need to study, not just topics mentioned
-"""
-
-    last_error = None
-    
-    # Retry loop with exponential backoff
-    for attempt in range(max_retries):
-        try:
-            # Call Gemini API
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-lite",
-                contents=prompt
-            )
-            
-            response_text = response.text.strip()
-            
-            # Clean up response - remove markdown code blocks if present
-            response_text = re.sub(r'^```json\s*', '', response_text)
-            response_text = re.sub(r'^```\s*', '', response_text)
-            response_text = re.sub(r'\s*```$', '', response_text)
-            response_text = response_text.strip()
-            
-            # Parse JSON response
-            try:
-                data = json.loads(response_text)
-            except json.JSONDecodeError as je:
-                # Try to extract JSON from response if there's extra text
-                json_match = re.search(r'\{[\s\S]*"concepts"[\s\S]*\}', response_text)
-                if json_match:
-                    data = json.loads(json_match.group(0))
-                else:
-                    raise je
-            
-            # Validate response structure
-            if "concepts" not in data:
-                raise ValueError("Response missing 'concepts' field")
-            
-            concepts = data["concepts"]
-            
-            if not isinstance(concepts, list):
-                raise ValueError("'concepts' field must be an array")
-            
-            if len(concepts) == 0:
-                raise ValueError("No concepts extracted from text")
-            
-            # Validate each concept has required fields
-            validated_concepts = []
-            for i, concept in enumerate(concepts):
-                # Check required fields
-                required_fields = ["title", "summary", "difficulty", "estimated_minutes"]
-                for field in required_fields:
-                    if field not in concept:
-                        raise ValueError(f"Concept {i} missing required field: {field}")
-                
-                # Validate difficulty value
-                if concept["difficulty"] not in ["easy", "medium", "hard"]:
-                    # Try to normalize common variations
-                    difficulty_lower = concept["difficulty"].lower().strip()
-                    if difficulty_lower in ["easy", "medium", "hard"]:
-                        concept["difficulty"] = difficulty_lower
-                    else:
-                        concept["difficulty"] = "medium"  # Default to medium if invalid
-                
-                # Validate estimated_minutes is a number
-                try:
-                    minutes = int(concept["estimated_minutes"])
-                    concept["estimated_minutes"] = max(5, min(60, minutes))  # Clamp to 5-60
-                except (ValueError, TypeError):
-                    concept["estimated_minutes"] = 20  # Default to 20 minutes
-                
-                # Ensure title and summary are strings
-                concept["title"] = str(concept["title"])[:200]  # Limit title length
-                concept["summary"] = str(concept["summary"])[:1000]  # Limit summary length
-                
-                validated_concepts.append(concept)
-            
-            # Success! Return the validated concepts
-            return validated_concepts
-            
-        except json.JSONDecodeError as e:
-            last_error = f"Failed to parse AI response as JSON: {str(e)}"
-            
-        except ValueError as e:
-            last_error = f"Invalid response structure: {str(e)}"
-            
-        except Exception as e:
-            last_error = f"AI generation error: {str(e)}"
+    try:
+        print(f"🔍 Extracting concepts using rule-based engine...")
         
-        # If not the last attempt, wait before retrying (exponential backoff)
-        if attempt < max_retries - 1:
-            wait_time = 2 ** attempt  # 1s, 2s, 4s
-            await asyncio.sleep(wait_time)
-    
-    # All retries exhausted
-    raise HTTPException(
-        status_code=500,
-        detail=f"Failed to generate concepts after {max_retries} attempts. Last error: {last_error}"
-    )
+        # Truncate text if too long
+        max_chars = 50000
+        if len(text) > max_chars:
+            text = text[:max_chars]
+        
+        # Use rule-based engine to extract concepts (runs immediately, no API calls)
+        concepts = extract_concepts_from_text(text)
+        
+        if not concepts or len(concepts) == 0:
+            raise ValueError("No concepts could be extracted from the text")
+        
+        print(f"✅ Successfully extracted {len(concepts)} concepts using rule-based engine")
+        
+        return concepts
+        
+    except Exception as e:
+        print(f"❌ Error during concept extraction: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to extract concepts: {str(e)}"
+        )
 
 
 async def generate_and_save_concepts(material_id: str, user_id: str) -> List[Dict]:
@@ -229,9 +95,10 @@ async def generate_and_save_concepts(material_id: str, user_id: str) -> List[Dic
         
         try:
             embedding = await generate_embedding(text_to_embed)
-        except HTTPException:
-            # If embedding generation fails, use zero vector as fallback
-            embedding = [0.0] * 768
+        except:
+            # If embedding generation fails, use simple offline embedding
+            from app.services.concept_rule_engine import generate_embedding_simple
+            embedding = generate_embedding_simple(text_to_embed)
         
         concept = Concept(
             user_id=user_id,

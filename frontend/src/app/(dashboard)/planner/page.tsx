@@ -1,671 +1,653 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import {
-  Upload,
-  Brain,
   Calendar,
-  List,
   Clock,
   BookOpen,
-  Sparkles,
-  FileText,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
-  Lightbulb,
-  Target,
-  X,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  Upload,
   Loader2,
-  Plus,
+  Target,
+  Sparkles,
+  Coffee,
+  FileText,
+  X,
 } from "lucide-react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-interface StudySession {
-  day: number;
-  date: string;
-  day_name: string;
-  topics: string[];
-  duration_hours: number;
-  focus_level: string;
-  tips: string;
-}
-
-interface StudySchedule {
-  id: string;
-  task_id: string | null;
-  title: string;
-  subject: string;
-  deadline: string;
-  total_topics: number;
-  total_days: number;
-  total_hours: number;
-  extracted_topics: string[];
-  sessions: StudySession[];
-  ai_summary: string;
-  ai_tips: string;
-  original_filename: string;
-  status: string;
-  created_at: string;
-}
+import type {
+  StudySchedule,
+  MaterialStatus,
+  DaySchedule,
+  StudyBlock,
+  MaterialUploadResponse,
+} from "@/types/schedule";
 
 export default function PlannerPage() {
-  const [schedules, setSchedules] = useState<StudySchedule[]>([]);
+  const searchParams = useSearchParams();
+  const taskId = searchParams.get("taskId");
+
+  console.log("🎯 Planner Page Loaded");
+  console.log("Search params:", Object.fromEntries(searchParams.entries()));
+  console.log("Task ID from URL:", taskId);
+
+  // State
+  const [schedule, setSchedule] = useState<StudySchedule | null>(null);
+  const [materialStatus, setMaterialStatus] = useState<MaterialStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<StudySchedule | null>(null);
-  const [viewMode, setViewMode] = useState<"timeline" | "calendar">("timeline");
-  const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadSubject, setUploadSubject] = useState("");
+  const [uploading, setUploading] = useState(false);
 
-  // Upload form state
-  const [file, setFile] = useState<File | null>(null);
-  const [subject, setSubject] = useState("");
-  const [title, setTitle] = useState("");
-  const [deadline, setDeadline] = useState("");
-  const [dragActive, setDragActive] = useState(false);
+  // File input handler with better debugging
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    console.log("File selected:", file?.name, "Size:", file?.size);
+    setUploadFile(file);
+  };
 
-  const fetchSchedules = async () => {
+  // Modal handlers
+  const openUploadModal = () => {
+    console.log("🔓 Opening upload modal");
+    setShowUploadModal(true);
+  };
+
+  const closeUploadModal = () => {
+    console.log("🔒 Closing upload modal");
+    setShowUploadModal(false);
+  };
+
+  // Monitor modal state
+  useEffect(() => {
+    console.log("📋 Modal state changed:", showUploadModal);
+  }, [showUploadModal]);
+
+  // Fetch schedule and material status
+  const fetchScheduleData = useCallback(async () => {
+    console.log("📊 Fetching schedule for taskId:", taskId);
+    
+    if (!taskId) {
+      console.error("❌ No task ID provided in URL!");
+      setError("No task ID provided. Please go back and create a task first.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${API}/api/study-schedules/`);
-      const data = await res.json();
-      // Ensure data is an array
-      const schedulesArray = Array.isArray(data) ? data : [];
-      setSchedules(schedulesArray);
-      if (schedulesArray.length > 0 && !selectedSchedule) {
-        setSelectedSchedule(schedulesArray[0]);
+      setLoading(true);
+      setError(null);
+      console.log("🚀 Fetching schedule...");
+
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      try {
+        // Fetch schedule with timeout
+        const scheduleData = await apiFetch(`/schedule/auto?task_id=${taskId}`);
+        clearTimeout(timeoutId);
+        console.log("✅ Schedule response:", scheduleData);
+
+        if (!scheduleData.success) {
+          console.warn("⚠️ Schedule generation not successful:", scheduleData.message);
+          setError(scheduleData.message || "Failed to generate schedule");
+          setLoading(false);
+          return;
+        }
+
+        if (!scheduleData.schedule) {
+          console.warn("⚠️ No schedule data returned");
+          setError("Failed to create schedule. Please try again.");
+          setLoading(false);
+          return;
+        }
+
+        setSchedule(scheduleData.schedule);
+        
+        // Log if using default template
+        if (scheduleData.using_default_template) {
+          console.info("ℹ️ Using default schedule template - no materials found");
+        } else {
+          console.info("✅ Using schedule generated from study materials");
+        }
+
+        // Fetch material status
+        if (scheduleData.schedule?.subject) {
+          try {
+            const statusData = await apiFetch(
+              `/documents/status?subject=${encodeURIComponent(
+                scheduleData.schedule.subject
+              )}`
+            );
+            console.log("✅ Material status:", statusData);
+            setMaterialStatus(statusData);
+          } catch (err) {
+            console.warn("⚠️ Error fetching material status:", err);
+            // Continue even if status fetch fails
+          }
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          console.error("❌ Request timeout");
+          setError("Request timed out. Please try again.");
+        } else {
+          throw err;
+        }
       }
-    } catch (err) {
-      console.error("Failed to fetch schedules:", err);
-      setSchedules([]);
+    } catch (err: any) {
+      console.error("❌ Error fetching schedule:", err);
+      setError(err.message || "Failed to load schedule. Please try again.");
     } finally {
       setLoading(false);
     }
+  }, [taskId]);
+
+  // Handle file upload
+  const handleUpload = async () => {
+    console.group("🚀 Upload Initiated");
+    console.log("Button clicked at:", new Date().toISOString());
+    console.log("uploadFile:", uploadFile);
+    console.log("uploadSubject:", uploadSubject);
+    console.log("uploading state:", uploading);
+    console.groupEnd();
+    
+    if (!uploadFile || !uploadSubject) {
+      console.warn("❌ Validation failed - Missing file or subject");
+      alert("❌ Please select a file and enter a subject");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      console.log("📤 Starting upload...");
+
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("subject", uploadSubject);
+
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+      const uploadUrl = `${apiBase}/documents/upload`;
+      console.log("📍 Upload URL:", uploadUrl);
+      console.log("📦 FormData entries:", {
+        file: uploadFile.name,
+        size: uploadFile.size,
+        type: uploadFile.type,
+        subject: uploadSubject
+      });
+
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      console.log("✉️ Response received");
+      console.log("Status:", res.status, res.statusText);
+      console.log("OK:", res.ok);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("❌ Error response data:", errorData);
+        throw new Error(errorData.detail || `Upload failed with status ${res.status}`);
+      }
+
+      const data: MaterialUploadResponse = await res.json();
+      console.log("✅ Upload response:", data);
+
+      // Close modal and refresh
+      closeUploadModal();
+      setUploadFile(null);
+      setUploadSubject("");
+      await fetchScheduleData();
+
+      alert(
+        `✅ ${data.filename} uploaded! Extracted ${data.concepts_extracted} concepts.`
+      );
+      console.log("🎉 Upload complete!");
+    } catch (err: any) {
+      console.error("❌ Upload error:", err);
+      alert(`❌ Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Group blocks by date
+  const groupBlocksByDate = (blocks: StudyBlock[]): DaySchedule[] => {
+    const grouped: { [date: string]: StudyBlock[] } = {};
+
+    blocks.forEach((block) => {
+      if (!grouped[block.date]) {
+        grouped[block.date] = [];
+      }
+      grouped[block.date].push(block);
+    });
+
+    return Object.entries(grouped).map(([date, blocks]) => ({
+      date,
+      day_name: new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+        weekday: "long",
+      }),
+      blocks,
+    }));
   };
 
   useEffect(() => {
-    fetchSchedules();
-  }, []);
-
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) return;
-
-    setGenerating(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("subject", subject);
-    formData.append("title", title);
-    formData.append("deadline", new Date(deadline).toISOString());
-
-    try {
-      const res = await fetch(`${API}/api/study-schedules/generate`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        const newSchedule = await res.json();
-        setShowUploadModal(false);
-        setFile(null);
-        setSubject("");
-        setTitle("");
-        setDeadline("");
-        await fetchSchedules();
-        setSelectedSchedule(newSchedule);
-      } else {
-        const err = await res.json();
-        alert(err.detail || "Failed to generate schedule");
-      }
-    } catch (err) {
-      console.error("Failed to generate schedule:", err);
-      alert("Failed to connect to the server");
-    } finally {
-      setGenerating(false);
+    console.log("🔄 useEffect triggered - taskId:", taskId);
+    if (taskId) {
+      console.log("✅ taskId exists, calling fetchScheduleData");
+      fetchScheduleData();
+    } else {
+      console.warn("⚠️ No taskId, skipping fetchScheduleData");
     }
-  };
+  }, [taskId, fetchScheduleData]);
 
-  const deleteSchedule = async (id: string) => {
-    try {
-      await fetch(`${API}/api/study-schedules/${id}`, { method: "DELETE" });
-      if (selectedSchedule?.id === id) setSelectedSchedule(null);
-      fetchSchedules();
-    } catch (err) {
-      console.error("Failed to delete schedule:", err);
-    }
-  };
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const getFocusColor = (level: string) => {
-    switch (level) {
-      case "high": return { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", dot: "bg-red-500" };
-      case "medium": return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200", dot: "bg-amber-500" };
-      case "low": return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-500" };
-      default: return { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-500" };
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  // Calendar helper
-  const getCalendarWeeks = (sessions: StudySession[]) => {
-    const weeks: StudySession[][] = [];
-    let currentWeek: StudySession[] = [];
-
-    if (sessions.length === 0) return weeks;
-
-    // Get first day's weekday (0 = Sun, 6 = Sat)
-    const firstDate = new Date(sessions[0].date);
-    const startDay = firstDate.getDay();
-
-    // Fill empty days before first session
-    for (let i = 0; i < startDay; i++) {
-      currentWeek.push(null as unknown as StudySession);
-    }
-
-    sessions.forEach((session) => {
-      currentWeek.push(session);
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
-      }
-    });
-
-    // Fill remaining days
-    if (currentWeek.length > 0) {
-      while (currentWeek.length < 7) {
-        currentWeek.push(null as unknown as StudySession);
-      }
-      weeks.push(currentWeek);
-    }
-
-    return weeks;
-  };
-
-  return (
-    <>
-      {/* Page Header */}
-      <div className="flex items-start justify-between mb-7">
-        <div>
-          <h1 className="text-[28px] font-bold text-slate-800 tracking-tight mb-1 font-[family-name:var(--font-playfair)]">
-            Study Planner <Sparkles size={24} className="inline text-indigo-500 mb-1" />
-          </h1>
-          <p className="text-sm text-slate-500">
-            Upload course materials and let AI create your perfect study schedule
-          </p>
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Generating your study plan...</p>
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 hover:shadow-[0_4px_16px_rgba(99,102,241,0.4)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-        >
-          <Plus size={18} />
-          Generate Schedule
-        </button>
       </div>
+    );
+  }
 
-      {/* Main Layout */}
-      <div className="grid grid-cols-[300px_1fr] gap-5">
-        {/* Left - Schedule List */}
-        <div className="bg-white border border-slate-100 rounded-xl overflow-hidden h-fit">
-          <div className="px-4 py-3.5 border-b border-slate-100">
-            <span className="text-[14px] font-semibold text-slate-800">My Schedules</span>
+  // Error state
+  if (error || !schedule) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+            {error || "Study Materials Needed"}
+          </h2>
+          <p className="text-gray-600 mb-6 text-center text-sm leading-relaxed">
+            {error === "No task ID provided. Please go back and create a task first." ? (
+              <>
+                It looks like you navigated here directly. Go back to the Dashboard and create a new task to get started.
+              </>
+            ) : (
+              <>
+                To create a personalized study schedule, please upload study materials (PDFs, notes, textbooks) for this subject.
+              </>
+            )}
+          </p>
+          
+          <div className="bg-indigo-50 rounded-lg p-4 mb-6 border border-indigo-200">
+            <p className="text-sm text-indigo-900 font-semibold mb-2">📋 What you can upload:</p>
+            <ul className="text-xs text-indigo-800 space-y-1 ml-2">
+              <li>✅ Lecture slides & notes</li>
+              <li>✅ Textbook chapters (PDF)</li>
+              <li>✅ Research papers</li>
+              <li>✅ Study guides</li>
+            </ul>
           </div>
 
-          {loading ? (
-            <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
-          ) : schedules.length === 0 ? (
-            <div className="p-6 text-center">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mx-auto mb-3">
-                <Brain size={24} className="text-indigo-400" />
-              </div>
-              <p className="text-sm text-slate-400 mb-2">No schedules yet</p>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="text-indigo-500 text-sm font-medium hover:text-indigo-600 cursor-pointer"
-              >
-                + Generate your first
-              </button>
-            </div>
-          ) : (
-            <div className="max-h-[500px] overflow-y-auto">
-              {schedules.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => { setSelectedSchedule(s); setExpandedDay(null); }}
-                  className={`px-4 py-3 border-b border-slate-50 cursor-pointer transition-all duration-200 group ${
-                    selectedSchedule?.id === s.id ? "bg-indigo-50 border-l-2 border-l-indigo-500" : "hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-medium text-slate-800 truncate">{s.title}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{s.subject} • {s.total_days} days</div>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteSchedule(s.id); }}
-                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1 cursor-pointer"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {taskId && (
+            <button
+              onClick={openUploadModal}
+              className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              <Upload className="w-5 h-5" />
+              Upload Materials Now
+            </button>
+          )}
+          
+          {!taskId && (
+            <a
+              href="/dashboard"
+              className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 text-center"
+            >
+              ← Back to Dashboard
+            </a>
           )}
         </div>
+      </div>
+    );
+  }
 
-        {/* Right - Schedule Detail */}
-        {selectedSchedule ? (
-          <div className="space-y-5">
-            {/* Schedule Header Card */}
-            <div className="bg-white border border-slate-100 rounded-xl p-5">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800 font-[family-name:var(--font-playfair)]">
-                    {selectedSchedule.title}
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-1">{selectedSchedule.subject}</p>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <FileText size={14} />
-                  {selectedSchedule.original_filename}
-                </div>
-              </div>
+  const daySchedules = groupBlocksByDate(schedule.blocks);
 
-              {/* Stats Row */}
-              <div className="grid grid-cols-4 gap-3 mb-4">
-                {[
-                  { icon: <BookOpen size={16} />, label: "Topics", value: selectedSchedule.total_topics, color: "indigo" },
-                  { icon: <Calendar size={16} />, label: "Days", value: selectedSchedule.total_days, color: "emerald" },
-                  { icon: <Clock size={16} />, label: "Hours", value: selectedSchedule.total_hours, color: "amber" },
-                  { icon: <Target size={16} />, label: "Deadline", value: formatDate(selectedSchedule.deadline), color: "red" },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex items-center gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-100">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      stat.color === "indigo" ? "bg-indigo-100 text-indigo-500" :
-                      stat.color === "emerald" ? "bg-emerald-100 text-emerald-500" :
-                      stat.color === "amber" ? "bg-amber-100 text-amber-500" :
-                      "bg-red-100 text-red-500"
-                    }`}>
-                      {stat.icon}
-                    </div>
-                    <div>
-                      <div className="text-[17px] font-bold text-slate-800 leading-none">{stat.value}</div>
-                      <div className="text-[10px] text-slate-400 uppercase tracking-wide">{stat.label}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* AI Summary */}
-              <div className="p-3.5 rounded-lg bg-indigo-50 border border-indigo-100">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Sparkles size={14} className="text-indigo-500" />
-                  <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wide">AI Summary</span>
-                </div>
-                <p className="text-[13px] text-indigo-700 leading-relaxed">{selectedSchedule.ai_summary}</p>
-              </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 border border-indigo-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                {schedule.timeline.goal_title}
+              </h1>
+              <p className="text-gray-600 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                {schedule.subject} • Due{" "}
+                {new Date(schedule.deadline).toLocaleDateString()}
+              </p>
             </div>
-
-            {/* Topics Extracted */}
-            <div className="bg-white border border-slate-100 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-slate-800 mb-3">Extracted Topics</h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedSchedule.extracted_topics.map((topic, i) => (
-                  <span key={i} className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600">
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* View Toggle */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode("timeline")}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  viewMode === "timeline"
-                    ? "bg-indigo-500 text-white shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-300"
-                }`}
-              >
-                <List size={16} /> Timeline
-              </button>
-              <button
-                onClick={() => setViewMode("calendar")}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  viewMode === "calendar"
-                    ? "bg-indigo-500 text-white shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-300"
-                }`}
-              >
-                <Calendar size={16} /> Calendar
-              </button>
-            </div>
-
-            {/* Timeline View */}
-            {viewMode === "timeline" && (
-              <div className="space-y-3">
-                {selectedSchedule.sessions.map((session) => {
-                  const colors = getFocusColor(session.focus_level);
-                  const isExpanded = expandedDay === session.day;
-                  return (
-                    <div
-                      key={session.day}
-                      className={`bg-white border rounded-xl overflow-hidden transition-all duration-200 ${
-                        isExpanded ? `${colors.border} shadow-sm` : "border-slate-100"
-                      }`}
-                    >
-                      <div
-                        onClick={() => setExpandedDay(isExpanded ? null : session.day)}
-                        className="flex items-center gap-4 px-5 py-3.5 cursor-pointer hover:bg-slate-50/50 transition-all"
-                      >
-                        {/* Day Number */}
-                        <div className={`w-11 h-11 rounded-lg flex flex-col items-center justify-center flex-shrink-0 ${colors.bg}`}>
-                          <span className={`text-[10px] font-bold uppercase ${colors.text}`}>Day</span>
-                          <span className={`text-base font-bold leading-none ${colors.text}`}>{session.day}</span>
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[13.5px] font-medium text-slate-800">
-                            {session.topics.join(", ")}
-                          </div>
-                          <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
-                            <span>{session.day_name}, {session.date}</span>
-                            <span className="flex items-center gap-1">
-                              <Clock size={11} /> {session.duration_hours}h
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Focus Badge */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase ${colors.bg} ${colors.text}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
-                            {session.focus_level}
-                          </span>
-                          {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                        </div>
-                      </div>
-
-                      {/* Expanded Content */}
-                      {isExpanded && (
-                        <div className="px-5 pb-4 pt-1 border-t border-slate-100">
-                          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-100">
-                            <Lightbulb size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                            <p className="text-[13px] text-amber-700 leading-relaxed">{session.tips}</p>
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {session.topics.map((topic, i) => (
-                              <span key={i} className="px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100 text-[11px] font-medium text-slate-600">
-                                {topic}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Calendar View */}
-            {viewMode === "calendar" && (
-              <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-                {/* Calendar Header */}
-                <div className="grid grid-cols-7 border-b border-slate-100">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                    <div key={d} className="px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                      {d}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Calendar Grid */}
-                {getCalendarWeeks(selectedSchedule.sessions).map((week, wi) => (
-                  <div key={wi} className="grid grid-cols-7 border-b border-slate-50 last:border-b-0">
-                    {week.map((session, di) => {
-                      if (!session) {
-                        return <div key={`empty-${wi}-${di}`} className="min-h-[100px] p-2 bg-slate-50/50" />;
-                      }
-                      const colors = getFocusColor(session.focus_level);
-                      return (
-                        <div
-                          key={session.day}
-                          onClick={() => setExpandedDay(expandedDay === session.day ? null : session.day)}
-                          className={`min-h-[100px] p-2 border-r border-slate-50 last:border-r-0 cursor-pointer hover:bg-slate-50/50 transition-all ${
-                            expandedDay === session.day ? "bg-indigo-50/50 ring-1 ring-indigo-200" : ""
-                          }`}
-                        >
-                          <div className="text-[12px] font-semibold text-slate-800 mb-1">
-                            {new Date(session.date).getDate()}
-                          </div>
-                          <div className={`px-1.5 py-1 rounded text-[10px] font-medium ${colors.bg} ${colors.text} mb-1`}>
-                            {session.duration_hours}h • {session.focus_level}
-                          </div>
-                          {session.topics.slice(0, 2).map((t, i) => (
-                            <div key={i} className="text-[10px] text-slate-500 truncate leading-relaxed">
-                              {t}
-                            </div>
-                          ))}
-                          {session.topics.length > 2 && (
-                            <div className="text-[10px] text-indigo-500 font-medium">+{session.topics.length - 2} more</div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* AI Tips */}
-            {selectedSchedule.ai_tips && (
-              <div className="bg-white border border-slate-100 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb size={16} className="text-amber-500" />
-                  <span className="text-sm font-semibold text-slate-800">AI Study Tips</span>
-                </div>
-                <p className="text-[13px] text-slate-600 leading-relaxed whitespace-pre-line">{selectedSchedule.ai_tips}</p>
-              </div>
-            )}
+            <button
+              onClick={openUploadModal}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Materials
+            </button>
           </div>
-        ) : (
-          <div className="bg-white border border-slate-100 rounded-xl flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
-                <Brain size={32} className="text-indigo-400" />
+        </div>
+
+        {/* Material Ready Status */}
+        {materialStatus && (
+          <div
+            className={`rounded-2xl shadow-lg p-6 border ${
+              materialStatus.ready
+                ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+                : "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {materialStatus.ready ? (
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              ) : (
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              )}
+              <div>
+                <h3 className="font-semibold text-lg">
+                  {materialStatus.ready
+                    ? "✨ Materials Ready"
+                    : "⚠️ Upload More Materials"}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {materialStatus.materials_count} documents •{" "}
+                  {materialStatus.concepts_count} concepts
+                  {materialStatus.last_processed_date &&
+                    ` • Last updated ${new Date(
+                      materialStatus.last_processed_date
+                    ).toLocaleDateString()}`}
+                </p>
               </div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-1">No Schedule Selected</h3>
-              <p className="text-sm text-slate-400 mb-4">Upload course materials to generate an AI study plan</p>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-indigo-600 transition-all cursor-pointer"
-              >
-                <Upload size={16} /> Upload & Generate
-              </button>
             </div>
           </div>
         )}
-      </div>
 
-      {/* ─── Upload & Generate Modal ─── */}
-      {showUploadModal && (
-        <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center animate-[fadeIn_0.2s_ease]"
-          onClick={(e) => e.target === e.currentTarget && !generating && setShowUploadModal(false)}
-        >
-          <div className="bg-white rounded-2xl w-[520px] max-h-[85vh] overflow-y-auto shadow-[0_12px_40px_rgba(0,0,0,0.1)] animate-[scaleIn_0.25s_ease]">
-            <div className="flex items-center justify-between px-6 pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Brain size={20} className="text-indigo-500" />
+        {/* Timeline Plan */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 border border-indigo-100">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Target className="w-6 h-6 text-indigo-600" />
+            Goal Timeline
+          </h2>
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="font-semibold text-gray-700">Progress</span>
+              <span className="text-indigo-600 font-bold">
+                {schedule.timeline.days_remaining} days remaining
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2 rounded-full transition-all"
+                style={{ width: "10%" }}
+              />
+            </div>
+          </div>
+
+          {/* Milestones */}
+          <div className="space-y-4">
+            {schedule.timeline.milestones.map((milestone, idx) => (
+              <div
+                key={idx}
+                className="flex gap-4 items-start p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100"
+              >
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold">
+                  {idx + 1}
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 font-[family-name:var(--font-playfair)]">
-                    Generate Study Schedule
-                  </h2>
-                  <p className="text-xs text-slate-400">Upload materials & let AI plan your study</p>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-bold text-gray-900">
+                      {milestone.label}
+                    </h4>
+                    <span className="text-sm text-gray-600">{milestone.date}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 mb-2">{milestone.target}</p>
+                  <p className="text-xs text-indigo-600 italic">{milestone.tips}</p>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* Success Criteria */}
+          <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
+            <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              Success Criteria
+            </h4>
+            <ul className="space-y-1">
+              {schedule.timeline.success_criteria.map((criteria, idx) => (
+                <li key={idx} className="text-sm text-green-800 flex items-start gap-2">
+                  <span className="text-green-600 mt-0.5">✓</span>
+                  {criteria}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Schedule by Day */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-indigo-600" />
+            Your Study Schedule
+          </h2>
+
+          {daySchedules.map((day) => (
+            <div
+              key={day.date}
+              className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{day.day_name}</h3>
+                  <p className="text-sm text-gray-600">{day.date}</p>
+                </div>
+                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+                  {day.blocks.length} blocks
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {day.blocks.map((block, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-xl border-l-4 ${
+                      block.type === "study"
+                        ? "bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-500"
+                        : block.type === "break"
+                        ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-500"
+                        : "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-500"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        {block.type === "study" && (
+                          <BookOpen className="w-5 h-5 text-indigo-600" />
+                        )}
+                        {block.type === "break" && (
+                          <Coffee className="w-5 h-5 text-green-600" />
+                        )}
+                        {block.type === "review" && (
+                          <Sparkles className="w-5 h-5 text-amber-600" />
+                        )}
+                        <div>
+                          <h4 className="font-bold text-gray-900">
+                            {block.concept_title}
+                          </h4>
+                          <p className="text-sm text-gray-600 flex items-center gap-2">
+                            <Clock className="w-3 h-3" />
+                            {block.start_time} - {block.end_time}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          block.type === "study"
+                            ? "bg-indigo-200 text-indigo-800"
+                            : block.type === "break"
+                            ? "bg-green-200 text-green-800"
+                            : "bg-amber-200 text-amber-800"
+                        }`}
+                      >
+                        {block.type.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {block.key_points.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        {block.key_points.map((point, pidx) => (
+                          <p
+                            key={pidx}
+                            className="text-sm text-gray-700 flex items-start gap-2"
+                          >
+                            <span className="text-indigo-600 mt-0.5">•</span>
+                            {point}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-indigo-600" />
+                Upload Study Materials
+              </h3>
               <button
-                onClick={() => !generating && setShowUploadModal(false)}
-                className="w-[34px] h-[34px] rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-red-50 hover:border-red-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
+                onClick={closeUploadModal}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <X size={18} />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleGenerate} className="px-6 py-5">
-              {/* File Upload */}
-              <div className="mb-4">
-                <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                  Course Material <span className="text-red-500">*</span>
-                </label>
-                <div
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 ${
-                    dragActive
-                      ? "border-indigo-500 bg-indigo-50"
-                      : file
-                      ? "border-emerald-300 bg-emerald-50"
-                      : "border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
-                  }`}
-                >
-                  {file ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <FileText size={20} className="text-emerald-500" />
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{file.name}</p>
-                        <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFile(null)}
-                        className="text-slate-400 hover:text-red-500 cursor-pointer"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload size={24} className="mx-auto text-slate-400 mb-2" />
-                      <p className="text-sm text-slate-600 mb-1">
-                        Drag & drop your file here, or{" "}
-                        <label className="text-indigo-500 font-medium cursor-pointer hover:text-indigo-600">
-                          browse
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.pptx,.docx,.png,.jpg,.jpeg"
-                            onChange={(e) => e.target.files && setFile(e.target.files[0])}
-                          />
-                        </label>
-                      </p>
-                      <p className="text-[11px] text-slate-400">PDF, PPTX, DOCX, PNG, JPG (max 10MB)</p>
-                    </>
-                  )}
-                </div>
-              </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-blue-900">
+                💡 <strong>Tip:</strong> Upload your lecture notes, textbooks, or study guides to generate a personalized schedule.
+              </p>
+            </div>
 
-              {/* Title */}
-              <div className="mb-4">
-                <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                  Schedule Title
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Subject (e.g., Data Structures, Chemistry)
                 </label>
                 <input
                   type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., DSA Final Exam Prep"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)] placeholder:text-slate-400"
+                  value={uploadSubject}
+                  onChange={(e) => {
+                    console.log("Subject changed:", e.target.value);
+                    setUploadSubject(e.target.value);
+                  }}
+                  placeholder="Enter subject name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
 
-              {/* Subject + Deadline */}
-              <div className="grid grid-cols-2 gap-3.5 mb-5">
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                    Subject <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    placeholder="e.g., Data Structures"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)] placeholder:text-slate-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-800 mb-1.5">
-                    Exam/Deadline <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none transition-all duration-200 focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
-                  />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select File
+                </label>
+                <div className="space-y-2">
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+                    <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <label htmlFor="file-upload" className="block cursor-pointer">
+                      <input
+                        id="file-upload"
+                        type="file"
+                        accept=".pdf,.docx,.pptx"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <p className="text-sm text-gray-600">
+                        {uploadFile ? (
+                          <span className="text-indigo-600 font-semibold">✅ {uploadFile.name}</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-indigo-600 block">Click to browse</span>
+                            <span className="text-xs text-gray-500">or drag and drop</span>
+                          </>
+                        )}
+                      </p>
+                    </label>
+                  </div>
+                  {uploadFile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log("Clearing file");
+                        setUploadFile(null);
+                      }}
+                      className="text-xs text-red-600 hover:text-red-700 font-medium"
+                    >
+                      ✕ Change file
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2.5 justify-end">
-                <button
-                  type="button"
-                  onClick={() => !generating && setShowUploadModal(false)}
-                  disabled={generating}
-                  className="px-5 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={generating || !file}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      AI is generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      Generate Schedule
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+              <button
+                type="button"
+                onClick={() => {
+                  console.log("Upload button clicked", { uploadFile, uploadSubject, uploading });
+                  handleUpload();
+                }}
+                disabled={uploading || !uploadFile || !uploadSubject}
+                className={`w-full px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                  uploading || !uploadFile || !uploadSubject
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg cursor-pointer"
+                }`}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Uploading & Processing...
+                  </>
+                ) : !uploadFile ? (
+                  <>
+                    <Upload className="w-5 h-5" />
+                    Select a file first
+                  </>
+                ) : !uploadSubject ? (
+                  <>
+                    <Upload className="w-5 h-5" />
+                    Enter subject first
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-5 h-5" />
+                    Upload Material
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

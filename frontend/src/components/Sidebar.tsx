@@ -26,7 +26,7 @@ const navItems: Array<{
   {
     label: "Main",
     items: [
-      { name: "Dashboard", href: "/", icon: LayoutDashboard },
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "My Tasks", href: "/tasks", icon: CheckSquare, badge: "12" },
       { name: "Study Planner", href: "/planner", icon: CalendarRange },
     ],

@@ -1,15 +1,15 @@
 """
 EduSense - Embedding Service
 
-Generates vector embeddings for text using Google Gemini's embedding models.
-Used for semantic search and similarity matching of study concepts.
+Generates vector embeddings for text using Google Gemini API.
+Falls back to offline rule-based methods when API quota is exhausted (429 errors).
 """
 
-import math
 from typing import List
 from fastapi import HTTPException
 import google.genai as genai
 from app.core.config import settings
+from app.services.concept_rule_engine import generate_embedding_simple
 
 
 # Configure Gemini client
@@ -18,18 +18,22 @@ client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 async def generate_embedding(text: str) -> List[float]:
     """
-    Generate a vector embedding for the given text using Gemini's embedding model.
+    Generate a vector embedding for the given text.
+    
+    Tries to use Gemini API first, falls back to offline rule-based method
+    if quota is exceeded (429 error) or API fails.
     
     Args:
         text: The text to embed (concept summary, title, or full text)
         
     Returns:
-        List of floats representing the embedding vector (typically 768 dimensions)
+        List of floats representing the embedding vector
+        Empty list if all methods fail (indicates keyword-only mode)
         
     Raises:
-        HTTPException: If embedding generation fails or quota is exceeded
+        HTTPException: If text is empty
     """
-    # Truncate text if too long (embedding models have token limits)
+    # Truncate text if too long
     max_chars = 10000
     if len(text) > max_chars:
         text = text[:max_chars]
@@ -42,40 +46,33 @@ async def generate_embedding(text: str) -> List[float]:
         )
     
     try:
-        # Call Gemini embedding API
-        # Using text-embedding-004 model (latest embedding model from Google)
+        # Try Gemini API embeddings first
         result = client.models.embed_content(
             model="text-embedding-004",
-            content=text
+            contents=text
         )
         
-        # Extract the embedding vector
-        embedding = result.embeddings[0].values
-        
-        return embedding
-        
+        if result and hasattr(result, 'embeddings') and result.embeddings:
+            embedding = result.embeddings[0].values
+            return list(embedding)
+            
     except Exception as e:
-        error_message = str(e)
+        error_msg = str(e).lower()
         
-        # Handle quota/rate limit errors specifically
-        if "quota" in error_message.lower() or "rate limit" in error_message.lower():
-            raise HTTPException(
-                status_code=429,
-                detail="Embedding API quota exceeded. Please try again later."
-            )
-        
-        # Handle authentication errors
-        if "auth" in error_message.lower() or "api key" in error_message.lower():
-            raise HTTPException(
-                status_code=500,
-                detail="Embedding API authentication failed. Please check configuration."
-            )
-        
-        # Generic error
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate embedding: {error_message}"
-        )
+        # Check for quota/rate limit errors (429)
+        if "429" in error_msg or "quota" in error_msg or "rate limit" in error_msg:
+            print(f"⚠️ AI embedding quota exceeded, using fallback method")
+        else:
+            print(f"⚠️ Gemini embedding failed: {e}, using fallback method")
+    
+    # Fallback to offline rule-based embedding
+    try:
+        embedding = generate_embedding_simple(text)
+        return embedding
+    except Exception as e:
+        print(f"⚠️ Fallback embedding also failed: {e}")
+        # Return empty list to indicate keyword-only matching should be used
+        return []
 
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
@@ -95,6 +92,8 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     Raises:
         ValueError: If vectors have different dimensions or are empty
     """
+    import math
+    
     # Validate inputs
     if not vec1 or not vec2:
         raise ValueError("Cannot calculate similarity for empty vectors")
@@ -127,15 +126,18 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
 async def find_similar_concepts(
     query_embedding: List[float],
     user_id: str,
+    subject: str = None,
     top_k: int = 10,
     min_similarity: float = 0.7
 ) -> List[dict]:
     """
     Find concepts most similar to a query embedding using cosine similarity.
+    If query_embedding is empty, returns concepts filtered by subject only.
     
     Args:
-        query_embedding: The embedding vector to search for
+        query_embedding: The embedding vector to search for (empty list for keyword-only mode)
         user_id: Filter concepts by user ID
+        subject: Optional subject filter for keyword-only mode
         top_k: Maximum number of results to return (default: 10)
         min_similarity: Minimum similarity threshold (default: 0.7)
         
@@ -144,15 +146,42 @@ async def find_similar_concepts(
     """
     from app.models.study_material import Concept
     
-    # Fetch all concepts for the user
-    # Note: In production, use a vector database (Pinecone, Weaviate, etc.) for efficient search
-    concepts = await Concept.find(
-        Concept.user_id == user_id
-    ).to_list()
+    # Build query filters
+    filters = {"user_id": user_id}
+    if subject:
+        filters["subject"] = subject
+    
+    # Fetch concepts for the user
+    query = Concept.find(Concept.user_id == user_id)
+    if subject:
+        query = query.find(Concept.subject == subject)
+    
+    concepts = await query.to_list()
+    
+    # If no embedding provided (keyword-only mode), return all matching concepts
+    if not query_embedding:
+        results = []
+        for concept in concepts[:top_k]:
+            results.append({
+                "id": str(concept.id),
+                "title": concept.title,
+                "summary": concept.summary,
+                "difficulty": concept.difficulty,
+                "estimated_minutes": concept.estimated_minutes,
+                "material_id": concept.material_id,
+                "subject": concept.subject,
+                "similarity": 0.8,  # Default similarity for keyword matches
+                "created_at": concept.created_at.isoformat()
+            })
+        return results
     
     # Calculate similarity for each concept
     results = []
     for concept in concepts:
+        # Skip concepts without embeddings
+        if not concept.embedding:
+            continue
+            
         try:
             similarity = cosine_similarity(query_embedding, concept.embedding)
             
@@ -165,6 +194,7 @@ async def find_similar_concepts(
                     "difficulty": concept.difficulty,
                     "estimated_minutes": concept.estimated_minutes,
                     "material_id": concept.material_id,
+                    "subject": concept.subject,
                     "similarity": round(similarity, 4),
                     "created_at": concept.created_at.isoformat()
                 })

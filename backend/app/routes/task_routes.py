@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import List
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from beanie import PydanticObjectId
 from app.models.task import Task, TaskCreate, TaskUpdate, TaskResponse
+from app.models.user_model import User
+from app.core.security import get_current_user
 from app.services.priority_service import (
     calculate_priority_score,
     get_priority_breakdown,
@@ -36,9 +38,10 @@ def task_to_response(task: Task) -> TaskResponse:
     status_code=status.HTTP_201_CREATED,
     summary="Create a new academic task",
 )
-async def create_task(task_data: TaskCreate):
+async def create_task(task_data: TaskCreate, current_user: User = Depends(get_current_user)):
     """Create a new academic task with auto-calculated priority."""
     task = Task(
+        user_id=str(current_user.id),
         title=task_data.title,
         description=task_data.description,
         subject=task_data.subject,
@@ -60,9 +63,9 @@ async def create_task(task_data: TaskCreate):
     response_model=List[TaskResponse],
     summary="Get all academic tasks",
 )
-async def get_all_tasks():
-    """Retrieve all tasks with recalculated priority scores."""
-    tasks = await Task.find_all().to_list()
+async def get_all_tasks(current_user: User = Depends(get_current_user)):
+    """Retrieve all tasks for the current user with recalculated priority scores."""
+    tasks = await Task.find(Task.user_id == str(current_user.id)).to_list()
 
     # Recalculate priorities (they change as deadlines approach)
     for task in tasks:
@@ -83,12 +86,12 @@ async def get_all_tasks():
     "/overload-risk",
     summary="Detect academic overload risk",
 )
-async def get_overload_risk():
+async def get_overload_risk(current_user: User = Depends(get_current_user)):
     """
     Analyze all active tasks and detect potential overload situations.
     Returns risk score, warnings, and actionable suggestions.
     """
-    tasks = await Task.find_all().to_list()
+    tasks = await Task.find(Task.user_id == str(current_user.id)).to_list()
     risk_data = detect_overload_risk(tasks)
     return risk_data
 

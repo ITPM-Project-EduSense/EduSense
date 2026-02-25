@@ -3,11 +3,272 @@ EduSense - Schedule Rule Engine
 
 Deterministic rule-based scheduler for generating study schedules from concepts.
 Uses time allocation algorithms without AI - pure logic and heuristics.
+Generates TimelinePlan with milestones and StudyBlocks with key points.
 """
 
 from datetime import datetime, timedelta, time
 from typing import List, Dict, Any, Optional
 from app.models.study_material import Concept
+from app.models.study_schedule import StudyBlock, TimelinePlan, Milestone
+
+
+from datetime import datetime, timedelta, time
+from typing import List, Dict, Any, Optional, Tuple
+from app.models.study_material import Concept
+from app.models.study_schedule import StudyBlock, TimelinePlan, Milestone
+
+
+async def generate_complete_schedule(
+    concepts: List[Dict[str, Any]],
+    task_title: str,
+    subject: str,
+    deadline: datetime,
+    material_key_points: List[str] = None,
+    start_date: Optional[datetime] = None
+) -> Tuple[List[StudyBlock], TimelinePlan]:
+    """
+    Generate a complete study schedule with timeline plan and study blocks.
+    
+    This is the main entry point for schedule generation, combining all rules
+    and producing structured data ready to save to StudySchedule model.
+    
+    Args:
+        concepts: List of concept dicts with id, title, summary, difficulty, estimated_minutes, key_points
+        task_title: Title of the task/goal
+        subject: Subject name
+        deadline: Target deadline
+        material_key_points: Overall key points from study materials
+        start_date: When to start (default: now)
+        
+    Returns:
+        Tuple of (study_blocks, timeline_plan)
+    """
+    if start_date is None:
+        start_date = datetime.now()
+    
+    # Ensure deadline is in the future
+    if deadline <= start_date:
+        deadline = start_date + timedelta(days=7)
+    
+    days_remaining = (deadline - start_date).days + 1
+    
+    # Sort concepts by priority: deadline proximity + difficulty
+    difficulty_weight = {"hard": 3, "medium": 2, "easy": 1}
+    sorted_concepts = sorted(
+        concepts,
+        key=lambda c: (difficulty_weight.get(c.get("difficulty", "medium"), 2), c.get("estimated_minutes", 30)),
+        reverse=True  # Hard and longer concepts first
+    )
+    
+    # Generate study blocks
+    blocks = []
+    current_date = start_date
+    concept_index = 0
+    consecutive_study_blocks = 0
+    scheduled_concepts = []
+    
+    # Default availability: 9 AM - 9 PM
+    daily_start = time(9, 0)
+    daily_end = time(21, 0)
+    focus_block_minutes = 45
+    break_minutes = 10
+    
+    # Allocate blocks
+    while concept_index < len(sorted_concepts) and current_date < deadline:
+        date_str = current_date.strftime('%Y-%m-%d')
+        current_time = datetime.combine(current_date.date(), daily_start)
+        end_of_day = datetime.combine(current_date.date(), daily_end)
+        
+        # Schedule blocks for this day
+        while current_time < end_of_day and concept_index < len(sorted_concepts):
+            concept = sorted_concepts[concept_index]
+            
+            # Check if we need a longer break
+            if consecutive_study_blocks >= 3:
+                long_break_minutes = 20
+                break_end = current_time + timedelta(minutes=long_break_minutes)
+                
+                if break_end <= end_of_day:
+                    blocks.append(StudyBlock(
+                        date=date_str,
+                        start_time=current_time.strftime('%H:%M'),
+                        end_time=break_end.strftime('%H:%M'),
+                        subject=subject,
+                        concept_title="Long Break",
+                        type="break",
+                        key_points=["Rest and recharge", "Stay hydrated", "Light stretching"]
+                    ))
+                    current_time = break_end
+                    consecutive_study_blocks = 0
+                else:
+                    break  # Move to next day
+            
+            # Add study block for concept
+            time_needed = concept.get("estimated_minutes", 30)
+            block_duration = min(focus_block_minutes, time_needed)
+            block_end = current_time + timedelta(minutes=block_duration)
+            
+            if block_end <= end_of_day:
+                # Extract key points for this concept
+                concept_key_points = []
+                if "summary" in concept and concept["summary"]:
+                    # Take first sentence or two from summary
+                    summary_parts = concept["summary"].split('. ')
+                    concept_key_points.append(summary_parts[0])
+                
+                # Add from material key points if available
+                if material_key_points:
+                    # Find relevant key points (simple matching)
+                    for kp in material_key_points[:3]:
+                        if any(word.lower() in kp.lower() for word in concept.get("title", "").split()[:3]):
+                            concept_key_points.append(kp)
+                            break
+                
+                # Ensure at least one key point
+                if not concept_key_points:
+                    concept_key_points = [f"Focus on understanding {concept.get('title', 'this topic')}"]
+                
+                blocks.append(StudyBlock(
+                    date=date_str,
+                    start_time=current_time.strftime('%H:%M'),
+                    end_time=block_end.strftime('%H:%M'),
+                    subject=subject,
+                    concept_title=concept.get("title", "Study Session"),
+                    concept_id=concept.get("id"),
+                    type="study",
+                    key_points=concept_key_points[:3]  # Max 3 key points per block
+                ))
+                
+                current_time = block_end
+                consecutive_study_blocks += 1
+                scheduled_concepts.append(concept)
+                concept_index += 1
+                
+                # Add short break
+                if concept_index < len(sorted_concepts) and consecutive_study_blocks < 3:
+                    break_end = current_time + timedelta(minutes=break_minutes)
+                    if break_end <= end_of_day:
+                        blocks.append(StudyBlock(
+                            date=date_str,
+                            start_time=current_time.strftime('%H:%M'),
+                            end_time=break_end.strftime('%H:%M'),
+                            subject=subject,
+                            concept_title="Short Break",
+                            type="break",
+                            key_points=["Quick rest"]
+                        ))
+                        current_time = break_end
+            else:
+                break  # Move to next day
+        
+        # Move to next day
+        current_date += timedelta(days=1)
+        consecutive_study_blocks = 0
+    
+    # Add review session 1 day before deadline
+    if days_remaining > 1:
+        review_date = (deadline - timedelta(days=1)).strftime('%Y-%m-%d')
+        blocks.append(StudyBlock(
+            date=review_date,
+            start_time="10:00",
+            end_time="12:00",
+            subject=subject,
+            concept_title="Final Review Session",
+            type="review",
+            key_points=[
+                "Review all studied concepts",
+                "Practice key problems",
+                "Clarify any doubts"
+            ]
+        ))
+    
+    # Generate timeline plan with milestones
+    timeline = _generate_timeline_plan(
+        task_title=task_title,
+        days_remaining=days_remaining,
+        start_date=start_date,
+        deadline=deadline,
+        total_concepts=len(concepts),
+        scheduled_concepts=len(scheduled_concepts)
+    )
+    
+    return blocks, timeline
+
+
+def _generate_timeline_plan(
+    task_title: str,
+    days_remaining: int,
+    start_date: datetime,
+    deadline: datetime,
+    total_concepts: int,
+    scheduled_concepts: int
+) -> TimelinePlan:
+    """
+    Generate a timeline plan with milestones distributed across the schedule.
+    
+    Args:
+        task_title: Goal/task title
+        days_remaining: Total days available
+        start_date: Start date
+        deadline: End date
+        total_concepts: Total concepts to study
+        scheduled_concepts: Number of concepts scheduled
+        
+    Returns:
+        TimelinePlan object with milestones
+    """
+    milestones = []
+    
+    # Milestone 1: Foundation (first 20% of time)
+    foundation_date = start_date + timedelta(days=int(days_remaining * 0.2))
+    milestones.append(Milestone(
+        date=foundation_date.strftime('%Y-%m-%d'),
+        label="Foundation",
+        target=f"Complete basic concepts (first {int(total_concepts * 0.3)} topics)",
+        tips="Focus on fundamentals, take good notes"
+    ))
+    
+    # Milestone 2: Core Topics (50% of time)
+    core_date = start_date + timedelta(days=int(days_remaining * 0.5))
+    milestones.append(Milestone(
+        date=core_date.strftime('%Y-%m-%d'),
+        label="Core Topics",
+        target=f"Master main concepts (70% of material)",
+        tips="Practice problems, connect ideas"
+    ))
+    
+    # Milestone 3: Advanced/Application (80% of time)
+    advanced_date = start_date + timedelta(days=int(days_remaining * 0.8))
+    if days_remaining > 3:
+        milestones.append(Milestone(
+            date=advanced_date.strftime('%Y-%m-%d'),
+            label="Deep Dive",
+            target="Apply knowledge, work on complex problems",
+            tips="Focus on application and problem-solving"
+        ))
+    
+    # Milestone 4: Final Review (last day)
+    milestones.append(Milestone(
+        date=deadline.strftime('%Y-%m-%d'),
+        label="Final Review",
+        target="Review all material, confidence check",
+        tips="Consolidate learning, stay calm"
+    ))
+    
+    # Success criteria
+    success_criteria = [
+        f"Complete all {total_concepts} concepts before deadline",
+        "Achieve understanding of core principles",
+        "Practice application through problems",
+        "Feel confident with the material"
+    ]
+    
+    return TimelinePlan(
+        goal_title=task_title,
+        days_remaining=days_remaining,
+        milestones=milestones,
+        success_criteria=success_criteria
+    )
 
 
 def generate_schedule_from_concepts(

@@ -79,18 +79,19 @@ async def match_task_to_concepts(
 async def match_task_to_concepts_with_scores(
     task_title: str,
     user_id: str,
+    subject: str = None,
     top_k: int = 10,
     min_similarity: float = 0.3
 ) -> List[dict]:
     """
     Find study concepts most relevant to a task, including similarity scores.
     
-    This is an enhanced version that returns both concept data and similarity scores,
-    useful for displaying relevance rankings to users.
+    Falls back to keyword matching when embeddings are not available.
     
     Args:
         task_title: The title/description of the task to match
         user_id: ID of the user (to filter their concepts)
+        subject: Optional subject filter for better matching
         top_k: Maximum number of concepts to return (default: 10)
         min_similarity: Minimum similarity threshold to include (default: 0.3)
         
@@ -100,18 +101,29 @@ async def match_task_to_concepts_with_scores(
     # Generate embedding for the task title
     task_embedding = await generate_embedding(task_title)
     
-    # Fetch all concepts for the user
-    user_concepts = await Concept.find(
-        Concept.user_id == user_id
-    ).to_list()
+    # Build query
+    query = Concept.find(Concept.user_id == user_id)
+    if subject:
+        query = query.find(Concept.subject == subject)
+    
+    # Fetch concepts
+    user_concepts = await query.to_list()
     
     if not user_concepts:
         return []
+    
+    # If no embeddings available (quota exceeded), use keyword matching
+    if not task_embedding:
+        return _match_by_keywords(task_title, subject, user_concepts, top_k)
     
     # Compute similarities and build results
     results = []
     
     for concept in user_concepts:
+        # Skip concepts without embeddings
+        if not concept.embedding:
+            continue
+            
         try:
             similarity = cosine_similarity(task_embedding, concept.embedding)
             
@@ -123,6 +135,7 @@ async def match_task_to_concepts_with_scores(
                     "difficulty": concept.difficulty,
                     "estimated_minutes": concept.estimated_minutes,
                     "material_id": concept.material_id,
+                    "subject": concept.subject,
                     "similarity_score": round(similarity, 4),
                     "relevance_percentage": round(similarity * 100, 2),
                     "created_at": concept.created_at.isoformat()
@@ -131,7 +144,66 @@ async def match_task_to_concepts_with_scores(
         except (ValueError, Exception):
             continue
     
+    # If no semantic matches found, fall back to keyword matching
+    if not results:
+        return _match_by_keywords(task_title, subject, user_concepts, top_k)
+    
     # Sort by similarity descending
+    results.sort(key=lambda x: x["similarity_score"], reverse=True)
+    
+    return results[:top_k]
+
+
+def _match_by_keywords(task_title: str, subject: str, concepts: List[Concept], top_k: int) -> List[dict]:
+    """
+    Fallback keyword-based matching when embeddings are not available.
+    
+    Args:
+        task_title: The task title to match
+        subject: Subject filter
+        concepts: List of concepts to match against
+        top_k: Number of results to return
+        
+    Returns:
+        List of matched concepts with keyword-based scores
+    """
+    # Tokenize task title (simple word splitting)
+    task_words = set(task_title.lower().split())
+    
+    results = []
+    for concept in concepts:
+        # Calculate keyword overlap score
+        concept_words = set(concept.title.lower().split())
+        if concept.summary:
+            concept_words.update(concept.summary.lower().split()[:50])  # First 50 words of summary
+        
+        # Calculate Jaccard similarity (intersection over union)
+        intersection = len(task_words & concept_words)
+        union = len(task_words | concept_words)
+        
+        if union > 0:
+            keyword_score = intersection / union
+            
+            # Boost score if subject matches
+            if subject and concept.subject == subject:
+                keyword_score *= 1.5
+            
+            # Only include if there's some overlap
+            if intersection > 0:
+                results.append({
+                    "id": str(concept.id),
+                    "title": concept.title,
+                    "summary": concept.summary,
+                    "difficulty": concept.difficulty,
+                    "estimated_minutes": concept.estimated_minutes,
+                    "material_id": concept.material_id,
+                    "subject": concept.subject,
+                    "similarity_score": round(keyword_score, 4),
+                    "relevance_percentage": round(keyword_score * 100, 2),
+                    "created_at": concept.created_at.isoformat()
+                })
+    
+    # Sort by score descending
     results.sort(key=lambda x: x["similarity_score"], reverse=True)
     
     return results[:top_k]
