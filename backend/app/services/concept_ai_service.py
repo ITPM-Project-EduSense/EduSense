@@ -218,14 +218,21 @@ async def generate_and_save_concepts(material_id: str, user_id: str) -> List[Dic
     # Generate concepts from the extracted text
     concepts_data = await generate_concepts_from_text(material.extracted_text)
     
-    # Generate dummy embeddings (in production, use a real embedding model)
-    # For now, create zero vectors as placeholders
-    embedding_dim = 768  # Common dimension for embedding models
-    dummy_embedding = [0.0] * embedding_dim
+    # Import embedding service
+    from app.services.embedding_service import generate_embedding
     
-    # Save concepts to database
+    # Save concepts to database with real embeddings
     saved_concepts = []
     for concept_data in concepts_data:
+        # Generate embedding from concept title + summary
+        text_to_embed = f"{concept_data['title']}\n\n{concept_data['summary']}"
+        
+        try:
+            embedding = await generate_embedding(text_to_embed)
+        except HTTPException:
+            # If embedding generation fails, use zero vector as fallback
+            embedding = [0.0] * 768
+        
         concept = Concept(
             user_id=user_id,
             material_id=material_id,
@@ -233,7 +240,7 @@ async def generate_and_save_concepts(material_id: str, user_id: str) -> List[Dic
             summary=concept_data["summary"],
             difficulty=concept_data["difficulty"],
             estimated_minutes=concept_data["estimated_minutes"],
-            embedding=dummy_embedding  # TODO: Replace with real embeddings
+            embedding=embedding
         )
         await concept.insert()
         saved_concepts.append({
