@@ -25,7 +25,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      router.push("/planner"); // Redirect after login
+      router.push("/landing"); // Redirect after login
     } catch (err: any) {
       setError(err.message);
     } finally {
