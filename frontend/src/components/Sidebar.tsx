@@ -59,16 +59,18 @@ export default function Sidebar() {
   return (
     <aside className="fixed top-0 left-0 bottom-0 w-[260px] bg-[#0F172A] flex flex-col z-50">
       {/* Logo */}
-      <div className="px-6 pt-7 pb-6 border-b border-white/[0.06]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-400 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
-            E
+      <Link href="/landing" className="block">
+        <div className="px-6 pt-7 pb-6 border-b border-white/[0.06] cursor-pointer hover:bg-white/[0.03] transition-colors duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-400 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
+              E
+            </div>
+            <span className="text-[22px] font-bold text-white tracking-tight">
+              Edu<span className="text-indigo-400">Sense</span>
+            </span>
           </div>
-          <span className="text-[22px] font-bold text-white tracking-tight">
-            Edu<span className="text-indigo-400">Sense</span>
-          </span>
         </div>
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
