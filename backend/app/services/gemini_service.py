@@ -12,13 +12,12 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-import google.generativeai as genai
+import google.genai as genai
 from app.core.config import settings
 
 
-# Configure Gemini
-genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash-lite")
+# Configure Gemini client
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
 async def generate_study_schedule(
@@ -92,7 +91,10 @@ RULES:
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-lite",
+            contents=prompt
+        )
         response_text = response.text.strip()
 
         # Clean up response - remove markdown code blocks if present

@@ -4,6 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import connect_db, close_db
 from app.routes.task_routes import router as task_router
 from app.routes.schedule_routes import router as schedule_router
+from app.routes.auth_routes import router as auth_router
+
+
 
 
 @asynccontextmanager
@@ -34,7 +37,7 @@ app.add_middleware(
 # Register API routes
 app.include_router(task_router, prefix="/api")
 app.include_router(schedule_router, prefix="/api")
-
+app.include_router(auth_router, prefix="/api")
 
 @app.get("/")
 def health_check():
