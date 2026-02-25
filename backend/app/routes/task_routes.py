@@ -77,6 +77,46 @@ async def get_all_tasks():
     return [task_to_response(t) for t in tasks]
 
 
+# ─── GET /tasks/overload-risk ─── Detect overload risk ───
+# (Must be BEFORE /{task_id} to avoid route conflict)
+@router.get(
+    "/overload-risk",
+    summary="Detect academic overload risk",
+)
+async def get_overload_risk():
+    """
+    Analyze all active tasks and detect potential overload situations.
+    Returns risk score, warnings, and actionable suggestions.
+    """
+    tasks = await Task.find_all().to_list()
+    risk_data = detect_overload_risk(tasks)
+    return risk_data
+
+
+# ─── POST /tasks/recalculate-all ─── Recalculate all priorities ───
+@router.post(
+    "/recalculate-all",
+    summary="Recalculate priorities for all tasks",
+)
+async def recalculate_all_priorities():
+    """Recalculate priority scores for all non-completed tasks."""
+    tasks = await Task.find_all().to_list()
+    updated_count = 0
+
+    for task in tasks:
+        new_score = calculate_priority_score(task)
+        if task.priority_score != new_score:
+            task.priority_score = new_score
+            await task.set({"priority_score": new_score})
+            updated_count += 1
+
+    return {
+        "message": f"Recalculated priorities for {updated_count} tasks",
+        "total_tasks": len(tasks),
+        "updated": updated_count,
+    }
+
+
 # ─── GET /tasks/{task_id} ─── Get a single task ───
 @router.get(
     "/{task_id}",
@@ -126,45 +166,6 @@ async def get_task_priority(task_id: str):
         "task_title": task.title,
         **breakdown,
     }
-
-
-# ─── POST /tasks/recalculate-all ─── Recalculate all priorities ───
-@router.post(
-    "/recalculate-all",
-    summary="Recalculate priorities for all tasks",
-)
-async def recalculate_all_priorities():
-    """Recalculate priority scores for all non-completed tasks."""
-    tasks = await Task.find_all().to_list()
-    updated_count = 0
-
-    for task in tasks:
-        new_score = calculate_priority_score(task)
-        if task.priority_score != new_score:
-            task.priority_score = new_score
-            await task.set({"priority_score": new_score})
-            updated_count += 1
-
-    return {
-        "message": f"Recalculated priorities for {updated_count} tasks",
-        "total_tasks": len(tasks),
-        "updated": updated_count,
-    }
-
-
-# ─── GET /tasks/overload-risk ─── Detect overload risk ───
-@router.get(
-    "/overload-risk",
-    summary="Detect academic overload risk",
-)
-async def get_overload_risk():
-    """
-    Analyze all active tasks and detect potential overload situations.
-    Returns risk score, warnings, and actionable suggestions.
-    """
-    tasks = await Task.find_all().to_list()
-    risk_data = detect_overload_risk(tasks)
-    return risk_data
 
 
 # ─── PUT /tasks/{task_id} ─── Update a task ───
