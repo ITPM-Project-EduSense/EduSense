@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends, status, Query
 from beanie import PydanticObjectId
 from pydantic import BaseModel
-from app.models.study_schedule import StudySchedule
+from app.models.study_schedule import StudySchedule, SmartSchedule
 from app.models.user_model import User
 from app.models.task import Task
 from app.models.study_material import Concept, StudyMaterial
@@ -733,3 +733,163 @@ async def get_study_recommendations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get recommendations: {str(e)}"
         )
+
+
+# ─── POST /schedule/generate-smart ─── Generate AI schedule with Groq ───
+@router.post(
+    "/generate-smart",
+    summary="Generate a smart AI study schedule using Groq (Llama 3)",
+    response_model=Dict[str, Any],
+)
+async def generate_smart_schedule_endpoint(
+    task_id: str = Form(..., description="Task ID to generate schedule for"),
+    files: List[UploadFile] = File(default=[], description="Optional study material files"),
+):
+    """
+    Generate a Groq-powered study schedule from a task and optional uploaded files.
+
+    - Accepts 0 or more PDF/PPTX/DOCX files
+    - Extracts text from each file
+    - Calls Groq (Llama 3.3) to produce per-document summaries + day-by-day sessions
+    - Saves the result as a SmartSchedule document in MongoDB
+    - Returns the full schedule including AI summary, topics, tips, and sessions
+    """
+    from app.services.groq_service import generate_smart_schedule as groq_generate
+    from app.services.file_extractor import extract_text
+
+    try:
+        # Fetch the task (no auth for easy testing)
+        try:
+            task = await Task.get(PydanticObjectId(task_id))
+        except Exception:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+
+        # If a SmartSchedule already exists for this task, delete it before regenerating
+        existing = await SmartSchedule.find_one(SmartSchedule.task_id == task_id)
+        if existing:
+            await existing.delete()
+
+        # Extract text from each uploaded file
+        documents_data = []
+        original_filenames = []
+
+        for upload_file in files:
+            if not upload_file or not upload_file.filename:
+                continue
+            try:
+                file_bytes = await upload_file.read()
+                if len(file_bytes) == 0:
+                    continue
+                text = extract_text(file_bytes, upload_file.filename)
+                documents_data.append({
+                    "filename": upload_file.filename,
+                    "text": text,
+                })
+                original_filenames.append(upload_file.filename)
+            except Exception as e:
+                print(f"[generate-smart] Error reading file {upload_file.filename}: {e}")
+
+        # Call Groq service
+        result = groq_generate(
+            documents_data=documents_data,
+            subject=task.subject,
+            title=task.title,
+            deadline=task.deadline,
+            task_created_at=task.created_at,
+        )
+
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail="AI schedule generation failed")
+
+        # Determine start/end dates from sessions
+        sessions = result.get("sessions", [])
+        start_date = sessions[0]["date"] if sessions else datetime.utcnow().strftime("%Y-%m-%d")
+        end_date = sessions[-1]["date"] if sessions else task.deadline.strftime("%Y-%m-%d")
+
+        # Persist to MongoDB
+        smart_schedule = SmartSchedule(
+            user_id=task.user_id,
+            task_id=task_id,
+            subject=task.subject,
+            title=task.title,
+            deadline=task.deadline,
+            start_date=start_date,
+            end_date=end_date,
+            document_summaries=result.get("document_summaries", []),
+            ai_summary=result.get("ai_summary", ""),
+            ai_tips=result.get("ai_tips", []),
+            extracted_topics=result.get("extracted_topics", []),
+            sessions=sessions,
+            original_filenames=original_filenames,
+        )
+        await smart_schedule.insert()
+
+        return {
+            "success": True,
+            "schedule_id": str(smart_schedule.id),
+            "task_id": task_id,
+            "subject": task.subject,
+            "title": task.title,
+            "deadline": task.deadline.isoformat(),
+            "start_date": start_date,
+            "end_date": end_date,
+            "extracted_topics": result.get("extracted_topics", []),
+            "ai_summary": result.get("ai_summary", ""),
+            "ai_tips": result.get("ai_tips", []),
+            "document_summaries": result.get("document_summaries", []),
+            "sessions": sessions,
+            "original_filenames": original_filenames,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate smart schedule: {str(e)}")
+
+
+# ─── GET /schedule/by-task/{task_id} ─── Get smart schedule by task ───
+@router.get(
+    "/by-task/{task_id}",
+    summary="Get the smart schedule for a specific task",
+    response_model=Dict[str, Any],
+)
+async def get_schedule_by_task(task_id: str):
+    """
+    Retrieve the SmartSchedule generated for a given task_id.
+    Returns 404 if no smart schedule has been generated for this task yet.
+    """
+    try:
+        schedule = await SmartSchedule.find_one(SmartSchedule.task_id == task_id)
+        if not schedule:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No smart schedule found for task '{task_id}'"
+            )
+
+        return {
+            "success": True,
+            "schedule_id": str(schedule.id),
+            "task_id": schedule.task_id,
+            "subject": schedule.subject,
+            "title": schedule.title,
+            "deadline": schedule.deadline.isoformat(),
+            "start_date": schedule.start_date,
+            "end_date": schedule.end_date,
+            "extracted_topics": schedule.extracted_topics,
+            "ai_summary": schedule.ai_summary,
+            "ai_tips": schedule.ai_tips,
+            "document_summaries": schedule.document_summaries,
+            "sessions": schedule.sessions,
+            "original_filenames": schedule.original_filenames,
+            "created_at": schedule.created_at.isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch schedule: {str(e)}")

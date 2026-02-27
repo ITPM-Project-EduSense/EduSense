@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict, Any
 from beanie import Document
 from pydantic import BaseModel, Field
 
@@ -69,3 +69,37 @@ class StudySchedule(Document):
                 "end_date": "2026-03-15",
             }
         }
+
+
+class SmartSchedule(Document):
+    """
+    MongoDB document model for AI-generated smart study schedules (Groq/Llama).
+    Created via POST /api/schedule/generate-smart with optional file uploads.
+    """
+    user_id: str = Field(default="", description="ID of the user who owns this schedule")
+    task_id: str = Field(..., description="Reference to the Task this schedule is for")
+    subject: str = Field(..., description="Subject/course for this schedule")
+    title: str = Field(default="", description="Task title")
+    deadline: datetime = Field(..., description="Task deadline")
+    start_date: str = Field(..., description="Schedule start date (YYYY-MM-DD)")
+    end_date: str = Field(..., description="Schedule end date (YYYY-MM-DD)")
+
+    # AI-generated content
+    document_summaries: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Per-document AI summaries with key_points and topics"
+    )
+    ai_summary: str = Field(default="", description="Overall AI study plan overview")
+    ai_tips: List[str] = Field(default_factory=list, description="AI study tips")
+    extracted_topics: List[str] = Field(default_factory=list, description="Topics extracted from documents")
+    sessions: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Day-by-day study sessions with date, topics, duration, focus_level"
+    )
+    original_filenames: List[str] = Field(default_factory=list, description="Names of uploaded files")
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Settings:
+        name = "smart_schedules"

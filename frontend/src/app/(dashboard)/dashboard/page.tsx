@@ -191,7 +191,7 @@ export default function Dashboard() {
       if (data && data.id) {
         setShowModal(false);
         setFormData({ title: "", description: "", subject: "", deadline: "", difficulty: "medium" });
-        router.push(`/planner?taskId=${data.id}`);
+        router.push(`/planner?task_id=${data.id}`);
       } else {
         alert("❌ Task created but no ID received");
       }
@@ -551,7 +551,7 @@ export default function Dashboard() {
                         key={task.id}
                         variants={listItemVariants}
                         transition={{ delay: index * 0.04 }}
-                        onClick={() => router.push(`/planner?taskId=${task.id}`)}
+                        onClick={() => router.push(`/planner?task_id=${task.id}`)}
                         className="flex items-center gap-4 px-8 py-4 hover:bg-indigo-50/40 transition-all duration-200 group cursor-pointer border-b border-slate-100/60 last:border-b-0"
                       >
                         {/* Checkbox */}
@@ -613,7 +613,7 @@ export default function Dashboard() {
 
                           {/* Open in Planner */}
                           <button
-                            onClick={(e) => { e.stopPropagation(); router.push(`/planner?taskId=${task.id}`); }}
+                            onClick={(e) => { e.stopPropagation(); router.push(`/planner?task_id=${task.id}`); }}
                             className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-indigo-500 hover:scale-110 transition-all duration-200 cursor-pointer"
                             title="Generate study schedule"
                           >
