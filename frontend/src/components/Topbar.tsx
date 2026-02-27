@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { Menu, Search, Bell, Settings, UserCircle, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -60,6 +62,17 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
         >
           <Menu size={18} />
         </button>
+
+        <Link href="/landing" className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 md:flex">
+          <Image
+            src="/logo.png"
+            alt="EduSense logo"
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-md object-cover"
+          />
+          <span className="text-xs font-semibold text-slate-700">EduSense</span>
+        </Link>
 
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Workspace</p>
