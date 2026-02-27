@@ -124,7 +124,7 @@ function buildCalendar(sessions: Session[]) {
   startDay.setDate(firstDate.getDate() - ((firstDate.getDay() + 6) % 7));
 
   const weeks: { date: Date; sessions: Session[] }[][] = [];
-  let current = new Date(startDay);
+  const current = new Date(startDay);
 
   while (current <= lastDate) {
     const week: { date: Date; sessions: Session[] }[] = [];
@@ -251,8 +251,9 @@ export default function PlannerPage() {
 
       setSchedule(data);
       setExpandedDays(new Set([1]));
-    } catch (e: any) {
-      setError(e.message || "Something went wrong. Please try again.");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Something went wrong. Please try again.";
+      setError(message);
     } finally {
       setGenerating(false);
       setGeneratingStep("");
@@ -389,9 +390,27 @@ export default function PlannerPage() {
                 Generate AI Schedule
               </h3>
               <p className="text-sm text-slate-500">
-                Optionally upload lecture notes, slides or textbooks (PDF, PPTX, DOCX) for a
-                personalised schedule. You can also skip uploads and generate a general plan.
+                Follow this flow: choose your task, upload material, then generate your study plan.
+                Uploading files gives a more personalized schedule.
               </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+                <p className="text-xs font-semibold text-indigo-700">Step 1</p>
+                <p className="mt-1 text-sm font-medium text-slate-700">Task selected</p>
+                <p className="mt-0.5 text-xs text-slate-500">You are planning for this task.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold text-slate-700">Step 2</p>
+                <p className="mt-1 text-sm font-medium text-slate-700">Upload PDF or docs</p>
+                <p className="mt-0.5 text-xs text-slate-500">PDF, PPTX, DOCX supported.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold text-slate-700">Step 3</p>
+                <p className="mt-1 text-sm font-medium text-slate-700">Create schedule</p>
+                <p className="mt-0.5 text-xs text-slate-500">AI builds a day-by-day plan.</p>
+              </div>
             </div>
 
             {/* Drop zone */}
@@ -464,9 +483,13 @@ export default function PlannerPage() {
             >
               <Brain size={18} />
               {files.length > 0
-                ? `Generate Schedule from ${files.length} file${files.length > 1 ? "s" : ""}`
-                : "Generate General Study Plan"}
+                ? `Create Schedule from ${files.length} file${files.length > 1 ? "s" : ""}`
+                : "Skip Upload and Create Basic Study Plan"}
             </button>
+
+            <p className="text-xs text-slate-500">
+              Recommended: upload at least one PDF to improve topic extraction and schedule quality.
+            </p>
           </div>
         )}
 
