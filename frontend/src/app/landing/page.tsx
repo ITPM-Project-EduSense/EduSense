@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Brain,
   Calendar,
@@ -422,9 +423,13 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100/80">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(99,102,241,0.3)]">
-              E
-            </div>
+            <Image
+              src="/logo.png"
+              alt="EduSense logo"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-xl border border-slate-200 object-cover shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
+            />
             <span className="text-xl font-bold text-slate-800 tracking-tight font-[family-name:var(--font-playfair)]">
               Edu<span className="text-indigo-500">Sense</span>
             </span>
@@ -901,9 +906,13 @@ export default function LandingPage() {
             {/* Brand */}
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg">
-                  E
-                </div>
+                <Image
+                  src="/logo.png"
+                  alt="EduSense logo"
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 rounded-xl border border-slate-700 object-cover shadow-lg"
+                />
                 <span className="text-lg font-bold text-white tracking-tight font-[family-name:var(--font-playfair)]">
                   Edu<span className="text-indigo-400">Sense</span>
                 </span>

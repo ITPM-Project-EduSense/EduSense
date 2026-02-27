@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -80,9 +81,18 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
         }`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <Link href="/landing" className="block">
-            <p className="text-lg font-semibold text-slate-900">EduSense</p>
-            <p className="text-xs text-slate-500">Student Productivity OS</p>
+          <Link href="/landing" className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="EduSense logo"
+              width={34}
+              height={34}
+              className="h-[34px] w-[34px] rounded-lg border border-slate-200 object-cover"
+            />
+            <div>
+              <p className="text-lg font-semibold text-slate-900">EduSense</p>
+              <p className="text-xs text-slate-500">Student Productivity OS</p>
+            </div>
           </Link>
           <button
             onClick={onClose}

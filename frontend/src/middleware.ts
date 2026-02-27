@@ -5,10 +5,6 @@ export function middleware(request: NextRequest) {
   // Check for edusense_token (set by backend after login)
   const token = request.cookies.get("edusense_token");
 
-  const isAuthPage =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/register");
-
   const isDashboardPage =
     request.nextUrl.pathname.startsWith("/dashboard") ||
     request.nextUrl.pathname.startsWith("/planner") ||
@@ -22,11 +18,6 @@ export function middleware(request: NextRequest) {
   // Protect dashboard pages - require authentication
   if (!token && isDashboardPage) {
     return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Prevent logged-in users from accessing login/register pages
-  if (token && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
