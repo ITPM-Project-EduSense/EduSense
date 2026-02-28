@@ -16,8 +16,14 @@ import google.genai as genai
 from app.core.config import settings
 
 
-# Configure Gemini client
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# Initialize client lazily to ensure environment variables are loaded
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _client
 
 
 async def generate_study_schedule(
@@ -91,7 +97,7 @@ RULES:
 """
 
     try:
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash-lite",
             contents=prompt
         )

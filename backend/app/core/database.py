@@ -9,6 +9,8 @@ client: AsyncIOMotorClient = None
 async def connect_db():
     """Initialize MongoDB connection and Beanie ODM."""
     global client
+    # debug the URL to ensure it's loaded
+    print(f"🔧 Using DATABASE_URL={settings.DATABASE_URL}")
     client = AsyncIOMotorClient(settings.DATABASE_URL)
     db = client[settings.DATABASE_NAME]
 
