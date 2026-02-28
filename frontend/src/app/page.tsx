@@ -1,19 +1,13 @@
-"use client";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { useEffect, useState } from "react";
-import { getHealth } from "@/lib/api";
+export default async function Home() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("edusense_token");
 
-export default function Home() {
-  const [status, setStatus] = useState("");
+  if (token) {
+    redirect("/dashboard");
+  }
 
-  useEffect(() => {
-    getHealth().then(data => setStatus(data.status));
-  }, []);
-
-  return (
-    <main className="p-10">
-      <h1 className="text-3xl font-bold">EduSense</h1>
-      <p className="mt-4">Backend Status: {status}</p>
-    </main>
-  );
+  redirect("/landing");
 }

@@ -1,24 +1,78 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import pdf_routes
+from app.core.database import connect_db, close_db
+from app.routes.task_routes import router as task_router
+from app.routes.schedule_routes import router as schedule_router
+from app.routes.auth_routes import router as auth_router
+from app.routes.users_routes import router as users_router
+from app.routes.document_route import router as document_router
 
+
+# -------------------------------
+# Lifespan (Startup / Shutdown)
+# -------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handles startup and shutdown events.
+
+    - Connects to MongoDB on startup
+    - Closes MongoDB connection on shutdown
+    """
+    print("🚀 Starting EduSense Backend...")
+    await connect_db()
+
+    yield  # Application runs here
+
+    print("🛑 Shutting down EduSense Backend...")
+    await close_db()
+
+
+# -------------------------------
+# FastAPI App Initialization
+# -------------------------------
 app = FastAPI(
     title="EduSense API",
-    version="1.0.0"
+    version="1.0.0",
+    description="AI-Powered Student Productivity Platform Backend",
+    lifespan=lifespan
 )
 
-app.include_router(pdf_routes.router)
 
-# Allow frontend connection
+# -------------------------------
+# CORS Configuration
+# -------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # Next.js frontend
+        "http://127.0.0.1:3000",  # Alternative localhost
+    ],
+    allow_credentials=True,  # Required for httpOnly cookies
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
-@app.get("/")
-def health_check():
+
+# -------------------------------
+# Register Routers
+# -------------------------------
+app.include_router(task_router, prefix="/api", tags=["Tasks"])
+app.include_router(schedule_router, prefix="/api", tags=["Schedule"])
+app.include_router(auth_router, prefix="/api", tags=["Auth"])
+app.include_router(users_router, prefix="/api", tags=["Users"])
+app.include_router(document_router, prefix="/api", tags=["Documents"])
+
+
+# -------------------------------
+# Health Check Endpoint
+# -------------------------------
+@app.get("/", tags=["Health"])
+async def health_check():
+    """
+    Simple endpoint to verify backend is running.
+    """
     return {"status": "EduSense backend running"}

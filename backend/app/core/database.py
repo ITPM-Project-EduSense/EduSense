@@ -1,27 +1,34 @@
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker, declarative_base
-# from app.core.config import settings
+from motor.motor_asyncio import AsyncIOMotorClient
+from beanie import init_beanie
+from app.core.config import settings
 
-# engine = create_engine(settings.DATABASE_URL)
-
-# SessionLocal = sessionmaker(
-#     autocommit=False,
-#     autoflush=False,
-#     bind=engine
-# )
-
-# Base = declarative_base()
+# MongoDB client instance
+client: AsyncIOMotorClient = None
 
 
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
+async def connect_db():
+    """Initialize MongoDB connection and Beanie ODM."""
+    global client
+    client = AsyncIOMotorClient(settings.DATABASE_URL)
+    db = client[settings.DATABASE_NAME]
 
-load_dotenv()
+    # 🔥 Import ALL document models here
+    from app.models.task import Task
+    from app.models.user_model import User
+    from app.models.study_material import StudyMaterial, Concept
+    from app.models.study_schedule import StudySchedule, SmartSchedule
 
-MONGO_URL = os.getenv("DATABASE_URL")
+    await init_beanie(
+        database=db,
+        document_models=[Task, User, StudyMaterial, Concept, StudySchedule, SmartSchedule]
+    )
 
-client = MongoClient(MONGO_URL)
-db = client["edusense"]
+    print(f"✅ Connected to MongoDB: {settings.DATABASE_NAME}")
 
-vector_collection = db["pdf_vectors"]
+
+async def close_db():
+    """Close MongoDB connection."""
+    global client
+    if client:
+        client.close()
+        print("❌ MongoDB connection closed")

@@ -1,0 +1,7 @@
+# Ignore environment files
+backend/.env
+backend/.env
+.env
+.env.*
+replace*.txt
+replacements*.txt
