@@ -754,7 +754,10 @@ async def generate_smart_schedule_endpoint(
     - Saves the result as a SmartSchedule document in MongoDB
     - Returns the full schedule including AI summary, topics, tips, and sessions
     """
-    from app.services.groq_service import generate_smart_schedule as groq_generate
+    from app.services.groq_service import (
+        generate_smart_schedule as groq_generate,
+        analyze_assignment_context,
+    )
     from app.services.file_extractor import extract_text
 
     try:
@@ -792,6 +795,24 @@ async def generate_smart_schedule_endpoint(
             except Exception as e:
                 print(f"[generate-smart] Error reading file {upload_file.filename}: {e}")
 
+        # Build assignment analysis context from uploaded content + student profile
+        owner = None
+        try:
+            owner = await User.get(PydanticObjectId(task.user_id))
+        except Exception:
+            owner = None
+        combined_text_for_analysis = "\n\n".join(
+            f"{d.get('filename', 'file')}:\n{d.get('text', '')}"
+            for d in documents_data
+        )
+        assignment_analysis = analyze_assignment_context(
+            combined_text=combined_text_for_analysis,
+            fallback_subject=task.subject,
+            student_year_of_study=owner.year_of_study if owner else None,
+            student_program_name=owner.program_name if owner else None,
+        )
+        analysis_status = "needs_review" if assignment_analysis.get("needs_review") else "analyzed"
+
         # Call Groq service
         result = groq_generate(
             documents_data=documents_data,
@@ -824,6 +845,8 @@ async def generate_smart_schedule_endpoint(
             extracted_topics=result.get("extracted_topics", []),
             sessions=sessions,
             original_filenames=original_filenames,
+            assignment_analysis=assignment_analysis,
+            analysis_status=analysis_status,
         )
         await smart_schedule.insert()
 
@@ -842,6 +865,8 @@ async def generate_smart_schedule_endpoint(
             "document_summaries": result.get("document_summaries", []),
             "sessions": sessions,
             "original_filenames": original_filenames,
+            "assignment_analysis": assignment_analysis,
+            "analysis_status": analysis_status,
         }
 
     except HTTPException:
@@ -886,6 +911,8 @@ async def get_schedule_by_task(task_id: str):
             "document_summaries": schedule.document_summaries,
             "sessions": schedule.sessions,
             "original_filenames": schedule.original_filenames,
+            "assignment_analysis": schedule.assignment_analysis,
+            "analysis_status": schedule.analysis_status,
             "created_at": schedule.created_at.isoformat(),
         }
 

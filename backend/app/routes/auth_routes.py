@@ -15,7 +15,9 @@ async def register(payload: UserCreate):
     return await AuthService.register(
         full_name=payload.full_name,
         email=payload.email,
-        password=payload.password
+        password=payload.password,
+        program_name=payload.program_name,
+        year_of_study=payload.year_of_study,
     )
 
 
@@ -52,5 +54,7 @@ async def me(current_user: User = Depends(get_current_user)):
             "full_name": current_user.full_name,
             "email": current_user.email,
             "bio": current_user.bio,
+            "program_name": current_user.program_name,
+            "year_of_study": current_user.year_of_study,
         }
     }

@@ -7,7 +7,7 @@ Uses Groq's free tier with llama-3.3-70b-versatile model.
 import json
 import re
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from groq import Groq
 from app.core.config import settings
@@ -92,6 +92,112 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this exact st
         "key_points": ["Review this document for key concepts"],
         "topics": [subject],
     }
+
+
+def analyze_assignment_context(
+    combined_text: str,
+    fallback_subject: str,
+    student_year_of_study: Optional[int] = None,
+    student_program_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Analyze assignment/task context from uploaded content and student profile data.
+    Returns structured metadata with confidence and a review flag.
+    """
+    text_for_analysis = (combined_text or "").strip()
+    if len(text_for_analysis) > 8000:
+        text_for_analysis = text_for_analysis[:8000]
+
+    profile_year = student_year_of_study if student_year_of_study is not None else "unknown"
+    profile_program = student_program_name or "unknown"
+
+    prompt = f"""You are an academic assignment analysis assistant.
+Extract assignment metadata from the content and infer missing values carefully.
+
+STUDENT PROFILE CONTEXT:
+- program_name: {profile_program}
+- year_of_study: {profile_year}
+
+FALLBACK SUBJECT: {fallback_subject}
+
+ASSIGNMENT CONTENT:
+--- START ---
+{text_for_analysis or "No document content provided."}
+--- END ---
+
+Return ONLY a valid JSON object:
+{{
+  "module_name": "Best module/course name",
+  "assignment_title": "Best assignment title",
+  "assignment_type": "report|lab|presentation|exam|project|other",
+  "inferred_year_of_study": 1,
+  "program_name": "Program name",
+  "due_date_in_document": "YYYY-MM-DD or null",
+  "key_requirements": ["Requirement 1", "Requirement 2"],
+  "summary": "2-3 sentence summary of what the student needs to do",
+  "confidence_score": 0.0,
+  "needs_review": false
+}}
+
+RULES:
+1. confidence_score must be between 0 and 1.
+2. Use student profile year/program when document is unclear.
+3. If uncertain or conflicting info appears, set needs_review=true.
+4. module_name must fallback to "{fallback_subject}" if not found.
+"""
+
+    fallback = {
+        "module_name": fallback_subject,
+        "assignment_title": "",
+        "assignment_type": "other",
+        "inferred_year_of_study": student_year_of_study,
+        "program_name": student_program_name or "",
+        "due_date_in_document": None,
+        "key_requirements": [],
+        "summary": f"Assignment analysis for {fallback_subject}.",
+        "confidence_score": 0.45,
+        "needs_review": True,
+    }
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            temperature=0.1,
+        )
+        raw = response.choices[0].message.content
+        result = _parse_json_safe(raw, fallback={})
+        if isinstance(result, dict):
+            confidence = result.get("confidence_score", fallback["confidence_score"])
+            try:
+                confidence = float(confidence)
+            except (ValueError, TypeError):
+                confidence = fallback["confidence_score"]
+            confidence = max(0.0, min(1.0, confidence))
+
+            inferred_year = result.get("inferred_year_of_study", student_year_of_study)
+            try:
+                inferred_year = int(inferred_year) if inferred_year is not None else None
+            except (ValueError, TypeError):
+                inferred_year = student_year_of_study
+
+            return {
+                "module_name": result.get("module_name") or fallback_subject,
+                "assignment_title": result.get("assignment_title", ""),
+                "assignment_type": result.get("assignment_type", "other"),
+                "inferred_year_of_study": inferred_year,
+                "program_name": result.get("program_name") or student_program_name or "",
+                "due_date_in_document": result.get("due_date_in_document"),
+                "key_requirements": result.get("key_requirements", [])[:10],
+                "summary": result.get("summary") or fallback["summary"],
+                "confidence_score": confidence,
+                "needs_review": bool(result.get("needs_review", confidence < 0.65)),
+            }
+    except Exception as e:
+        print(f"[groq_service] analyze_assignment_context error: {e}")
+
+    return fallback
 
 
 def generate_smart_schedule(

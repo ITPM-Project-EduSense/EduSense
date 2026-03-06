@@ -54,6 +54,19 @@ interface DocumentSummary {
   topics: string[];
 }
 
+interface AssignmentAnalysis {
+  module_name?: string;
+  assignment_title?: string;
+  assignment_type?: string;
+  inferred_year_of_study?: number | null;
+  program_name?: string;
+  due_date_in_document?: string | null;
+  key_requirements?: string[];
+  summary?: string;
+  confidence_score?: number;
+  needs_review?: boolean;
+}
+
 interface SmartSchedule {
   schedule_id: string;
   task_id: string;
@@ -68,6 +81,8 @@ interface SmartSchedule {
   document_summaries: DocumentSummary[];
   sessions: Session[];
   original_filenames: string[];
+  assignment_analysis?: AssignmentAnalysis;
+  analysis_status?: "not_analyzed" | "analyzed" | "needs_review";
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
@@ -110,6 +125,11 @@ function focusStyle(level: string) {
     bar: "bg-slate-400",
     icon: <Minus size={13} className="text-slate-400" />,
   };
+}
+
+function toPercent(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
+  return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }
 
 /* ─── Build weekly calendar from sessions ───────────────────────────────── */
@@ -243,7 +263,7 @@ export default function PlannerPage() {
         credentials: "include",
       });
 
-      setGeneratingStep("Building your personalised schedule...");
+      setGeneratingStep("Extracting assignment details and building your personalised schedule...");
 
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || "Generation failed");
@@ -549,6 +569,83 @@ export default function PlannerPage() {
               </div>
             )}
 
+            {/* Assignment Analysis */}
+            {(schedule.assignment_analysis || schedule.analysis_status) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-5">
+                <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                    <Brain size={15} className="text-indigo-500" />
+                    Assignment Analysis
+                  </h3>
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      schedule.analysis_status === "needs_review"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {schedule.analysis_status === "needs_review" ? "Needs Review" : "Analyzed"}
+                  </span>
+                </div>
+
+                {schedule.analysis_status === "needs_review" && (
+                  <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                    <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-800">
+                      Please confirm extracted module and year details before final study execution.
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs text-slate-500 mb-1">Module</p>
+                    <p className="font-semibold text-slate-700">
+                      {schedule.assignment_analysis?.module_name || schedule.subject}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs text-slate-500 mb-1">Assignment Type</p>
+                    <p className="font-semibold text-slate-700 capitalize">
+                      {schedule.assignment_analysis?.assignment_type || "other"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs text-slate-500 mb-1">Year of Study</p>
+                    <p className="font-semibold text-slate-700">
+                      {schedule.assignment_analysis?.inferred_year_of_study ?? "Not set"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs text-slate-500 mb-1">Confidence</p>
+                    <p className="font-semibold text-slate-700">
+                      {toPercent(schedule.assignment_analysis?.confidence_score)}
+                    </p>
+                  </div>
+                </div>
+
+                {schedule.assignment_analysis?.summary && (
+                  <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                    {schedule.assignment_analysis.summary}
+                  </p>
+                )}
+
+                {(schedule.assignment_analysis?.key_requirements || []).length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-slate-500 mb-1.5">Key Requirements</p>
+                    <ul className="space-y-1">
+                      {(schedule.assignment_analysis?.key_requirements || []).map((item, idx) => (
+                        <li key={`${item}-${idx}`} className="flex items-start gap-2 text-sm text-slate-600">
+                          <CheckCircle2 size={13} className="text-indigo-400 mt-0.5 flex-shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Extracted Topics ── */}
             {schedule.extracted_topics.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-5">
@@ -596,7 +693,11 @@ export default function PlannerPage() {
                           onClick={() =>
                             setExpandedDocs((prev) => {
                               const next = new Set(prev);
-                              next.has(di) ? next.delete(di) : next.add(di);
+                              if (next.has(di)) {
+                                next.delete(di);
+                              } else {
+                                next.add(di);
+                              }
                               return next;
                             })
                           }
@@ -696,7 +797,11 @@ export default function PlannerPage() {
                         onClick={() =>
                           setExpandedDays((prev) => {
                             const next = new Set(prev);
-                            next.has(session.day) ? next.delete(session.day) : next.add(session.day);
+                            if (next.has(session.day)) {
+                              next.delete(session.day);
+                            } else {
+                              next.add(session.day);
+                            }
                             return next;
                           })
                         }
