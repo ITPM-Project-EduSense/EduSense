@@ -97,6 +97,14 @@ class SmartSchedule(Document):
         description="Day-by-day study sessions with date, topics, duration, focus_level"
     )
     original_filenames: List[str] = Field(default_factory=list, description="Names of uploaded files")
+    assignment_analysis: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="AI extracted assignment metadata with confidence and review flag"
+    )
+    analysis_status: str = Field(
+        default="not_analyzed",
+        description="Analysis status: not_analyzed, analyzed, or needs_review"
+    )
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

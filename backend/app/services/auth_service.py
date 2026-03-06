@@ -6,7 +6,13 @@ from app.core.security import hash_password, verify_password, create_access_toke
 class AuthService:
 
     @staticmethod
-    async def register(full_name: str, email: str, password: str):
+    async def register(
+        full_name: str,
+        email: str,
+        password: str,
+        program_name: str = None,
+        year_of_study: int = None,
+    ):
         email_lower = email.lower().strip()
 
         # ✅ FIXED QUERY STYLE
@@ -18,6 +24,8 @@ class AuthService:
             full_name=full_name.strip(),
             email=email_lower,
             password_hash=hash_password(password),
+            program_name=program_name.strip() if program_name else None,
+            year_of_study=year_of_study,
         )
 
         await user.insert()
@@ -28,6 +36,8 @@ class AuthService:
                 "id": str(user.id),
                 "full_name": user.full_name,
                 "email": user.email,
+                "program_name": user.program_name,
+                "year_of_study": user.year_of_study,
             }
         }
 
@@ -56,5 +66,7 @@ class AuthService:
                 "id": str(user.id),
                 "full_name": user.full_name,
                 "email": user.email,
+                "program_name": user.program_name,
+                "year_of_study": user.year_of_study,
             }
         }

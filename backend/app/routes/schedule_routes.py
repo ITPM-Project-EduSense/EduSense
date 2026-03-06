@@ -735,30 +735,59 @@ async def get_study_recommendations(
         )
 
 
-# ─── POST /schedule/generate-smart ─── Generate AI schedule with Groq ───
+# ==============================================================================
+# SMART STUDY PLANNER - MAIN ENDPOINT
+# ==============================================================================
+#
+#  ┌─────────────────────────────────────────────────────────────────────────┐
+#  │  POST /schedule/generate-smart                                           │
+#  │                                                                          │
+#  │  This is the MAIN endpoint for generating AI-powered study schedules.   │
+#  │                                                                          │
+#  │  FLOW:                                                                   │
+#  │  ─────                                                                   │
+#  │    1. Student creates a task (from dashboard)                           │
+#  │    2. Student uploads study materials (PDF/DOCX/PPTX) - optional        │
+#  │    3. This endpoint:                                                    │
+#  │       a) Extracts text from uploaded files                              │
+#  │       b) Calls Groq AI to summarize documents                           │
+#  │       c) Generates day-by-day study sessions                            │
+#  │       d) Saves schedule to database                                     │
+#  │    4. Returns complete schedule to frontend                              │
+#  │                                                                          │
+#  └─────────────────────────────────────────────────────────────────────────┘
+#
+# ==============================================================================
+
 @router.post(
     "/generate-smart",
-    summary="Generate a smart AI study schedule using Groq (Llama 3)",
+    summary="Generate a smart AI study schedule using Groq (Llama 3.3)",
     response_model=Dict[str, Any],
 )
 async def generate_smart_schedule_endpoint(
     task_id: str = Form(..., description="Task ID to generate schedule for"),
-    files: List[UploadFile] = File(default=[], description="Optional study material files"),
+    files: List[UploadFile] = File(default=[], description="Optional study material files (PDF/DOCX/PPTX)"),
 ):
     """
-    Generate a Groq-powered study schedule from a task and optional uploaded files.
-
-    - Accepts 0 or more PDF/PPTX/DOCX files
-    - Extracts text from each file
-    - Calls Groq (Llama 3.3) to produce per-document summaries + day-by-day sessions
-    - Saves the result as a SmartSchedule document in MongoDB
-    - Returns the full schedule including AI summary, topics, tips, and sessions
+    Generate an AI-powered study schedule from a task and optional uploaded files.
+    
+    SIMPLE USAGE:
+    - Call with just task_id → Get a general study plan
+    - Call with task_id + files → Get a personalized plan based on your materials
+    
+    RETURNS:
+    - sessions: Day-by-day study schedule with topics and tips
+    - ai_summary: Overview of the study plan
+    - ai_tips: Study tips for effective learning
+    - document_summaries: Summary of each uploaded file
     """
     from app.services.groq_service import generate_smart_schedule as groq_generate
     from app.services.file_extractor import extract_text
 
     try:
-        # Fetch the task (no auth for easy testing)
+        # ══════════════════════════════════════════════════════════════════
+        # STEP 1: Fetch the task from database
+        # ══════════════════════════════════════════════════════════════════
         try:
             task = await Task.get(PydanticObjectId(task_id))
         except Exception:
@@ -767,12 +796,14 @@ async def generate_smart_schedule_endpoint(
         if not task:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
 
-        # If a SmartSchedule already exists for this task, delete it before regenerating
+        # Delete existing schedule if regenerating
         existing = await SmartSchedule.find_one(SmartSchedule.task_id == task_id)
         if existing:
             await existing.delete()
 
-        # Extract text from each uploaded file
+        # ══════════════════════════════════════════════════════════════════
+        # STEP 2: Extract text from uploaded files
+        # ══════════════════════════════════════════════════════════════════
         documents_data = []
         original_filenames = []
 
@@ -792,7 +823,9 @@ async def generate_smart_schedule_endpoint(
             except Exception as e:
                 print(f"[generate-smart] Error reading file {upload_file.filename}: {e}")
 
-        # Call Groq service
+        # ══════════════════════════════════════════════════════════════════
+        # STEP 3: Call Groq AI to generate schedule
+        # ══════════════════════════════════════════════════════════════════
         result = groq_generate(
             documents_data=documents_data,
             subject=task.subject,
@@ -804,12 +837,13 @@ async def generate_smart_schedule_endpoint(
         if not result.get("success"):
             raise HTTPException(status_code=500, detail="AI schedule generation failed")
 
-        # Determine start/end dates from sessions
+        # ══════════════════════════════════════════════════════════════════
+        # STEP 4: Save schedule to database
+        # ══════════════════════════════════════════════════════════════════
         sessions = result.get("sessions", [])
         start_date = sessions[0]["date"] if sessions else datetime.utcnow().strftime("%Y-%m-%d")
         end_date = sessions[-1]["date"] if sessions else task.deadline.strftime("%Y-%m-%d")
 
-        # Persist to MongoDB
         smart_schedule = SmartSchedule(
             user_id=task.user_id,
             task_id=task_id,
@@ -827,6 +861,9 @@ async def generate_smart_schedule_endpoint(
         )
         await smart_schedule.insert()
 
+        # ══════════════════════════════════════════════════════════════════
+        # STEP 5: Return complete schedule to frontend
+        # ══════════════════════════════════════════════════════════════════
         return {
             "success": True,
             "schedule_id": str(smart_schedule.id),
@@ -886,6 +923,8 @@ async def get_schedule_by_task(task_id: str):
             "document_summaries": schedule.document_summaries,
             "sessions": schedule.sessions,
             "original_filenames": schedule.original_filenames,
+            "assignment_analysis": schedule.assignment_analysis,
+            "analysis_status": schedule.analysis_status,
             "created_at": schedule.created_at.isoformat(),
         }
 
