@@ -193,3 +193,87 @@ export async function deleteSchedule(scheduleId: string) {
 
   return response.json();
 }
+
+
+// ==============================================================================
+// SMART STUDY PLANNER (Main Flow)
+// ==============================================================================
+// 
+// This is the MAIN function for generating AI-powered study schedules.
+// 
+// FLOW:
+// ─────
+//   1. Student selects a task
+//   2. Student uploads study materials (PDF/DOCX/PPTX) - optional
+//   3. AI analyzes documents and creates personalized schedule
+//   4. Returns day-by-day study sessions with tips
+//
+// USAGE:
+// ──────
+//   const result = await generateSmartSchedule(taskId, files);
+//   // result.sessions = [{day: 1, date: "2026-03-06", topics: [...], ...}]
+//   // result.ai_tips = ["Study tip 1", "Study tip 2", ...]
+//   // result.document_summaries = [{filename: "...", summary: "..."}, ...]
+//
+// ==============================================================================
+
+export interface SmartScheduleResponse {
+  success: boolean;
+  schedule_id: string;
+  task_id: string;
+  subject: string;
+  title: string;
+  deadline: string;
+  start_date: string;
+  end_date: string;
+  extracted_topics: string[];
+  ai_summary: string;
+  ai_tips: string[];
+  document_summaries: Array<{
+    filename: string;
+    summary: string;
+    key_points: string[];
+    topics: string[];
+  }>;
+  sessions: StudySession[];
+  original_filenames: string[];
+}
+
+export async function generateSmartSchedule(
+  taskId: string, 
+  files: File[] = []
+): Promise<SmartScheduleResponse> {
+  /**
+   * Generate an AI-powered study schedule using Groq (Llama 3.3).
+   * 
+   * @param taskId - The task ID to generate schedule for
+   * @param files - Optional array of study material files (PDF/DOCX/PPTX)
+   * @returns Complete schedule with sessions, tips, and document summaries
+   */
+  const formData = new FormData();
+  formData.append('task_id', taskId);
+  
+  // Add each file to the form data
+  files.forEach((file) => formData.append('files', file));
+
+  const response = await fetch(`${API_BASE}/schedule/generate-smart`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to generate smart schedule');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get an existing smart schedule for a task.
+ * Returns 404 if no schedule has been generated yet.
+ */
+export async function getSmartScheduleByTask(taskId: string): Promise<SmartScheduleResponse> {
+  return apiFetch(`/schedule/by-task/${taskId}`);
+}

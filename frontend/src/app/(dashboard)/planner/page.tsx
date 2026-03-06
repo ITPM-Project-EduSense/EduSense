@@ -25,6 +25,7 @@ import {
   Minus,
   ArrowLeft,
 } from "lucide-react";
+import { generateSmartSchedule, getSmartScheduleByTask } from "@/lib/scheduleApi";
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 interface Task {
@@ -251,22 +252,13 @@ export default function PlannerPage() {
     setGeneratingStep("Extracting text from documents...");
 
     try {
-      const formData = new FormData();
-      formData.append("task_id", taskId);
-      files.forEach((f) => formData.append("files", f));
-
       setGeneratingStep("Asking Groq AI to analyse your materials...");
 
-      const res = await fetch(`${API}/schedule/generate-smart`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      // Use the clean API function from scheduleApi.ts
+      const data = await generateSmartSchedule(taskId, files);
 
-      setGeneratingStep("Extracting assignment details and building your personalised schedule...");
+      setGeneratingStep("Building your personalised schedule...");
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || "Generation failed");
       if (!data.success) throw new Error("AI returned an empty schedule");
 
       setSchedule(data);

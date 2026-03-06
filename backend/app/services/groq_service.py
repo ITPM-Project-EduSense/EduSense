@@ -1,7 +1,33 @@
 """
-EduSense - Groq AI Service (Llama 3.3)
-Replaces Gemini for schedule generation and document summarization.
-Uses Groq's free tier with llama-3.3-70b-versatile model.
+================================================================================
+EduSense - AI Study Planner Service (Groq + Llama 3.3)
+================================================================================
+
+This service powers the Smart Study Planner feature using Groq's free AI API.
+
+SIMPLE FLOW:
+============
+    1. Student creates a TASK (title, subject, deadline)
+    2. Student uploads FILES (PDF/DOCX/PPTX) - optional
+    3. This service:
+       a) Summarizes each uploaded document
+       b) Generates a day-by-day study schedule
+       c) Provides AI tips for effective studying
+    4. Schedule is saved and displayed to student
+
+MAIN FUNCTIONS (Public API):
+============================
+    - summarize_document()       → Summarize one uploaded file
+    - generate_smart_schedule()  → Create full study plan with sessions
+
+INTERNAL HELPERS (Private):
+===========================
+    - _clean_json()              → Clean AI response
+    - _parse_json_safe()         → Safely parse JSON
+    - _day_name()                → Get weekday name
+    - _fallback_schedule()       → Backup plan if AI fails
+
+================================================================================
 """
 
 import json
@@ -12,21 +38,38 @@ from typing import List, Dict, Any, Optional
 from groq import Groq
 from app.core.config import settings
 
-client = Groq(api_key=settings.GROQ_API_KEY)
-MODEL = "llama-3.3-70b-versatile"
 
+# ==============================================================================
+# CONFIGURATION
+# ==============================================================================
+
+client = Groq(api_key=settings.GROQ_API_KEY)
+MODEL = "llama-3.3-70b-versatile"  # Free tier model
+
+
+# ==============================================================================
+# INTERNAL HELPERS (Private - used by main functions)
+# ==============================================================================
 
 def _clean_json(text: str) -> str:
-    """Strip markdown code fences and extract raw JSON from Groq response."""
+    """
+    Clean AI response by removing markdown code fences.
+    
+    AI often returns: ```json { ... } ```
+    We need just:     { ... }
+    """
     text = text.strip()
-    # Remove ```json ... ``` or ``` ... ```
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
     return text.strip()
 
 
 def _parse_json_safe(text: str, fallback: Any = None) -> Any:
-    """Parse JSON with fallback on error."""
+    """
+    Safely parse JSON from AI response.
+    
+    Returns fallback value if parsing fails.
+    """
     try:
         return json.loads(_clean_json(text))
     except (json.JSONDecodeError, ValueError):
@@ -40,34 +83,197 @@ def _parse_json_safe(text: str, fallback: Any = None) -> Any:
         return fallback
 
 
+def _day_name(date_str: str) -> str:
+    """Convert 'YYYY-MM-DD' to weekday name like 'Monday'."""
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%A")
+    except ValueError:
+        return "Day"
+
+
+def _fallback_schedule(
+    subject: str,
+    title: str,
+    start_date,
+    end_date,
+    topics: List[str],
+    document_summaries: List[Dict],
+) -> Dict[str, Any]:
+    """
+    Generate a SMART backup schedule when AI fails.
+    
+    This ensures students ALWAYS get a useful study plan, even if:
+    - Internet is down
+    - AI API has issues
+    - Rate limits are hit
+    - No documents were uploaded
+    
+    Uses proven study patterns: Foundation → Deep Dive → Practice → Review
+    """
+    total_days = (end_date - start_date).days or 1
+    num_sessions = min(total_days, 7)  # Max 7 sessions
+    
+    # Smart study phase templates based on proven learning patterns
+    study_phases = [
+        {
+            "name": "Foundation & Overview",
+            "focus": "high",
+            "duration": 2.0,
+            "tip": f"Start with the fundamentals of {subject}. Read through all materials once without taking notes. Focus on understanding the big picture and how concepts connect."
+        },
+        {
+            "name": "Core Concepts Deep Dive", 
+            "focus": "high",
+            "duration": 2.5,
+            "tip": f"Focus on key definitions, formulas, and core principles. Create summary notes and flashcards for important terms. Don't rush - understanding is more important than coverage."
+        },
+        {
+            "name": "Examples & Applications",
+            "focus": "medium",
+            "duration": 2.0,
+            "tip": "Study worked examples and real-world applications. Try to solve example problems before looking at solutions. Note down any patterns you observe."
+        },
+        {
+            "name": "Practice Problems",
+            "focus": "high",
+            "duration": 2.5,
+            "tip": "Active practice time! Work through problems without looking at notes first. When stuck, try for 10 minutes before checking resources. Track which problem types are difficult."
+        },
+        {
+            "name": "Weak Areas Review",
+            "focus": "medium",
+            "duration": 2.0,
+            "tip": "Revisit topics you found challenging. Re-read relevant sections and try additional practice. Ask yourself: 'Can I explain this to someone else?'"
+        },
+        {
+            "name": "Integration & Connections",
+            "focus": "medium",
+            "duration": 1.5,
+            "tip": "Connect different topics together. Create mind maps or concept diagrams. Understand how one concept builds on another."
+        },
+        {
+            "name": "Final Review & Self-Test",
+            "focus": "low",
+            "duration": 1.5,
+            "tip": "Light review day! Go through your notes and flashcards. Do a timed self-test if possible. Get good sleep - rest helps consolidate learning."
+        },
+    ]
+    
+    sessions = []
+    
+    for i in range(num_sessions):
+        session_date = start_date + timedelta(days=int(i * (total_days / num_sessions)))
+        phase = study_phases[i % len(study_phases)]
+        
+        # Determine topics for this session
+        if topics and len(topics) > 0:
+            # Distribute uploaded topics across sessions
+            topic_idx = i % len(topics)
+            session_topics = [topics[topic_idx]]
+            # Add phase name for context
+            if len(topics) > 1:
+                session_topics.append(phase["name"])
+        else:
+            # No uploaded topics - use phase name with subject
+            session_topics = [f"{subject}: {phase['name']}"]
+        
+        sessions.append({
+            "day": i + 1,
+            "date": session_date.isoformat(),
+            "day_name": session_date.strftime("%A"),
+            "topics": session_topics,
+            "duration_hours": phase["duration"],
+            "focus_level": phase["focus"],
+            "tips": phase["tip"],
+        })
+
+    # Generate meaningful extracted topics
+    if topics and len(topics) > 0:
+        extracted = topics[:10]
+    else:
+        extracted = [
+            f"{subject} Fundamentals",
+            f"{subject} Core Concepts",
+            f"Practice & Problem Solving",
+            "Review & Consolidation"
+        ]
+
+    return {
+        "success": True,
+        "extracted_topics": extracted,
+        "ai_summary": f"A structured {num_sessions}-day study plan for {title}. This schedule follows proven learning patterns: starting with foundations, diving deep into concepts, practicing with problems, and ending with review. Each session is designed to build on the previous one.",
+        "ai_tips": [
+            f"Start each {subject} session by reviewing your notes from the previous day",
+            "Use the Pomodoro technique: 25 minutes focus, 5 minutes break",
+            "Teach concepts to yourself out loud - it reveals gaps in understanding",
+            "Create one summary page per topic - great for final review",
+            "If you're struggling with a concept, try explaining it in simple terms first",
+            "Stay hydrated and take short walks between sessions"
+        ],
+        "document_summaries": document_summaries,
+        "sessions": sessions,
+    }
+
+
+# ==============================================================================
+# MAIN FUNCTIONS (Public API)
+# ==============================================================================
+
 def summarize_document(text: str, subject: str, filename: str) -> Dict[str, Any]:
     """
-    Summarize a single study document using Groq / Llama 3.3.
-
-    Returns:
-        {
-            "summary": "2-3 sentence summary",
-            "key_points": ["point 1", ...],
-            "topics": ["Topic A", "Topic B", ...]
-        }
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  STEP 1: SUMMARIZE ONE DOCUMENT                                          │
+    │                                                                          │
+    │  Input:  Raw text from PDF/DOCX/PPTX file                               │
+    │  Output: Summary + key points + SPECIFIC topics (not generic!)          │
+    │                                                                          │
+    │  Example:                                                                │
+    │    Input:  "Chapter 1: Binary Search Trees... AVL rotation..."          │
+    │    Output: {                                                             │
+    │      "summary": "Covers tree data structures and balancing",            │
+    │      "key_points": ["BST has O(log n) search", "AVL self-balances"],    │
+    │      "topics": ["Binary Search Trees", "AVL Trees", "Tree Rotations"]   │
+    │    }                                                                     │
+    └─────────────────────────────────────────────────────────────────────────┘
     """
-    # Truncate per-document text to avoid token overflow
-    truncated = text[:6000] if len(text) > 6000 else text
+    # Limit text length to avoid AI token limits
+    truncated = text[:8000] if len(text) > 8000 else text
 
-    prompt = f"""You are an expert academic assistant. Analyze this study material for "{subject}" and produce a concise summary.
+    prompt = f"""You are an expert academic assistant analyzing study material for "{subject}".
 
-Document filename: {filename}
+Document: {filename}
 
---- CONTENT START ---
+--- DOCUMENT CONTENT ---
 {truncated}
---- CONTENT END ---
+--- END CONTENT ---
 
-Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
+Extract SPECIFIC topics, chapters, and concepts from this document. 
+DO NOT use generic terms like "Introduction" or just "{subject}".
+
+Return ONLY valid JSON:
 {{
-  "summary": "A 2-3 sentence overview of what this document covers",
-  "key_points": ["Key point 1", "Key point 2", "Key point 3", "Key point 4", "Key point 5"],
-  "topics": ["Main Topic A", "Main Topic B", "Main Topic C"]
-}}"""
+  "summary": "2-3 sentence overview describing what this document teaches",
+  "key_points": [
+    "Specific fact or concept #1 from the document",
+    "Specific definition, formula, or rule #2",
+    "Important theory or method #3",
+    "Key example or application #4",
+    "Critical detail students must remember #5"
+  ],
+  "topics": [
+    "Actual Chapter/Section Name",
+    "Specific Concept or Theory Name",
+    "Technical Term or Algorithm",
+    "Method or Framework Name",
+    "Tool or Technology Mentioned"
+  ]
+}}
+
+RULES:
+- Extract REAL topic names from the document content
+- Topics should be specific enough to study (e.g., "Merge Sort" not "Sorting")
+- Key points should be actual facts a student needs to learn
+- Do not include generic placeholders"""
 
     try:
         response = client.chat.completions.create(
@@ -79,125 +285,34 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this exact st
         raw = response.choices[0].message.content
         result = _parse_json_safe(raw)
         if result and isinstance(result, dict):
+            # Filter out overly generic topics
+            topics = result.get("topics", [])
+            generic_terms = [subject.lower(), "introduction", "overview", "summary", "basics", "fundamentals"]
+            filtered_topics = [
+                t for t in topics 
+                if t.lower().strip() not in generic_terms and len(t) > 2
+            ][:8]
+            
             return {
                 "summary": result.get("summary", ""),
                 "key_points": result.get("key_points", [])[:6],
-                "topics": result.get("topics", [])[:6],
+                "topics": filtered_topics if filtered_topics else [f"{subject} Concepts"],
             }
     except Exception as e:
         print(f"[groq_service] summarize_document error for {filename}: {e}")
 
+    # Fallback if AI fails - still try to be somewhat specific
+    clean_name = filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
     return {
-        "summary": f"Content from {filename} related to {subject}.",
-        "key_points": ["Review this document for key concepts"],
-        "topics": [subject],
+        "summary": f"Study material from {filename} covering {subject} concepts and theories.",
+        "key_points": [
+            f"Review core {subject} concepts in this document",
+            "Identify key definitions, formulas, and rules",
+            "Note important examples and practical applications",
+            "Understand relationships between concepts"
+        ],
+        "topics": [f"{subject}: {clean_name}"],
     }
-
-
-def analyze_assignment_context(
-    combined_text: str,
-    fallback_subject: str,
-    student_year_of_study: Optional[int] = None,
-    student_program_name: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    Analyze assignment/task context from uploaded content and student profile data.
-    Returns structured metadata with confidence and a review flag.
-    """
-    text_for_analysis = (combined_text or "").strip()
-    if len(text_for_analysis) > 8000:
-        text_for_analysis = text_for_analysis[:8000]
-
-    profile_year = student_year_of_study if student_year_of_study is not None else "unknown"
-    profile_program = student_program_name or "unknown"
-
-    prompt = f"""You are an academic assignment analysis assistant.
-Extract assignment metadata from the content and infer missing values carefully.
-
-STUDENT PROFILE CONTEXT:
-- program_name: {profile_program}
-- year_of_study: {profile_year}
-
-FALLBACK SUBJECT: {fallback_subject}
-
-ASSIGNMENT CONTENT:
---- START ---
-{text_for_analysis or "No document content provided."}
---- END ---
-
-Return ONLY a valid JSON object:
-{{
-  "module_name": "Best module/course name",
-  "assignment_title": "Best assignment title",
-  "assignment_type": "report|lab|presentation|exam|project|other",
-  "inferred_year_of_study": 1,
-  "program_name": "Program name",
-  "due_date_in_document": "YYYY-MM-DD or null",
-  "key_requirements": ["Requirement 1", "Requirement 2"],
-  "summary": "2-3 sentence summary of what the student needs to do",
-  "confidence_score": 0.0,
-  "needs_review": false
-}}
-
-RULES:
-1. confidence_score must be between 0 and 1.
-2. Use student profile year/program when document is unclear.
-3. If uncertain or conflicting info appears, set needs_review=true.
-4. module_name must fallback to "{fallback_subject}" if not found.
-"""
-
-    fallback = {
-        "module_name": fallback_subject,
-        "assignment_title": "",
-        "assignment_type": "other",
-        "inferred_year_of_study": student_year_of_study,
-        "program_name": student_program_name or "",
-        "due_date_in_document": None,
-        "key_requirements": [],
-        "summary": f"Assignment analysis for {fallback_subject}.",
-        "confidence_score": 0.45,
-        "needs_review": True,
-    }
-
-    try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1024,
-            temperature=0.1,
-        )
-        raw = response.choices[0].message.content
-        result = _parse_json_safe(raw, fallback={})
-        if isinstance(result, dict):
-            confidence = result.get("confidence_score", fallback["confidence_score"])
-            try:
-                confidence = float(confidence)
-            except (ValueError, TypeError):
-                confidence = fallback["confidence_score"]
-            confidence = max(0.0, min(1.0, confidence))
-
-            inferred_year = result.get("inferred_year_of_study", student_year_of_study)
-            try:
-                inferred_year = int(inferred_year) if inferred_year is not None else None
-            except (ValueError, TypeError):
-                inferred_year = student_year_of_study
-
-            return {
-                "module_name": result.get("module_name") or fallback_subject,
-                "assignment_title": result.get("assignment_title", ""),
-                "assignment_type": result.get("assignment_type", "other"),
-                "inferred_year_of_study": inferred_year,
-                "program_name": result.get("program_name") or student_program_name or "",
-                "due_date_in_document": result.get("due_date_in_document"),
-                "key_requirements": result.get("key_requirements", [])[:10],
-                "summary": result.get("summary") or fallback["summary"],
-                "confidence_score": confidence,
-                "needs_review": bool(result.get("needs_review", confidence < 0.65)),
-            }
-    except Exception as e:
-        print(f"[groq_service] analyze_assignment_context error: {e}")
-
-    return fallback
 
 
 def generate_smart_schedule(
@@ -208,22 +323,48 @@ def generate_smart_schedule(
     task_created_at: datetime,
 ) -> Dict[str, Any]:
     """
-    Generate a full AI-powered study schedule using Groq / Llama 3.3.
-
-    Args:
-        documents_data: List of {"filename": str, "text": str}
-        subject: Course/subject name
-        title: Task title
-        deadline: Task deadline (datetime)
-        task_created_at: When the task was created (datetime)
-
-    Returns full schedule dict including sessions, document_summaries, topics, tips.
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  STEP 2: GENERATE COMPLETE STUDY SCHEDULE                                │
+    │                                                                          │
+    │  This is the MAIN function that creates your study plan!                │
+    │                                                                          │
+    │  FLOW:                                                                   │
+    │  ──────                                                                  │
+    │    1. Calculate study window (start date → deadline)                    │
+    │    2. Summarize each uploaded document (calls summarize_document)       │
+    │    3. Ask AI to create day-by-day study sessions                        │
+    │    4. Return complete schedule with tips                                │
+    │                                                                          │
+    │  Input:                                                                  │
+    │    - documents_data: [{filename, text}, ...]  (from uploaded files)     │
+    │    - subject: "Data Structures"                                         │
+    │    - title: "Final Exam Prep"                                           │
+    │    - deadline: 2026-03-15                                               │
+    │    - task_created_at: 2026-03-01                                        │
+    │                                                                          │
+    │  Output:                                                                 │
+    │    {                                                                     │
+    │      "success": true,                                                   │
+    │      "extracted_topics": ["Arrays", "Linked Lists", "Trees"],           │
+    │      "ai_summary": "14-day plan covering core data structures...",      │
+    │      "ai_tips": ["Start with basics", "Practice daily"],                │
+    │      "document_summaries": [...],                                       │
+    │      "sessions": [                                                      │
+    │        {day: 1, date: "2026-03-01", topics: ["Arrays"], ...},          │
+    │        {day: 2, date: "2026-03-02", topics: ["Linked Lists"], ...}     │
+    │      ]                                                                   │
+    │    }                                                                     │
+    └─────────────────────────────────────────────────────────────────────────┘
     """
-    # ── 1. Calculate date window ──────────────────────────────────────────
+    
+    # ══════════════════════════════════════════════════════════════════════
+    # STEP 2.1: Calculate Study Window
+    # ══════════════════════════════════════════════════════════════════════
     today = datetime.utcnow().date()
-    start_date = max(task_created_at.date(), today)
+    start_date = max(task_created_at.date(), today)  # Start from today or task creation
     end_date = deadline.date()
 
+    # Ensure at least 1 day window
     if end_date <= start_date:
         end_date = start_date + timedelta(days=1)
 
@@ -231,7 +372,9 @@ def generate_smart_schedule(
     start_str = start_date.isoformat()
     end_str = end_date.isoformat()
 
-    # ── 2. Per-document summaries ─────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    # STEP 2.2: Summarize Each Uploaded Document
+    # ══════════════════════════════════════════════════════════════════════
     document_summaries: List[Dict[str, Any]] = []
     combined_texts: List[str] = []
     all_topics: List[str] = []
@@ -239,7 +382,10 @@ def generate_smart_schedule(
     for doc in documents_data:
         fname = doc.get("filename", "document")
         text = doc.get("text", "")
+        
+        # Call summarize_document for each file
         summary_obj = summarize_document(text, subject, fname)
+        
         document_summaries.append({
             "filename": fname,
             "summary": summary_obj["summary"],
@@ -250,9 +396,11 @@ def generate_smart_schedule(
         combined_texts.append(f"=== {fname} ===\n{text[:4000]}")
 
     combined_content = "\n\n".join(combined_texts)[:12000] if combined_texts else ""
-    unique_topics = list(dict.fromkeys(all_topics))  # deduplicate, preserve order
+    unique_topics = list(dict.fromkeys(all_topics))  # Remove duplicates
 
-    # ── 3. Build schedule prompt ──────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    # STEP 2.3: Build AI Prompt for Schedule Generation
+    # ══════════════════════════════════════════════════════════════════════
     has_docs = bool(combined_content.strip())
     material_section = (
         f"STUDY MATERIAL CONTENT:\n{combined_content}"
@@ -269,34 +417,48 @@ TOTAL DAYS AVAILABLE: {total_days}
 
 {material_section}
 
-Generate a complete study schedule. Return ONLY a valid JSON object (no markdown, no extra text):
+Create a SMART study schedule with specific, actionable sessions. Return ONLY valid JSON:
 {{
-  "extracted_topics": ["Topic 1", "Topic 2", "Topic 3"],
-  "ai_summary": "2-3 sentence overview of the study plan and approach",
-  "ai_tips": ["Study tip 1", "Study tip 2", "Study tip 3", "Study tip 4"],
+  "extracted_topics": ["Specific Topic 1", "Specific Topic 2", "Specific Topic 3"],
+  "ai_summary": "2-3 sentence personalized overview explaining the study approach and what will be covered",
+  "ai_tips": [
+    "Specific actionable tip #1 for this subject",
+    "Study technique tip #2 relevant to the material",
+    "Time management tip #3",
+    "Retention/memory tip #4"
+  ],
   "sessions": [
     {{
       "day": 1,
       "date": "{start_str}",
       "day_name": "Monday",
-      "topics": ["Topic for this day"],
+      "topics": ["Specific topic from material"],
       "duration_hours": 2.0,
       "focus_level": "high",
-      "tips": "Specific actionable tip for this session"
+      "tips": "SPECIFIC tip for THIS session: what to do, how to study this topic, what to focus on"
     }}
   ]
 }}
 
-STRICT RULES:
-1. All "date" values MUST be between {start_str} and {end_str} INCLUSIVE
-2. "focus_level" must be exactly "low", "medium", or "high"
-3. "duration_hours" must be a number between 0.5 and 4.0
-4. "day" starts at 1 and increments for each session
-5. Spread topics evenly — don't front-load or back-load all content
-6. Generate {min(total_days, 10)} sessions maximum, distributed across the date range
-7. Return ONLY valid JSON — no markdown fences, no explanation text"""
+IMPORTANT RULES FOR QUALITY:
+1. Topics must be SPECIFIC concepts/chapters from the material, NOT generic like "{subject}" or "Review"
+2. Session tips must be ACTIONABLE and SPECIFIC to that day's topic (e.g., "Practice 5 binary search problems" not "Study well")
+3. ai_tips must be practical advice for studying THIS subject specifically
+4. ai_summary should mention actual topics that will be covered
+5. Spread topics logically: fundamentals first, then advanced, then practice/review
+6. High focus for difficult/new topics, medium for practice, low for review
 
-    # ── 4. Call Groq ──────────────────────────────────────────────────────
+DATE RULES:
+- All dates MUST be between {start_str} and {end_str} INCLUSIVE
+- Generate {min(total_days, 10)} sessions maximum
+- focus_level: "low", "medium", or "high" only
+- duration_hours: 0.5 to 4.0
+
+Return ONLY valid JSON — no markdown, no explanation."""
+
+    # ══════════════════════════════════════════════════════════════════════
+    # STEP 2.4: Call AI and Process Response
+    # ══════════════════════════════════════════════════════════════════════
     try:
         response = client.chat.completions.create(
             model=MODEL,
@@ -308,17 +470,24 @@ STRICT RULES:
         result = _parse_json_safe(raw)
 
         if result and isinstance(result, dict) and result.get("sessions"):
-            # Validate + clamp session dates to the allowed window
+            # Validate and fix session dates
             sessions = []
             for i, s in enumerate(result["sessions"]):
                 sdate = s.get("date", start_str)
+                # Clamp dates to valid range
                 if sdate < start_str or sdate > end_str:
-                    sdate = start_str  # Clamp out-of-range dates
+                    sdate = start_str
+                
+                # Get topics, filter out generic ones
+                session_topics = s.get("topics", [subject])
+                if session_topics == [subject] or not session_topics:
+                    session_topics = [f"{subject} - Day {i+1}"]
+                    
                 sessions.append({
                     "day": s.get("day", i + 1),
                     "date": sdate,
                     "day_name": s.get("day_name", _day_name(sdate)),
-                    "topics": s.get("topics", [subject]),
+                    "topics": session_topics,
                     "duration_hours": float(s.get("duration_hours", 2.0)),
                     "focus_level": s.get("focus_level", "medium"),
                     "tips": s.get("tips", "Stay focused and take short breaks."),
@@ -330,6 +499,7 @@ STRICT RULES:
                 or [subject]
             )
 
+            # SUCCESS! Return the AI-generated schedule
             return {
                 "success": True,
                 "extracted_topics": extracted_topics[:15],
@@ -342,7 +512,9 @@ STRICT RULES:
     except Exception as e:
         print(f"[groq_service] generate_smart_schedule error: {e}")
 
-    # ── 5. Fallback schedule if AI fails ──────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    # STEP 2.5: Fallback if AI Fails
+    # ══════════════════════════════════════════════════════════════════════
     return _fallback_schedule(
         subject=subject,
         title=title,
@@ -353,51 +525,6 @@ STRICT RULES:
     )
 
 
-def _day_name(date_str: str) -> str:
-    """Return weekday name for a YYYY-MM-DD string."""
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%A")
-    except ValueError:
-        return "Day"
-
-
-def _fallback_schedule(
-    subject: str,
-    title: str,
-    start_date,
-    end_date,
-    topics: List[str],
-    document_summaries: List[Dict],
-) -> Dict[str, Any]:
-    """Generate a deterministic fallback schedule when Groq fails."""
-    total_days = (end_date - start_date).days or 1
-    num_sessions = min(total_days, 7)
-    sessions = []
-    focus_cycle = ["high", "medium", "high", "medium", "low", "high", "medium"]
-
-    for i in range(num_sessions):
-        session_date = start_date + timedelta(days=int(i * (total_days / num_sessions)))
-        topic_idx = i % len(topics) if topics else 0
-        sessions.append({
-            "day": i + 1,
-            "date": session_date.isoformat(),
-            "day_name": session_date.strftime("%A"),
-            "topics": [topics[topic_idx]] if topics else [subject],
-            "duration_hours": 2.0,
-            "focus_level": focus_cycle[i % len(focus_cycle)],
-            "tips": f"Session {i+1}: Focus on understanding the core concepts before moving on.",
-        })
-
-    return {
-        "success": True,
-        "extracted_topics": topics[:10] or [subject],
-        "ai_summary": f"Study plan for {title} covering {subject} over {total_days} days.",
-        "ai_tips": [
-            "Review material before each session",
-            "Take 10-minute breaks every hour",
-            "Use active recall techniques",
-            "Summarise key points after each session",
-        ],
-        "document_summaries": document_summaries,
-        "sessions": sessions,
-    }
+# ==============================================================================
+# END OF FILE
+# ==============================================================================
