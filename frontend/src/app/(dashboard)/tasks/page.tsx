@@ -13,6 +13,8 @@ import {
   Plus,
   Search,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
@@ -74,6 +76,7 @@ function statusClass(value: TaskStatus) {
 }
 
 export default function TasksPage() {
+  const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +90,7 @@ export default function TasksPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(defaultForm);
+  const [taskFiles, setTaskFiles] = useState<File[]>([]);
 
   const loadTasks = async () => {
     try {
@@ -127,6 +131,7 @@ export default function TasksPage() {
   const openCreate = () => {
     setEditingTask(null);
     setForm(defaultForm);
+    setTaskFiles([]);
     setShowModal(true);
   };
 
@@ -140,7 +145,25 @@ export default function TasksPage() {
       difficulty: task.difficulty,
       status: task.status,
     });
+    setTaskFiles([]);
     setShowModal(true);
+  };
+
+  const addTaskFiles = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+    const allowed = [".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg"];
+    const valid = Array.from(newFiles).filter((f) =>
+      allowed.some((ext) => f.name.toLowerCase().endsWith(ext))
+    );
+
+    setTaskFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name));
+      return [...prev, ...valid.filter((f) => !existing.has(f.name))];
+    });
+  };
+
+  const removeTaskFile = (filename: string) => {
+    setTaskFiles((prev) => prev.filter((f) => f.name !== filename));
   };
 
   const submitForm = async (event: React.FormEvent) => {
@@ -158,22 +181,51 @@ export default function TasksPage() {
         status: form.status,
       };
 
+      let createdTaskId: string | null = null;
+
       if (editingTask) {
         await apiFetch(`/tasks/${editingTask.id}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         });
       } else {
-        await apiFetch("/tasks", {
+        const createdTask = await apiFetch("/tasks", {
           method: "POST",
           body: JSON.stringify(payload),
         });
+        createdTaskId = createdTask?.id || null;
+
+        // If assignment files were uploaded on create, trigger smart analysis immediately.
+        if (createdTaskId && taskFiles.length > 0) {
+          const formData = new FormData();
+          formData.append("task_id", createdTaskId);
+          taskFiles.forEach((file) => formData.append("files", file));
+
+          const scheduleRes = await fetch(`${API}/schedule/generate-smart`, {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+
+          const scheduleData = await scheduleRes.json().catch(() => ({}));
+          if (!scheduleRes.ok) {
+            throw new Error(
+              scheduleData?.detail ||
+                "Task created, but assignment file processing failed."
+            );
+          }
+        }
       }
 
       setShowModal(false);
       setForm(defaultForm);
       setEditingTask(null);
+      setTaskFiles([]);
       await loadTasks();
+
+      if (createdTaskId && taskFiles.length > 0) {
+        router.push(`/planner?task_id=${createdTaskId}`);
+      }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to save task";
       setError(message);
@@ -376,7 +428,10 @@ export default function TasksPage() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
             <h2 className="text-lg font-semibold text-slate-900">{editingTask ? "Edit Task" : "Create Task"}</h2>
-            <p className="mt-1 text-sm text-slate-500">Fill task details and save changes.</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Fill task details and save changes.
+              {!editingTask ? " You can also upload assignment files now." : ""}
+            </p>
 
             <form onSubmit={submitForm} className="mt-4 space-y-3">
               <input
@@ -430,10 +485,52 @@ export default function TasksPage() {
                 </select>
               </div>
 
+              {!editingTask && (
+                <div className="rounded-xl border border-slate-200 p-3">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Assignment files (optional)
+                  </label>
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 hover:border-blue-300 hover:bg-blue-50">
+                    <Upload size={14} />
+                    Upload PDF, DOCX, PPTX, PNG, JPG
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg"
+                      onChange={(e) => addTaskFiles(e.target.files)}
+                      className="hidden"
+                    />
+                  </label>
+                  {taskFiles.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      {taskFiles.map((file) => (
+                        <div
+                          key={file.name}
+                          className="flex items-center justify-between rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700"
+                        >
+                          <span className="truncate">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeTaskFile(file.name)}
+                            className="ml-2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            aria-label={`Remove ${file.name}`}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setTaskFiles([]);
+                  }}
                   className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Cancel

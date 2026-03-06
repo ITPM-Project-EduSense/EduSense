@@ -16,6 +16,8 @@ async def update_profile(
 
     current_user.full_name = payload.full_name.strip()
     current_user.bio = payload.bio
+    current_user.program_name = payload.program_name
+    current_user.year_of_study = payload.year_of_study
 
     await current_user.save()
 
@@ -26,5 +28,7 @@ async def update_profile(
             "full_name": current_user.full_name,
             "email": current_user.email,
             "bio": current_user.bio,
+            "program_name": current_user.program_name,
+            "year_of_study": current_user.year_of_study,
         },
     }
