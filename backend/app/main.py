@@ -44,15 +44,30 @@ app = FastAPI(
 )
 
 
+ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+}
+
+
+def _cors_error_headers(request: Request) -> dict:
+    """Attach CORS headers to error responses so browser can read the real error."""
+    origin = request.headers.get("origin")
+    if origin in ALLOWED_ORIGINS:
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}
+
+
 # -------------------------------
 # CORS Configuration
 # -------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js frontend
-        "http://127.0.0.1:3000",  # Alternative localhost
-    ],
+    allow_origins=list(ALLOWED_ORIGINS),
     allow_credentials=True,  # Required for httpOnly cookies
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
@@ -69,6 +84,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
+        headers=_cors_error_headers(request),
     )
 
 
@@ -78,6 +94,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors()},
+        headers=_cors_error_headers(request),
     )
 
 
@@ -92,6 +109,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"detail": f"Internal server error: {str(exc)}"},
+        headers=_cors_error_headers(request),
     )
 
 
