@@ -31,11 +31,18 @@ INTERNAL HELPERS (Private):
 """
 
 import json
+import importlib
 import re
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
-from groq import Groq
+GroqClient = Any
+try:
+    _Groq = getattr(importlib.import_module("groq"), "Groq")
+    _GROQ_IMPORT_ERROR: Optional[Exception] = None
+except Exception as e:
+    _Groq = None
+    _GROQ_IMPORT_ERROR = e
 from app.core.config import settings
 
 
@@ -43,7 +50,32 @@ from app.core.config import settings
 # CONFIGURATION
 # ==============================================================================
 
-client = Groq(api_key=settings.GROQ_API_KEY)
+client: Optional[GroqClient] = None
+_groq_unavailable_logged = False
+
+
+def _get_client() -> Optional[GroqClient]:
+    """Return a ready Groq client or None when unavailable."""
+    global client, _groq_unavailable_logged
+    if _GROQ_IMPORT_ERROR is not None:
+        if not _groq_unavailable_logged:
+            print(f"[groq_service] Groq SDK unavailable: {_GROQ_IMPORT_ERROR}")
+            _groq_unavailable_logged = True
+        return None
+
+    if client is not None:
+        return client
+
+    api_key = (settings.GROQ_API_KEY or "").strip()
+    if not api_key:
+        return None
+
+    try:
+        client = _Groq(api_key=api_key)  # type: ignore[operator]
+        return client
+    except Exception as e:
+        print(f"[groq_service] Groq client init failed: {e}")
+        return None
 MODEL = "llama-3.3-70b-versatile"  # Free tier model
 
 
@@ -276,7 +308,11 @@ RULES:
 - Do not include generic placeholders"""
 
     try:
-        response = client.chat.completions.create(
+        active_client = _get_client()
+        if not active_client:
+            raise RuntimeError("Groq client unavailable")
+
+        response = active_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
@@ -459,8 +495,19 @@ Return ONLY valid JSON — no markdown, no explanation."""
     # ══════════════════════════════════════════════════════════════════════
     # STEP 2.4: Call AI and Process Response
     # ══════════════════════════════════════════════════════════════════════
+    active_client = _get_client()
+    if not active_client:
+        return _fallback_schedule(
+            subject=subject,
+            title=title,
+            start_date=start_date,
+            end_date=end_date,
+            topics=unique_topics or [subject],
+            document_summaries=document_summaries,
+        )
+
     try:
-        response = client.chat.completions.create(
+        response = active_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=4096,
