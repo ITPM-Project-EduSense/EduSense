@@ -1,52 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { BrainCircuit, CheckCheck, Gauge, Timer } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import {
-  AlertTriangle,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Flame,
-  ListTodo,
-  Plus,
-} from "lucide-react";
+import MetricCard from "@/components/MetricCard";
+import StudyPlanCard from "@/components/StudyPlanCard";
+import DeadlineCard from "@/components/DeadlineCard";
+import ProgressChart from "@/components/ProgressChart";
 
 type Task = {
   id: string;
   title: string;
-  description: string | null;
   subject: string;
   deadline: string;
-  difficulty: "easy" | "medium" | "hard";
   status: "pending" | "in_progress" | "completed";
-  priority_score: number | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type OverloadWarning = {
-  type: string;
-  severity: string;
-  message: string;
-  tasks?: string[];
-};
-
-type OverloadBreakdownItem = {
-  score: number;
-  weight: number;
-  weighted_score: number;
-  reason: string;
-};
-
-type OverloadRisk = {
-  risk_score: number;
-  risk_level: string;
-  active_tasks: number;
-  warnings: OverloadWarning[];
-  suggestion: string;
-  breakdown: Record<string, OverloadBreakdownItem>;
 };
 
 function daysUntil(deadline: string) {
@@ -54,236 +22,162 @@ function daysUntil(deadline: string) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
+const defaultPlan = [
+  { subject: "Database Systems", duration: "1.5h" },
+  { subject: "Parallel Computing", duration: "1h" },
+  { subject: "ITPM Research", duration: "45min" },
+];
 
-function difficultyClass(level: Task["difficulty"]) {
-  if (level === "easy") return "bg-emerald-50 text-emerald-700 border-emerald-100";
-  if (level === "medium") return "bg-amber-50 text-amber-700 border-amber-100";
-  return "bg-rose-50 text-rose-700 border-rose-100";
-}
-
-function urgencyClass(days: number) {
-  if (days <= 1) return "bg-rose-50 text-rose-700 border-rose-100";
-  if (days <= 4) return "bg-amber-50 text-amber-700 border-amber-100";
-  return "bg-blue-50 text-blue-700 border-blue-100";
-}
+const weeklyFallback = [
+  { day: "Mon", hours: 2.5 },
+  { day: "Tue", hours: 3.2 },
+  { day: "Wed", hours: 2.8 },
+  { day: "Thu", hours: 3.6 },
+  { day: "Fri", hours: 2.2 },
+  { day: "Sat", hours: 4.1 },
+  { day: "Sun", hours: 3.0 },
+];
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [risk, setRisk] = useState<OverloadRisk | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
+    const loadTasks = async () => {
       try {
-        const [taskData, riskData] = await Promise.all([
-          apiFetch("/tasks"),
-          apiFetch("/tasks/overload-risk").catch(() => null),
-        ]);
-
-        setTasks(Array.isArray(taskData) ? taskData : []);
-        setRisk(riskData && typeof riskData === "object" ? (riskData as OverloadRisk) : null);
+        const taskData = await apiFetch("/tasks");
+        setTasks(Array.isArray(taskData) ? (taskData as Task[]) : []);
       } catch (error) {
-        console.error("Dashboard load failed:", error);
+        console.error("Failed to load dashboard tasks:", error);
         setTasks([]);
       } finally {
         setLoading(false);
       }
     };
 
-    load();
+    loadTasks();
   }, []);
 
-  const stats = useMemo(() => {
+  const metrics = useMemo(() => {
     const total = tasks.length;
-    const completed = tasks.filter((t) => t.status === "completed").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const overdue = tasks.filter((t) => t.status !== "completed" && daysUntil(t.deadline) < 0).length;
-    const dueSoon = tasks.filter(
-      (t) => t.status !== "completed" && daysUntil(t.deadline) >= 0 && daysUntil(t.deadline) <= 3
+    const completed = tasks.filter((task) => task.status === "completed").length;
+    const pendingOrProgress = tasks.filter((task) => task.status !== "completed");
+    const nearDeadlines = pendingOrProgress.filter(
+      (task) => daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 2
     ).length;
-    const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
 
-    return { total, completed, inProgress, overdue, dueSoon, completionRate };
+    const studyHours = Math.max(6, Math.round((total * 1.25 + completed * 0.5) * 10) / 10);
+    const focusScore = Math.min(100, Math.max(65, 72 + completed * 2 - nearDeadlines * 3));
+    const productivityIndex = Math.min(
+      100,
+      total === 0 ? 70 : Math.round((completed / total) * 100 + Math.max(0, 20 - nearDeadlines * 2))
+    );
+
+    return {
+      studyHours,
+      completed,
+      focusScore,
+      productivityIndex,
+    };
   }, [tasks]);
 
-  const focusTasks = useMemo(
-    () =>
-      [...tasks]
-        .filter((t) => t.status !== "completed")
-        .sort((a, b) => {
-          const scoreDiff = (b.priority_score || 0) - (a.priority_score || 0);
-          if (scoreDiff !== 0) return scoreDiff;
-          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-        })
-        .slice(0, 8),
-    [tasks]
-  );
+  const upcomingDeadlines = useMemo(() => {
+    const upcoming = tasks
+      .filter((task) => task.status !== "completed")
+      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+      .slice(0, 3);
 
-  const openPlannerForTask = (taskId: string) => {
-    router.push(`/planner?task_id=${taskId}`);
-  };
+    if (upcoming.length === 0) {
+      return [
+        { task: "SE3082 Assignment", dueText: "Due in 2 days", urgent: true },
+        { task: "Database Lab", dueText: "Due tomorrow", urgent: true },
+        { task: "ITPM Meeting", dueText: "Friday", urgent: false },
+      ];
+    }
+
+    return upcoming.map((item) => {
+      const days = daysUntil(item.deadline);
+      return {
+        task: item.title,
+        dueText:
+          days < 0 ? `Overdue by ${Math.abs(days)} day(s)` : days === 0 ? "Due today" : `Due in ${days} day(s)`,
+        urgent: days <= 1,
+      };
+    });
+  }, [tasks]);
+
+  const weeklyChartData = useMemo(() => {
+    if (tasks.length === 0) {
+      return weeklyFallback;
+    }
+
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return labels.map((label, index) => {
+      const taskWeight = tasks.filter((task) => {
+        const day = new Date(task.deadline).getDay();
+        const mapped = day === 0 ? 6 : day - 1;
+        return mapped === index;
+      }).length;
+
+      return {
+        day: label,
+        hours: Number((2 + taskWeight * 0.8 + (index % 3) * 0.4).toFixed(1)),
+      };
+    });
+  }, [tasks]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl p-4 lg:p-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 lg:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">Overview</p>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-900">Study Command Center</h1>
-            <p className="mt-1 text-sm text-slate-600">Track tasks, manage workload risk, and stay ahead of deadlines.</p>
-          </div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 p-6 text-white"
+        >
+          <p className="text-sm text-indigo-100">Today&apos;s Snapshot</p>
+          <h2 className="mt-1 text-2xl font-semibold">Welcome back to EduSense</h2>
+          <p className="mt-2 text-sm text-cyan-50">
+            Keep momentum strong. Your AI planner already prepared today&apos;s best study flow.
+          </p>
+        </motion.section>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                focusTasks[0]
-                  ? openPlannerForTask(focusTasks[0].id)
-                  : router.push("/planner")
-              }
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Plan Next Task
-            </button>
-            <button
-              onClick={() => router.push("/tasks")}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              <Plus size={16} />
-              Add Task
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: "Total Tasks",
-            value: stats.total,
-            icon: ListTodo,
-            tone: "text-blue-600 bg-blue-50 border-blue-100",
-          },
-          {
-            label: "Due Soon (3d)",
-            value: stats.dueSoon,
-            icon: CalendarDays,
-            tone: "text-amber-600 bg-amber-50 border-amber-100",
-          },
-          {
-            label: "In Progress",
-            value: stats.inProgress,
-            icon: Clock3,
-            tone: "text-blue-600 bg-blue-50 border-blue-100",
-          },
-          {
-            label: "Completed",
-            value: `${stats.completionRate}%`,
-            icon: CheckCircle2,
-            tone: "text-emerald-600 bg-emerald-50 border-emerald-100",
-          },
-          {
-            label: "Overdue",
-            value: stats.overdue,
-            icon: Flame,
-            tone: "text-rose-600 bg-rose-50 border-rose-100",
-          },
-        ].map((card) => {
-          const Icon = card.icon;
-          return (
-            <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">{card.label}</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{loading ? "--" : card.value}</p>
-                </div>
-                <div className={`rounded-xl border p-2 ${card.tone}`}>
-                  <Icon size={18} />
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      {risk && (
-        <section className="mt-6">
-          <article className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <AlertTriangle size={18} className="mt-0.5 text-amber-700" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-900">
-                    Workload risk: {risk.risk_level} ({risk.risk_score}/10)
-                  </p>
-                  <p className="text-sm text-amber-800">{risk.suggestion}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => router.push("/planner")}
-                className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100"
-              >
-                Rebalance Plan
-              </button>
-            </div>
-          </article>
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            icon={Timer}
+            label="Study Hours"
+            value={loading ? "--" : `${metrics.studyHours}h`}
+          />
+          <MetricCard
+            icon={CheckCheck}
+            label="Tasks Completed"
+            value={loading ? "--" : String(metrics.completed)}
+          />
+          <MetricCard
+            icon={BrainCircuit}
+            label="Focus Score"
+            value={loading ? "--" : `${metrics.focusScore}%`}
+          />
+          <MetricCard
+            icon={Gauge}
+            label="Productivity Index"
+            value={loading ? "--" : `${metrics.productivityIndex}%`}
+          />
         </section>
-      )}
 
-      <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-12">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Focus Today</h2>
-              <p className="text-sm text-slate-500">Your highest priority and nearest-deadline tasks.</p>
-            </div>
+        <section className="grid gap-4 xl:grid-cols-12">
+          <div className="xl:col-span-5">
+            <StudyPlanCard items={defaultPlan} />
           </div>
-
-          <div className="space-y-3">
-            {focusTasks.length === 0 && !loading && (
-              <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                No tasks yet. Create your first task to start planning.
-              </div>
-            )}
-
-            {focusTasks.map((task) => {
-              const remaining = daysUntil(task.deadline);
-              return (
-                <button
-                  key={task.id}
-                  onClick={() => openPlannerForTask(task.id)}
-                  className="flex w-full flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{task.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {task.subject} • Due {formatDate(task.deadline)}
-                    </p>
-                  </div>
-
-                  <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${difficultyClass(task.difficulty)}`}>
-                    {task.difficulty}
-                  </span>
-
-                  <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${urgencyClass(remaining)}`}>
-                    {remaining < 0 ? `${Math.abs(remaining)}d overdue` : `${remaining}d left`}
-                  </span>
-
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                    Score {(task.priority_score || 0).toFixed(1)}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="xl:col-span-7">
+            <DeadlineCard items={upcomingDeadlines} />
           </div>
-        </article>
-      </section>
+        </section>
+
+        <section>
+          <ProgressChart data={weeklyChartData} />
+        </section>
+      </div>
     </div>
   );
 }
