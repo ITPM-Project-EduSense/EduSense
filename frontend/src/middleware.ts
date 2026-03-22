@@ -14,6 +14,7 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/ai") ||
     request.nextUrl.pathname.startsWith("/analytics") ||
     request.nextUrl.pathname.startsWith("/notifications") ||
+    request.nextUrl.pathname.startsWith("/ai") ||
     request.nextUrl.pathname.startsWith("/settings");
   // Protect dashboard pages - require authentication
   if (!token && isDashboardPage) {

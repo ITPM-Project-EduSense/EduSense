@@ -14,6 +14,9 @@ import {
   ListTodo,
   Plus,
   TrendingUp,
+  BrainCircuit,
+  Settings2,
+  FileText
 } from "lucide-react";
 
 type Task = {
@@ -80,18 +83,22 @@ export default function DashboardPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [risk, setRisk] = useState<OverloadRisk | null>(null);
+  const [docsStats, setDocsStats] = useState<{ materials_count: number; concepts_count: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [studentLevel, setStudentLevel] = useState<string>("Intermediate");
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [taskData, riskData] = await Promise.all([
+        const [taskData, riskData, docsData] = await Promise.all([
           apiFetch("/tasks"),
           apiFetch("/tasks/overload-risk").catch(() => null),
+          apiFetch("/documents/status").catch(() => null),
         ]);
 
         setTasks(Array.isArray(taskData) ? taskData : []);
         setRisk(riskData && typeof riskData === "object" ? (riskData as OverloadRisk) : null);
+        setDocsStats(docsData && typeof docsData === "object" ? docsData : null);
       } catch (error) {
         console.error("Dashboard load failed:", error);
         setTasks([]);
@@ -101,6 +108,8 @@ export default function DashboardPage() {
     };
 
     load();
+    const savedLevel = localStorage.getItem("edu_student_level");
+    if (savedLevel) setStudentLevel(savedLevel);
   }, []);
 
   const stats = useMemo(() => {
@@ -143,6 +152,11 @@ export default function DashboardPage() {
 
   const openPlannerForTask = (taskId: string) => {
     router.push(`/planner?task_id=${taskId}`);
+  };
+
+  const updateStudentLevel = (level: string) => {
+    setStudentLevel(level);
+    localStorage.setItem("edu_student_level", level);
   };
 
   return (
@@ -219,6 +233,80 @@ export default function DashboardPage() {
             </article>
           );
         })}
+      </section>
+
+      {/* AI Coach Analysis Section */}
+      <section className="mt-6">
+        <article className="rounded-2xl border border-indigo-200 bg-indigo-50/30 p-5 xl:p-6 overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+            <BrainCircuit size={120} />
+          </div>
+          
+          <div className="mb-5 flex items-center gap-2">
+            <BrainCircuit size={20} className="text-indigo-600" />
+            <h2 className="text-lg font-bold text-indigo-900">AI Coach Analysis</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+            {/* Student Level Manager */}
+            <div className="rounded-xl border border-white bg-white/70 p-4 shadow-sm backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Settings2 size={16} className="text-indigo-500" />
+                <h3 className="text-sm font-semibold text-slate-800">Assigned Profile Level</h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                Controls the complexity and depth the AI Coach will use when formulating answers and roadmaps.
+              </p>
+              <select 
+                value={studentLevel} 
+                onChange={(e) => updateStudentLevel(e.target.value)}
+                className="w-full rounded-lg border border-indigo-100 bg-white p-2.5 text-sm font-medium text-indigo-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="Beginner">Beginner (Foundational)</option>
+                <option value="Intermediate">Intermediate (Standard)</option>
+                <option value="Advanced">Advanced (Academically Deep)</option>
+              </select>
+            </div>
+
+            {/* Knowledge Base */}
+            <div className="rounded-xl border border-white bg-white/70 p-4 shadow-sm backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText size={16} className="text-indigo-500" />
+                <h3 className="text-sm font-semibold text-slate-800">Knowledge Attachments</h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                Data vectors the AI uses directly to generate factual guidance for you.
+              </p>
+              <div className="flex items-center justify-between mt-auto pt-2">
+                <div className="text-center">
+                   <p className="text-2xl font-bold text-indigo-700">{docsStats?.materials_count || 0}</p>
+                   <p className="text-xs font-semibold text-slate-500 uppercase">PDFs Indexed</p>
+                </div>
+                <div className="h-8 w-px bg-indigo-100"></div>
+                <div className="text-center">
+                   <p className="text-2xl font-bold text-indigo-700">{docsStats?.concepts_count || 0}</p>
+                   <p className="text-xs font-semibold text-slate-500 uppercase">Concepts Learnt</p>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Productivity Judgment */}
+            <div className="rounded-xl border border-white bg-white/70 p-4 shadow-sm backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp size={16} className="text-indigo-500" />
+                <h3 className="text-sm font-semibold text-slate-800">AI Productivity Scan</h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-2">Based on completion metrics and AI evaluation of urgency.</p>
+              <div className="mt-2 flex items-center justify-center p-3 rounded-lg border border-indigo-100 bg-indigo-50/50">
+                <p className="text-sm font-semibold text-indigo-900">
+                  {stats.completionRate < 30 ? "Momentum needs a push! Start small." 
+                  : stats.completionRate < 70 ? "Steady momentum. Keep planning effectively." 
+                  : "Excellent consistency. You are on track!"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
       </section>
 
       <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
