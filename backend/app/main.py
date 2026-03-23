@@ -8,6 +8,7 @@ from app.routes.schedule_routes import router as schedule_router
 from app.routes.auth_routes import router as auth_router
 from app.routes.users_routes import router as users_router
 from app.routes.document_route import router as document_router
+from app.routes.group_routes import router as group_router
 
 
 # -------------------------------
@@ -65,6 +66,7 @@ app.include_router(schedule_router, prefix="/api", tags=["Schedule"])
 app.include_router(auth_router, prefix="/api", tags=["Auth"])
 app.include_router(users_router, prefix="/api", tags=["Users"])
 app.include_router(document_router, prefix="/api", tags=["Documents"])
+app.include_router(group_router, prefix="/api", tags=["Groups"])
 
 
 # -------------------------------
