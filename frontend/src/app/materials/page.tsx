@@ -54,7 +54,7 @@ const MOCK_MATERIALS: Record<string, { title: string; type: string; size: string
         { title: "Past Year Solutions.pptx", type: "PPTX", size: "3.2 MB" },
     ],
     ST2334: [
-        { title: "Probability Formulae.pdf", type: "PDF", size: "640 KB" },
+        { title: "Probability Formulas.pdf", type: "PDF", size: "640 KB" },
         { title: "Tutorial Solutions Week 5.pdf", type: "PDF", size: "770 KB" },
     ],
     CS2103: [
