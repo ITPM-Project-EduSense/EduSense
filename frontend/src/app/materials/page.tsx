@@ -54,7 +54,7 @@ const MOCK_MATERIALS: Record<string, { title: string; type: string; size: string
         { title: "Past Year Solutions.pptx", type: "PPTX", size: "3.2 MB" },
     ],
     ST2334: [
-        { title: "Probability Formulas.pdf", type: "PDF", size: "640 KB" },
+        { title: "Probability Formula.pdf", type: "PDF", size: "640 KB" },
         { title: "Tutorial Solutions Week 5.pdf", type: "PDF", size: "770 KB" },
     ],
     CS2103: [
@@ -136,6 +136,7 @@ export default function PeerConnectHome() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedModule, setSelectedModule] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState("All");
+    const [searchQuery, setSearchQuery] = useState("");
 
     // Form state
     const [groupName, setGroupName] = useState("");
@@ -146,8 +147,10 @@ export default function PeerConnectHome() {
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
 
-    // Join state — tracks group ids the current user has joined this session
-    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(new Set());
+    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(
+        () => new Set<string>(JSON.parse(localStorage.getItem("joinedGroups") ?? "[]"))
+    );
+    useEffect(() => { localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups])); }, [joinedGroups]);
     const [joiningId, setJoiningId] = useState<string | null>(null);
 
     // Drawer state
@@ -167,10 +170,11 @@ export default function PeerConnectHome() {
         })();
     }, []);
 
-    const filteredGroups =
-        activeFilter === "All"
-            ? groups
-            : groups.filter((g) => g.module === activeFilter);
+    const filteredGroups = groups.filter((g) => {
+        const q = searchQuery.toLowerCase();
+        return (activeFilter === "All" || g.module === activeFilter) &&
+            (!q || g.name.toLowerCase().includes(q) || g.module.toLowerCase().includes(q) || g.tags.some(t => t.toLowerCase().includes(q)));
+    });
 
     // ── Create group ──
     const handleCreate = async () => {
@@ -1037,6 +1041,17 @@ export default function PeerConnectHome() {
                             </svg>
                             Create a Study Group
                         </button>
+                    </div>
+
+                    {/* SEARCH */}
+                    <div style={{ marginBottom: "2rem", position: "relative" }}>
+                        <input
+                            style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 12, padding: "0.7rem 1rem 0.7rem 2.6rem", fontSize: "0.9rem", fontFamily: "'DM Sans',sans-serif", outline: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+                            placeholder="Search groups by name, module or tag…"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <svg style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", color: "#9A9AB0" }} width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                     </div>
 
                     {/* MODULES */}

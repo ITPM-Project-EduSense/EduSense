@@ -1,5 +1,6 @@
-from typing import List
-from fastapi import APIRouter, HTTPException, status, Depends
+import re
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from beanie import PydanticObjectId
 
 from app.models.study_group import StudyGroup, StudyGroupCreate, StudyGroupResponse
@@ -59,6 +60,29 @@ async def list_groups():
     groups = await StudyGroup.find_all().to_list()
     groups.sort(key=lambda g: g.created_at, reverse=True)
     return [group_to_response(g) for g in groups]
+
+
+# ─── GET /groups/search?q= ─── Search groups by name / module / tag ───
+@router.get(
+    "/search",
+    response_model=List[StudyGroupResponse],
+    summary="Search study groups",
+)
+async def search_groups(q: Optional[str] = Query(default="", max_length=100)):
+    """Case-insensitive search across group name, module code, and tags."""
+    if not q or not q.strip():
+        groups = await StudyGroup.find_all().to_list()
+        groups.sort(key=lambda g: g.created_at, reverse=True)
+        return [group_to_response(g) for g in groups]
+
+    pattern = re.compile(re.escape(q.strip()), re.IGNORECASE)
+    groups = await StudyGroup.find_all().to_list()
+    results = [
+        g for g in groups
+        if pattern.search(g.name) or pattern.search(g.module) or any(pattern.search(t) for t in g.tags)
+    ]
+    results.sort(key=lambda g: g.created_at, reverse=True)
+    return [group_to_response(g) for g in results]
 
 
 # ─── POST /groups/{group_id}/join ─── Join a group ───
