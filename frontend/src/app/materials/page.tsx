@@ -153,8 +153,8 @@ export default function PeerConnectHome() {
     useEffect(() => { localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups])); }, [joinedGroups]);
     const [joiningId, setJoiningId] = useState<string | null>(null);
 
-    // Drawer state
-    const [drawerGroup, setDrawerGroup] = useState<Group | null>(null);
+    // Selected group for materials page
+    const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
     // ── Fetch groups on mount ──
     useEffect(() => {
@@ -221,7 +221,7 @@ export default function PeerConnectHome() {
             const data = await apiFetch(`/groups/${groupId}/${isJoined ? "leave" : "join"}`, { method: "POST" });
             const updated = apiGroupToGroup(data);
             setGroups((prev) => prev.map((g) => (g.id === groupId ? updated : g)));
-            setDrawerGroup((prev) => prev?.id === groupId ? updated : prev);
+            setSelectedGroup((prev) => prev?.id === groupId ? updated : prev);
         } catch {
             // keep optimistic UI state even if API call fails
         } finally {
@@ -517,7 +517,7 @@ export default function PeerConnectHome() {
           border-radius: 16px;
           padding: 1.4rem;
           transition: all 0.2s ease;
-          cursor: default;
+          cursor: pointer;
           box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
         .group-card:hover {
@@ -756,126 +756,198 @@ export default function PeerConnectHome() {
           margin: 3rem 0;
         }
 
-        /* GROUP CARD — clickable hint */
-        .group-card { cursor: pointer; }
-
-        /* DRAWER OVERLAY */
-        .drawer-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.45);
-          backdrop-filter: blur(4px);
-          z-index: 150;
+        /* MATERIALS PAGE */
+        .materials-page {
+          min-height: 100vh;
+          background: #D4D7DE;
+          position: relative;
+          overflow-x: hidden;
           animation: fadeIn 0.2s ease;
         }
-
-        /* DRAWER PANEL */
-        .drawer {
+        .materials-page::before {
+          content: '';
           position: fixed;
-          top: 0;
-          right: 0;
-          height: 100%;
-          width: 420px;
-          max-width: 95vw;
-          background: #FFFFFF;
-          border-left: 1px solid rgba(0,0,0,0.09);
-          box-shadow: -16px 0 60px rgba(0,0,0,0.12);
-          z-index: 151;
-          display: flex;
-          flex-direction: column;
-          animation: slideIn 0.28s cubic-bezier(0.32,0,0.2,1);
-          overflow: hidden;
+          top: -20%;
+          left: -10%;
+          width: 600px;
+          height: 600px;
+          background: radial-gradient(circle, rgba(255,107,53,0.07) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
         }
-        @keyframes slideIn {
-          from { transform: translateX(100%); }
-          to   { transform: translateX(0); }
+        .materials-page::after {
+          content: '';
+          position: fixed;
+          bottom: -20%;
+          right: -10%;
+          width: 500px;
+          height: 500px;
+          background: radial-gradient(circle, rgba(78,205,196,0.06) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .materials-main {
+          max-width: 860px;
+          margin: 0 auto;
+          padding: 3rem 2rem 6rem;
+          position: relative;
+          z-index: 1;
         }
 
-        /* DRAWER HEADER */
-        .drawer-header {
-          padding: 1.5rem 1.5rem 1.25rem;
-          border-bottom: 1px solid rgba(0,0,0,0.07);
-          flex-shrink: 0;
-        }
-        .drawer-header-top {
-          display: flex;
+        /* Back button */
+        .back-btn {
+          display: inline-flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.75rem;
-        }
-        .drawer-close {
-          width: 32px; height: 32px;
-          border-radius: 8px;
-          background: rgba(0,0,0,0.06);
-          border: none;
+          gap: 0.5rem;
+          background: #FFFFFF;
+          border: 1px solid rgba(0,0,0,0.1);
+          border-radius: 10px;
+          padding: 0.55rem 1.1rem;
+          font-family: 'Syne', sans-serif;
+          font-weight: 600;
+          font-size: 0.85rem;
+          color: #5A5A72;
           cursor: pointer;
-          color: #6B6B8A;
-          font-size: 1.2rem;
-          display: flex; align-items: center; justify-content: center;
-          transition: all 0.15s;
-          flex-shrink: 0;
+          transition: all 0.15s ease;
+          margin-bottom: 2.5rem;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
-        .drawer-close:hover { background: rgba(0,0,0,0.11); color: #1A1A2E; }
-        .drawer-group-name {
+        .back-btn:hover {
+          background: #F5F5F8;
+          color: #1A1A2E;
+          border-color: rgba(0,0,0,0.18);
+        }
+
+        /* Group hero on materials page */
+        .mat-group-hero {
+          background: #FFFFFF;
+          border: 1px solid rgba(0,0,0,0.08);
+          border-radius: 20px;
+          padding: 2rem 2.25rem;
+          margin-bottom: 2.5rem;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 1.5rem;
+          flex-wrap: wrap;
+        }
+        .mat-group-hero-left { flex: 1; min-width: 0; }
+        .mat-group-title {
           font-family: 'Syne', sans-serif;
           font-weight: 800;
-          font-size: 1.25rem;
-          letter-spacing: -0.02em;
+          font-size: 1.8rem;
+          letter-spacing: -0.03em;
           color: #1A1A2E;
-          flex: 1;
-          margin-right: 0.75rem;
+          margin-bottom: 0.75rem;
         }
-        .drawer-meta {
+        .mat-group-meta {
           display: flex;
           align-items: center;
           gap: 0.75rem;
           flex-wrap: wrap;
+          margin-bottom: 1rem;
         }
-        .drawer-badge {
+        .mat-module-badge {
           display: inline-flex;
           align-items: center;
-          gap: 0.35rem;
-          padding: 0.28rem 0.7rem;
+          gap: 0.4rem;
+          padding: 0.3rem 0.75rem;
           border-radius: 100px;
-          font-size: 0.72rem;
-          font-weight: 600;
+          font-size: 0.75rem;
+          font-weight: 700;
           font-family: 'Syne', sans-serif;
           letter-spacing: 0.03em;
         }
-        .drawer-schedule {
-          font-size: 0.82rem;
+        .mat-schedule {
+          font-size: 0.85rem;
           color: #7A7A96;
           display: flex;
           align-items: center;
           gap: 0.4rem;
         }
-
-        /* DRAWER BODY */
-        .drawer-body {
-          flex: 1;
-          overflow-y: auto;
-          padding: 1.5rem;
+        .mat-members-text {
+          font-size: 0.82rem;
+          color: #9A9AB0;
+        }
+        .mat-tags {
           display: flex;
-          flex-direction: column;
-          gap: 2rem;
+          gap: 0.4rem;
+          flex-wrap: wrap;
         }
 
-        /* DRAWER SECTION */
-        .drawer-section-title {
+        /* Join button on materials page */
+        .mat-join-btn {
+          padding: 0.75rem 1.75rem;
+          border-radius: 12px;
+          border: none;
+          font-family: 'Syne', sans-serif;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          align-self: flex-start;
+        }
+        .mat-join-btn.not-joined {
+          background: #FF6B35;
+          color: #0A0A0F;
+        }
+        .mat-join-btn.not-joined:hover:not(:disabled) {
+          background: #ff8555;
+          box-shadow: 0 8px 30px rgba(255,107,53,0.3);
+        }
+        .mat-join-btn.is-joined {
+          background: rgba(52,211,153,0.12);
+          color: #34D399;
+          border: 1px solid rgba(52,211,153,0.3);
+        }
+        .mat-join-btn.is-joined:hover:not(:disabled) {
+          background: rgba(52,211,153,0.2);
+        }
+        .mat-join-btn.is-full {
+          background: rgba(0,0,0,0.06);
+          color: #9A9AB0;
+          cursor: not-allowed;
+        }
+        .mat-join-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+        /* Content grid */
+        .mat-content-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+        @media (max-width: 640px) {
+          .mat-content-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Content card */
+        .mat-card {
+          background: #FFFFFF;
+          border: 1px solid rgba(0,0,0,0.08);
+          border-radius: 18px;
+          padding: 1.5rem;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .mat-card-title {
           font-family: 'Syne', sans-serif;
           font-weight: 700;
           font-size: 0.78rem;
           text-transform: uppercase;
           letter-spacing: 0.08em;
           color: #9A9AB0;
-          margin-bottom: 0.85rem;
+          margin-bottom: 1.1rem;
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
-        .drawer-section-title svg { opacity: 0.7; }
+        .mat-card-title svg { opacity: 0.7; }
 
-        /* SESSION LINK ITEMS */
+        /* Session items */
         .session-list {
           display: flex;
           flex-direction: column;
@@ -899,8 +971,8 @@ export default function PeerConnectHome() {
           transform: translateX(2px);
         }
         .session-platform-dot {
-          width: 34px; height: 34px;
-          border-radius: 9px;
+          width: 36px; height: 36px;
+          border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           font-size: 0.65rem;
@@ -921,7 +993,7 @@ export default function PeerConnectHome() {
           font-size: 1rem;
         }
 
-        /* MATERIAL ITEMS */
+        /* Material items */
         .material-list {
           display: flex;
           flex-direction: column;
@@ -944,8 +1016,8 @@ export default function PeerConnectHome() {
           transform: translateX(2px);
         }
         .material-type-badge {
-          width: 34px; height: 34px;
-          border-radius: 9px;
+          width: 36px; height: 36px;
+          border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           font-size: 0.6rem;
@@ -973,278 +1045,87 @@ export default function PeerConnectHome() {
           color: #B0B0C8;
           font-size: 1rem;
         }
-
-        /* DRAWER FOOTER */
-        .drawer-footer {
-          padding: 1.25rem 1.5rem;
-          border-top: 1px solid rgba(0,0,0,0.07);
-          flex-shrink: 0;
-          background: #FFFFFF;
-        }
-        .drawer-join-btn {
-          width: 100%;
-          padding: 0.9rem;
-          border-radius: 12px;
-          border: none;
-          font-family: 'Syne', sans-serif;
-          font-weight: 700;
-          font-size: 0.95rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-        }
-        .drawer-join-btn.not-joined {
-          background: #FF6B35;
-          color: #0A0A0F;
-        }
-        .drawer-join-btn.not-joined:hover:not(:disabled) {
-          background: #ff8555;
-          box-shadow: 0 8px 30px rgba(255,107,53,0.3);
-        }
-        .drawer-join-btn.is-joined {
-          background: rgba(52,211,153,0.12);
-          color: #34D399;
-          border: 1px solid rgba(52,211,153,0.3);
-        }
-        .drawer-join-btn.is-joined:hover:not(:disabled) {
-          background: rgba(52,211,153,0.2);
-        }
-        .drawer-join-btn.is-full {
-          background: rgba(0,0,0,0.06);
-          color: #9A9AB0;
-          cursor: not-allowed;
-        }
-        .drawer-join-btn:disabled { opacity: 0.65; cursor: not-allowed; }
       `}</style>
 
-            <div className="page">
-                {/* NAV */}
-                <nav>
-                    <div className="nav-logo">Peer<span>Connect</span></div>
-                    <div className="nav-actions">
-                        <div className="nav-avatar">YO</div>
-                    </div>
-                </nav>
-
-                <main>
-                    {/* HERO */}
-                    <div className="hero">
-                        <div className="hero-label">Study Together</div>
-                        <h1>Find your <em>academic</em><br />study circle.</h1>
-                        <p>Join or create study groups tailored to your modules. Learn better, together.</p>
-                        <button className="create-btn" onClick={() => setShowCreateModal(true)}>
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                            </svg>
-                            Create a Study Group
-                        </button>
-                    </div>
-
-                    {/* SEARCH */}
-                    <div style={{ marginBottom: "2rem", position: "relative" }}>
-                        <input
-                            style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 12, padding: "0.7rem 1rem 0.7rem 2.6rem", fontSize: "0.9rem", fontFamily: "'DM Sans',sans-serif", outline: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
-                            placeholder="Search groups by name, module or tag…"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <svg style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", color: "#9A9AB0" }} width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    </div>
-
-                    {/* MODULES */}
-                    <div className="modules-section">
-                        <div className="section-title">
-                            Browse by Module
-                            <span className="count">{modules.length} modules</span>
-                        </div>
-                        <div className="modules-grid">
-                            {modules.map((mod) => (
-                                <div
-                                    key={mod.code}
-                                    className={`module-card ${selectedModule === mod.code ? "active" : ""}`}
-                                    style={{ ["--card-color" as string]: mod.color }}
-                                    onClick={() =>
-                                        setSelectedModule(selectedModule === mod.code ? null : mod.code)
-                                    }
-                                >
-                                    <div className="module-dot" />
-                                    <div className="module-code">{mod.code}</div>
-                                    <div className="module-name">{mod.name}</div>
-                                    <div className="module-members">{mod.members} in groups</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="section-divider" />
-
-                    {/* GROUPS */}
-                    <div className="groups-section">
-                        <div className="section-title">
-                            Open Groups
-                            <span className="count">
-                                {loadingGroups ? "…" : `${filteredGroups.length} available`}
-                            </span>
-                        </div>
-
-                        {/* Filters */}
-                        <div className="filter-bar">
-                            <button
-                                className={`filter-chip ${activeFilter === "All" ? "active" : ""}`}
-                                onClick={() => setActiveFilter("All")}
-                            >All</button>
-                            {modules.map((mod) => (
-                                <button
-                                    key={mod.code}
-                                    className={`filter-chip ${activeFilter === mod.code ? "active" : ""}`}
-                                    onClick={() =>
-                                        setActiveFilter(activeFilter === mod.code ? "All" : mod.code)
-                                    }
-                                >{mod.code}</button>
-                            ))}
-                        </div>
-
-                        <div className="groups-grid">
-                            {loadingGroups ? (
-                                <div className="empty-state">Loading groups…</div>
-                            ) : filteredGroups.length === 0 ? (
-                                <div className="empty-state">
-                                    No groups yet.{" "}
-                                    <span
-                                        style={{ color: "#FF6B35", cursor: "pointer" }}
-                                        onClick={() => setShowCreateModal(true)}
-                                    >
-                                        Create the first one!
-                                    </span>
-                                </div>
-                            ) : (
-                                filteredGroups.map((group) => {
-                                    const fillPct = (group.members / group.max) * 100;
-                                    const isJoined = joinedGroups.has(group.id);
-                                    const isFull = group.members >= group.max;
-                                    const isLoading = joiningId === group.id;
-                                    return (
-                                        <div key={group.id} className="group-card" onClick={() => setDrawerGroup(group)}>
-                                            <div className="group-card-top">
-                                                <div
-                                                    className="group-module-badge"
-                                                    style={{
-                                                        background: `${group.moduleColor}18`,
-                                                        color: group.moduleColor,
-                                                        border: `1px solid ${group.moduleColor}35`,
-                                                    }}
-                                                >
-                                                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: group.moduleColor, display: "inline-block" }} />
-                                                    {group.module}
-                                                </div>
-                                            </div>
-                                            <div className="group-name">{group.name}</div>
-                                            <div className="group-schedule">
-                                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
-                                                    <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                                                </svg>
-                                                {group.schedule}
-                                            </div>
-                                            {group.tags.length > 0 && (
-                                                <div className="group-tags">
-                                                    {group.tags.map((t) => (
-                                                        <span key={t} className="tag">{t}</span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="group-footer">
-                                                <div className="member-bar-wrap">
-                                                    <div className="member-bar-label">
-                                                        {group.members}/{group.max} members
-                                                    </div>
-                                                    <div className="member-bar">
-                                                        <div
-                                                            className="member-bar-fill"
-                                                            style={{
-                                                                width: `${fillPct}%`,
-                                                                background: group.moduleColor,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    className={`join-btn ${isJoined ? "joined" : "default"}`}
-                                                    disabled={isLoading || (!isJoined && isFull)}
-                                                    onClick={(e) => { e.stopPropagation(); handleJoin(group.id); }}
-                                                >
-                                                    {isLoading
-                                                        ? "…"
-                                                        : isJoined
-                                                        ? "✓ Joined"
-                                                        : isFull
-                                                        ? "Full"
-                                                        : "Join"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </div>
-                </main>
-            </div>
-
-            {/* GROUP DETAIL DRAWER */}
-            {drawerGroup && (() => {
-                const sessions = MOCK_SESSIONS[drawerGroup.module] ?? MOCK_SESSIONS.default;
-                const materials = MOCK_MATERIALS[drawerGroup.module] ?? MOCK_MATERIALS.default;
+            {selectedGroup ? (() => {
+                const sessions = MOCK_SESSIONS[selectedGroup.module] ?? MOCK_SESSIONS.default;
+                const materials = MOCK_MATERIALS[selectedGroup.module] ?? MOCK_MATERIALS.default;
+                const isJoined = joinedGroups.has(selectedGroup.id);
+                const isFull = selectedGroup.members >= selectedGroup.max && !isJoined;
+                const isLoading = joiningId === selectedGroup.id;
                 return (
-                    <>
-                        <div className="drawer-overlay" onClick={() => setDrawerGroup(null)} />
-                        <div className="drawer">
-                            {/* Header */}
-                            <div className="drawer-header">
-                                <div className="drawer-header-top">
-                                    <div className="drawer-group-name">{drawerGroup.name}</div>
-                                    <button className="drawer-close" onClick={() => setDrawerGroup(null)}>×</button>
+                    <div className="materials-page">
+                        {/* NAV */}
+                        <nav>
+                            <div className="nav-logo">Peer<span>Connect</span></div>
+                            <div className="nav-actions">
+                                <div className="nav-avatar">YO</div>
+                            </div>
+                        </nav>
+
+                        <div className="materials-main">
+                            {/* Back */}
+                            <button className="back-btn" onClick={() => setSelectedGroup(null)}>
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                Back to Groups
+                            </button>
+
+                            {/* Group hero */}
+                            <div className="mat-group-hero">
+                                <div className="mat-group-hero-left">
+                                    <div className="mat-group-title">{selectedGroup.name}</div>
+                                    <div className="mat-group-meta">
+                                        <div
+                                            className="mat-module-badge"
+                                            style={{
+                                                background: `${selectedGroup.moduleColor}18`,
+                                                color: selectedGroup.moduleColor,
+                                                border: `1px solid ${selectedGroup.moduleColor}35`,
+                                            }}
+                                        >
+                                            <span style={{ width: 5, height: 5, borderRadius: "50%", background: selectedGroup.moduleColor, display: "inline-block" }} />
+                                            {selectedGroup.module}
+                                        </div>
+                                        <div className="mat-schedule">
+                                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
+                                                <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                            </svg>
+                                            {selectedGroup.schedule}
+                                        </div>
+                                        <div className="mat-members-text">{selectedGroup.members}/{selectedGroup.max} members</div>
+                                    </div>
+                                    {selectedGroup.tags.length > 0 && (
+                                        <div className="mat-tags">
+                                            {selectedGroup.tags.map((t) => (
+                                                <span key={t} className="tag">{t}</span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="drawer-meta">
-                                    <div
-                                        className="drawer-badge"
-                                        style={{
-                                            background: `${drawerGroup.moduleColor}18`,
-                                            color: drawerGroup.moduleColor,
-                                            border: `1px solid ${drawerGroup.moduleColor}35`,
-                                        }}
-                                    >
-                                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: drawerGroup.moduleColor, display: "inline-block" }} />
-                                        {drawerGroup.module}
-                                    </div>
-                                    <div className="drawer-schedule">
-                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                            <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
-                                            <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                                        </svg>
-                                        {drawerGroup.schedule}
-                                    </div>
-                                    <div style={{ fontSize: "0.78rem", color: "#9A9AB0" }}>
-                                        {drawerGroup.members}/{drawerGroup.max} members
-                                    </div>
-                                </div>
-                                {drawerGroup.tags.length > 0 && (
-                                    <div className="group-tags" style={{ marginTop: "0.75rem" }}>
-                                        {drawerGroup.tags.map((t) => (
-                                            <span key={t} className="tag">{t}</span>
-                                        ))}
-                                    </div>
-                                )}
+                                <button
+                                    className={`mat-join-btn ${isFull ? "is-full" : isJoined ? "is-joined" : "not-joined"}`}
+                                    disabled={isLoading || isFull}
+                                    onClick={() => handleJoin(selectedGroup.id)}
+                                >
+                                    {isLoading ? "…" : isJoined ? "✓ Joined — Leave" : isFull ? "Group is full" : (
+                                        <>
+                                            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                                                <path d="M6.5 1.5v10M1.5 6.5h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                            </svg>
+                                            Join group
+                                        </>
+                                    )}
+                                </button>
                             </div>
 
-                            {/* Body */}
-                            <div className="drawer-body" style={{ paddingBottom: "0.5rem" }}>
+                            {/* Content */}
+                            <div className="mat-content-grid">
                                 {/* Session Links */}
-                                <div>
-                                    <div className="drawer-section-title">
+                                <div className="mat-card">
+                                    <div className="mat-card-title">
                                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                             <path d="M7 1.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM7 4v3.5l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
@@ -1267,8 +1148,8 @@ export default function PeerConnectHome() {
                                 </div>
 
                                 {/* Study Materials */}
-                                <div>
-                                    <div className="drawer-section-title">
+                                <div className="mat-card">
+                                    <div className="mat-card-title">
                                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                             <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
                                             <path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -1294,41 +1175,184 @@ export default function PeerConnectHome() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Sticky Join/Leave footer */}
-                            {(() => {
-                                const isJoined = joinedGroups.has(drawerGroup.id);
-                                const isFull = drawerGroup.members >= drawerGroup.max && !isJoined;
-                                const isLoading = joiningId === drawerGroup.id;
-                                return (
-                                    <div className="drawer-footer">
-                                        <button
-                                            className={`drawer-join-btn ${isFull ? "is-full" : isJoined ? "is-joined" : "not-joined"}`}
-                                            disabled={isLoading || isFull}
-                                            onClick={() => handleJoin(drawerGroup.id)}
-                                        >
-                                            {isLoading ? (
-                                                "…"
-                                            ) : isJoined ? (
-                                                <>✓ Joined — Leave group</>
-                                            ) : isFull ? (
-                                                "Group is full"
-                                            ) : (
-                                                <>
-                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                                        <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                                    </svg>
-                                                    Join this group
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                );
-                            })()}
                         </div>
-                    </>
+                    </div>
                 );
-            })()}
+            })() : (
+                <div className="page">
+                    {/* NAV */}
+                    <nav>
+                        <div className="nav-logo">Peer<span>Connect</span></div>
+                        <div className="nav-actions">
+                            <div className="nav-avatar">YO</div>
+                        </div>
+                    </nav>
+
+                    <main>
+                        {/* HERO */}
+                        <div className="hero">
+                            <div className="hero-label">Study Together</div>
+                            <h1>Find your <em>academic</em><br />study circle.</h1>
+                            <p>Join or create study groups tailored to your modules. Learn better, together.</p>
+                            <button className="create-btn" onClick={() => setShowCreateModal(true)}>
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                                </svg>
+                                Create a Study Group
+                            </button>
+                        </div>
+
+                        {/* SEARCH */}
+                        <div style={{ marginBottom: "2rem", position: "relative" }}>
+                            <input
+                                style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 12, padding: "0.7rem 1rem 0.7rem 2.6rem", fontSize: "0.9rem", fontFamily: "'DM Sans',sans-serif", outline: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+                                placeholder="Search groups by name, module or tag…"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <svg style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", color: "#9A9AB0" }} width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                        </div>
+
+                        {/* MODULES */}
+                        <div className="modules-section">
+                            <div className="section-title">
+                                Browse by Module
+                                <span className="count">{modules.length} modules</span>
+                            </div>
+                            <div className="modules-grid">
+                                {modules.map((mod) => (
+                                    <div
+                                        key={mod.code}
+                                        className={`module-card ${selectedModule === mod.code ? "active" : ""}`}
+                                        style={{ ["--card-color" as string]: mod.color }}
+                                        onClick={() =>
+                                            setSelectedModule(selectedModule === mod.code ? null : mod.code)
+                                        }
+                                    >
+                                        <div className="module-dot" />
+                                        <div className="module-code">{mod.code}</div>
+                                        <div className="module-name">{mod.name}</div>
+                                        <div className="module-members">{mod.members} in groups</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="section-divider" />
+
+                        {/* GROUPS */}
+                        <div className="groups-section">
+                            <div className="section-title">
+                                Open Groups
+                                <span className="count">
+                                    {loadingGroups ? "…" : `${filteredGroups.length} available`}
+                                </span>
+                            </div>
+
+                            {/* Filters */}
+                            <div className="filter-bar">
+                                <button
+                                    className={`filter-chip ${activeFilter === "All" ? "active" : ""}`}
+                                    onClick={() => setActiveFilter("All")}
+                                >All</button>
+                                {modules.map((mod) => (
+                                    <button
+                                        key={mod.code}
+                                        className={`filter-chip ${activeFilter === mod.code ? "active" : ""}`}
+                                        onClick={() =>
+                                            setActiveFilter(activeFilter === mod.code ? "All" : mod.code)
+                                        }
+                                    >{mod.code}</button>
+                                ))}
+                            </div>
+
+                            <div className="groups-grid">
+                                {loadingGroups ? (
+                                    <div className="empty-state">Loading groups…</div>
+                                ) : filteredGroups.length === 0 ? (
+                                    <div className="empty-state">
+                                        No groups yet.{" "}
+                                        <span
+                                            style={{ color: "#FF6B35", cursor: "pointer" }}
+                                            onClick={() => setShowCreateModal(true)}
+                                        >
+                                            Create the first one!
+                                        </span>
+                                    </div>
+                                ) : (
+                                    filteredGroups.map((group) => {
+                                        const fillPct = (group.members / group.max) * 100;
+                                        const isJoined = joinedGroups.has(group.id);
+                                        const isFull = group.members >= group.max;
+                                        const isLoading = joiningId === group.id;
+                                        return (
+                                            <div key={group.id} className="group-card" onClick={() => setSelectedGroup(group)}>
+                                                <div className="group-card-top">
+                                                    <div
+                                                        className="group-module-badge"
+                                                        style={{
+                                                            background: `${group.moduleColor}18`,
+                                                            color: group.moduleColor,
+                                                            border: `1px solid ${group.moduleColor}35`,
+                                                        }}
+                                                    >
+                                                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: group.moduleColor, display: "inline-block" }} />
+                                                        {group.module}
+                                                    </div>
+                                                </div>
+                                                <div className="group-name">{group.name}</div>
+                                                <div className="group-schedule">
+                                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
+                                                        <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                                    </svg>
+                                                    {group.schedule}
+                                                </div>
+                                                {group.tags.length > 0 && (
+                                                    <div className="group-tags">
+                                                        {group.tags.map((t) => (
+                                                            <span key={t} className="tag">{t}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="group-footer">
+                                                    <div className="member-bar-wrap">
+                                                        <div className="member-bar-label">
+                                                            {group.members}/{group.max} members
+                                                        </div>
+                                                        <div className="member-bar">
+                                                            <div
+                                                                className="member-bar-fill"
+                                                                style={{
+                                                                    width: `${fillPct}%`,
+                                                                    background: group.moduleColor,
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        className={`join-btn ${isJoined ? "joined" : "default"}`}
+                                                        disabled={isLoading || (!isJoined && isFull)}
+                                                        onClick={(e) => { e.stopPropagation(); handleJoin(group.id); }}
+                                                    >
+                                                        {isLoading
+                                                            ? "…"
+                                                            : isJoined
+                                                            ? "✓ Joined"
+                                                            : isFull
+                                                            ? "Full"
+                                                            : "Join"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            )}
 
             {/* CREATE MODAL */}
             {showCreateModal && (
@@ -1380,10 +1404,21 @@ export default function PeerConnectHome() {
                                 type="number"
                                 placeholder="6"
                                 min={2}
-                                max={20}
+                                max={10}
                                 value={groupMax}
                                 onChange={(e) => setGroupMax(e.target.value)}
+                                style={parseInt(groupMax) > 10 ? { borderColor: "#EF4444" } : {}}
                             />
+                            {parseInt(groupMax) > 10 && (
+                                <div className="form-hint" style={{ color: "#EF4444", marginTop: "0.4rem" }}>
+                                    Maximum allowed is 10 members.
+                                </div>
+                            )}
+                            {parseInt(groupMax) < 2 && groupMax !== "" && (
+                                <div className="form-hint" style={{ color: "#EF4444", marginTop: "0.4rem" }}>
+                                    Minimum is 2 members.
+                                </div>
+                            )}
                         </div>
 
                         <div className="form-group">
@@ -1401,7 +1436,7 @@ export default function PeerConnectHome() {
 
                         <button
                             className="modal-submit"
-                            disabled={creating || !groupName.trim() || !groupModule || !groupSchedule.trim()}
+                            disabled={creating || !groupName.trim() || !groupModule || !groupSchedule.trim() || parseInt(groupMax) > 10 || parseInt(groupMax) < 2}
                             onClick={handleCreate}
                         >
                             {creating ? "Creating…" : "Create Group →"}
