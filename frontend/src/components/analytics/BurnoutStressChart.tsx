@@ -19,31 +19,31 @@ const LEVEL_COLOR: Record<BurnoutLevel, {
     iconBg: string; iconRing: string;
 }> = {
     Low: {
-        stroke:    "#34D399",
+        stroke: "#34D399",
         gradStart: "#34D399",
-        badge:     "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25",
-        text:      "text-emerald-400",
-        dot:       "#34D399",
-        iconBg:    "bg-emerald-500/15",
-        iconRing:  "ring-emerald-500/25",
+        badge: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25",
+        text: "text-emerald-400",
+        dot: "#34D399",
+        iconBg: "bg-emerald-500/15",
+        iconRing: "ring-emerald-500/25",
     },
     Medium: {
-        stroke:    "#FBBF24",
+        stroke: "#FBBF24",
         gradStart: "#FBBF24",
-        badge:     "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25",
-        text:      "text-amber-400",
-        dot:       "#FBBF24",
-        iconBg:    "bg-amber-500/15",
-        iconRing:  "ring-amber-500/25",
+        badge: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25",
+        text: "text-amber-400",
+        dot: "#FBBF24",
+        iconBg: "bg-amber-500/15",
+        iconRing: "ring-amber-500/25",
     },
     High: {
-        stroke:    "#F87171",
+        stroke: "#F87171",
         gradStart: "#F87171",
-        badge:     "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25",
-        text:      "text-rose-400",
-        dot:       "#F87171",
-        iconBg:    "bg-rose-500/15",
-        iconRing:  "ring-rose-500/25",
+        badge: "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25",
+        text: "text-rose-400",
+        dot: "#F87171",
+        iconBg: "bg-rose-500/15",
+        iconRing: "ring-rose-500/25",
     },
 };
 
@@ -56,15 +56,15 @@ function pointColor(score: number): string {
 // ── SVG Chart ─────────────────────────────────────────────────────────────────
 
 function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
-    const W       = 440;
-    const H       = 200;
-    const PAD     = 32;
+    const W = 440;
+    const H = 200;
+    const PAD = 32;
     const usableW = W - PAD * 2;
     const usableH = H - PAD * 2;
 
-    const trend  = burnout.weeklyTrend;
-    const stepX  = trend.length > 1 ? usableW / (trend.length - 1) : usableW;
-    const level  = burnout.level;
+    const trend = burnout.weeklyTrend;
+    const stepX = trend.length > 1 ? usableW / (trend.length - 1) : usableW;
+    const level = burnout.level;
     const colors = LEVEL_COLOR[level];
     const gradId = `burnoutGrad_${level}`;
 
@@ -78,7 +78,7 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
         if (i === 0) return `M ${pt.x},${pt.y}`;
         const prev = arr[i - 1];
         const cpx1 = prev.x + stepX * 0.4;
-        const cpx2 = pt.x  - stepX * 0.4;
+        const cpx2 = pt.x - stepX * 0.4;
         return `${acc} C ${cpx1},${prev.y} ${cpx2},${pt.y} ${pt.x},${pt.y}`;
     }, "");
 
@@ -88,7 +88,7 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
             <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor={colors.gradStart} stopOpacity="0.35" />
+                    <stop offset="0%" stopColor={colors.gradStart} stopOpacity="0.35" />
                     <stop offset="100%" stopColor={colors.gradStart} stopOpacity="0.02" />
                 </linearGradient>
             </defs>
@@ -106,7 +106,7 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
 
             {/* Grid lines */}
             {[25, 40, 70, 75].map((v) => {
-                const y   = H - PAD - (v / 100) * usableH;
+                const y = H - PAD - (v / 100) * usableH;
                 const col = v === 40 ? "rgba(52,211,153,0.2)" : v === 70 ? "rgba(248,113,113,0.2)" : "rgba(255,255,255,0.06)";
                 return (
                     <g key={v}>
@@ -162,7 +162,7 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
                     <circle
                         cx={pt.x} cy={pt.y}
                         r={i === burnout.criticalWeekIndex ? 5.5 : 3.5}
-                        fill={pointColor(pt.score)} stroke="#0f172a" strokeWidth="2"
+                        fill={pointColor(pt.score)} stroke="#ffffff" strokeWidth="2"
                     />
                     <text
                         x={pt.x} y={pt.y - 10}
@@ -204,12 +204,12 @@ function Skeleton() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="rounded-2xl bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950 border border-blue-400/35 shadow-xl shadow-blue-900/30 p-5"
+            className="rounded-2xl bg-gradient-to-br from-white via-blue-50 to-white border border-blue-200 shadow-xl shadow-blue-200/50 p-5"
         >
-            <div className="mb-1 h-5 w-44 animate-pulse rounded bg-slate-700/60" />
-            <div className="mb-4 h-3 w-36 animate-pulse rounded bg-slate-700/40" />
-            <div className="h-48 animate-pulse rounded-xl bg-blue-800/60" />
-            <div className="mt-4 h-16 animate-pulse rounded-xl bg-blue-800/60" />
+            <div className="mb-1 h-5 w-44 animate-pulse rounded bg-blue-200/60" />
+            <div className="mb-4 h-3 w-36 animate-pulse rounded bg-blue-100/60" />
+            <div className="h-48 animate-pulse rounded-xl bg-blue-100/60" />
+            <div className="mt-4 h-16 animate-pulse rounded-xl bg-blue-100/60" />
         </motion.div>
     );
 }
@@ -226,7 +226,7 @@ export default function BurnoutStressChart() {
         const load = async () => {
             try {
                 setLoading(true);
-                const raw    = await apiFetch("/tasks");
+                const raw = await apiFetch("/tasks");
                 const tasks: BurnoutTask[] = Array.isArray(raw) ? raw : [];
                 const result = calculateBurnout(tasks);
                 if (!cancelled) setBurnout(result);
@@ -243,28 +243,28 @@ export default function BurnoutStressChart() {
 
     if (loading) return <Skeleton />;
 
-    const b      = burnout!;
+    const b = burnout!;
     const colors = LEVEL_COLOR[b.level];
 
     const TrendIcon =
-        b.trend === "up"   ? TrendingUp  :
-        b.trend === "down" ? TrendingDown :
-        Minus;
+        b.trend === "up" ? TrendingUp :
+            b.trend === "down" ? TrendingDown :
+                Minus;
 
     const trendColor =
-        b.trend === "up"   ? "text-rose-400"    :
-        b.trend === "down" ? "text-emerald-400"  :
-        "text-blue-300/70";
+        b.trend === "up" ? "text-rose-400" :
+            b.trend === "down" ? "text-emerald-400" :
+                "text-blue-300/70";
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950 border border-blue-400/35 shadow-xl shadow-blue-900/30 p-5"
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white via-blue-50 to-white border border-blue-200 shadow-xl shadow-blue-200/50 p-5"
         >
             {/* Ambient blob */}
-            <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-blue-500/8 blur-3xl" />
+            <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-blue-200/30 blur-3xl" />
 
             <div className="relative">
                 {/* Header */}
@@ -274,8 +274,8 @@ export default function BurnoutStressChart() {
                             <Flame size={18} className={colors.text} />
                         </div>
                         <div>
-                            <h3 className="text-base font-semibold text-white">Burnout &amp; Stress Trend</h3>
-                            <p className="mt-0.5 text-[11px] text-blue-300/70">
+                            <h3 className="text-base font-semibold text-slate-800">Burnout &amp; Stress Trend</h3>
+                            <p className="mt-0.5 text-[11px] text-slate-500">
                                 6-week rolling burnout index · {b.weeklyTrend.length} weeks
                             </p>
                         </div>
@@ -283,9 +283,9 @@ export default function BurnoutStressChart() {
 
                     <div className="flex flex-col items-end gap-1.5">
                         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${colors.badge}`}>
-                            {b.level === "High"   && "🔴"}
+                            {b.level === "High" && "🔴"}
                             {b.level === "Medium" && "🟡"}
-                            {b.level === "Low"    && "🟢"}
+                            {b.level === "Low" && "🟢"}
                             {b.level} · {b.score}/100
                         </span>
                         <span className={`inline-flex items-center gap-1 text-xs font-medium ${trendColor}`}>
@@ -313,17 +313,17 @@ export default function BurnoutStressChart() {
                 <BurnoutChart burnout={b} />
 
                 {/* Legend */}
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-blue-300/70">
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-500">
                     <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" />Low (≤ 40)</span>
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400"  />Medium (41–70)</span>
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-400"   />High (&gt; 70)</span>
-                    <span className="flex items-center gap-1"><span className="h-3 w-5 rounded bg-rose-500/20"     />Critical week</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" />Medium (41–70)</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-400" />High (&gt; 70)</span>
+                    <span className="flex items-center gap-1"><span className="h-3 w-5 rounded bg-rose-500/20" />Critical week</span>
                 </div>
 
                 {/* Subject breakdown pills */}
                 {b.subjectBreakdowns.filter((s) => s.weeklyTaskCount > 0).length > 0 && (
-                    <div className="mt-4 border-t border-blue-400/20 pt-3">
-                        <p className="mb-2 text-xs font-medium text-blue-300/70">Subject contribution this week</p>
+                    <div className="mt-4 border-t border-blue-200 pt-3">
+                        <p className="mb-2 text-xs font-medium text-slate-500">Subject contribution this week</p>
                         <div className="flex flex-wrap gap-2">
                             {b.subjectBreakdowns
                                 .filter((s) => s.weeklyTaskCount > 0)
@@ -334,11 +334,10 @@ export default function BurnoutStressChart() {
                                         <span
                                             key={s.subject}
                                             title={`${s.subject}: ${s.weeklyTaskCount} tasks · ${s.estimatedHours.toFixed(1)} h`}
-                                            className={`inline-flex cursor-default items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                                lvl === "High"   ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                                                : lvl === "Medium" ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                                                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                                            }`}
+                                            className={`inline-flex cursor-default items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${lvl === "High" ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
+                                                    : lvl === "Medium" ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                                                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                                }`}
                                         >
                                             {s.subject}
                                             <span className="font-semibold">{s.burnoutScore}</span>
@@ -352,7 +351,7 @@ export default function BurnoutStressChart() {
                 {/* Dominant factor */}
                 {b.dominantFactor !== "None" && (
                     <div className="mt-3 flex items-center gap-2">
-                        <span className="text-xs text-blue-300/70">Top stressor:</span>
+                        <span className="text-xs text-slate-500">Top stressor:</span>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colors.badge}`}>
                             {b.dominantFactor}
                         </span>
@@ -360,11 +359,11 @@ export default function BurnoutStressChart() {
                 )}
 
                 {/* AI Insight */}
-                <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-blue-400/30 bg-blue-800/50 p-3">
+                <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 p-3">
                     <Brain size={16} className="mt-0.5 shrink-0 text-blue-400" />
                     <div>
                         <p className="text-xs font-semibold text-blue-400">AI Generated Insight</p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-blue-100/75">
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                             {b.aiInsight}
                         </p>
                     </div>

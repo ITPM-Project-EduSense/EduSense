@@ -10,30 +10,30 @@ const alertConfig: Record<Alert["type"], {
     border: string; bg: string; text: string; iconBg: string;
 }> = {
     danger: {
-        icon:   AlertCircle,
+        icon: AlertCircle,
         border: "border-rose-500/30",
-        bg:     "bg-rose-500/8",
-        text:   "text-rose-400",
+        bg: "bg-rose-500/8",
+        text: "text-rose-400",
         iconBg: "bg-rose-500/15",
     },
     warning: {
-        icon:   AlertTriangle,
+        icon: AlertTriangle,
         border: "border-amber-500/30",
-        bg:     "bg-amber-500/8",
-        text:   "text-amber-400",
+        bg: "bg-amber-500/8",
+        text: "text-amber-400",
         iconBg: "bg-amber-500/15",
     },
     info: {
-        icon:   Info,
+        icon: Info,
         border: "border-blue-500/30",
-        bg:     "bg-blue-500/8",
-        text:   "text-blue-400",
+        bg: "bg-blue-500/8",
+        text: "text-blue-400",
         iconBg: "bg-blue-500/15",
     },
 };
 
 export default function RealTimeAlerts() {
-    const dangerCount  = alerts.filter((a) => a.type === "danger").length;
+    const dangerCount = alerts.filter((a) => a.type === "danger").length;
     const warningCount = alerts.filter((a) => a.type === "warning").length;
 
     return (
@@ -41,10 +41,10 @@ export default function RealTimeAlerts() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.5 }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950 border border-blue-400/35 shadow-xl shadow-blue-900/30 p-5"
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white via-blue-50 to-white border border-blue-200 shadow-xl shadow-blue-200/50 p-5"
         >
             {/* Ambient blob */}
-            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-500/5 blur-3xl" />
+            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/20 blur-3xl" />
 
             <div className="relative">
                 {/* Header */}
@@ -56,8 +56,8 @@ export default function RealTimeAlerts() {
                             <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-rose-500" />
                         </div>
                         <div>
-                            <h3 className="text-base font-semibold text-white">Real-Time Alerts</h3>
-                            <p className="text-[11px] text-blue-300/70">Live monitoring feed</p>
+                            <h3 className="text-base font-semibold text-slate-800">Real-Time Alerts</h3>
+                            <p className="text-[11px] text-slate-500">Live monitoring feed</p>
                         </div>
                     </div>
 
@@ -79,7 +79,7 @@ export default function RealTimeAlerts() {
                 {/* Alert list */}
                 <div className="max-h-[380px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:theme(colors.slate.700)_transparent]">
                     {alerts.map((alert, i) => {
-                        const cfg  = alertConfig[alert.type];
+                        const cfg = alertConfig[alert.type];
                         const Icon = cfg.icon;
 
                         return (
@@ -95,7 +95,7 @@ export default function RealTimeAlerts() {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className={`text-sm font-medium ${cfg.text}`}>{alert.message}</p>
-                                    <p className="mt-0.5 text-[10px] text-blue-300/50">{alert.time}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-400">{alert.time}</p>
                                 </div>
                             </motion.div>
                         );
@@ -103,8 +103,8 @@ export default function RealTimeAlerts() {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-4 flex items-center justify-between border-t border-blue-400/20 pt-4">
-                    <span className="text-xs text-blue-300/50">Showing {alerts.length} alerts</span>
+                <div className="mt-4 flex items-center justify-between border-t border-blue-200 pt-4">
+                    <span className="text-xs text-slate-400">Showing {alerts.length} alerts</span>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/20">
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
                         Auto-refreshing
