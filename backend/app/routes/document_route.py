@@ -11,7 +11,8 @@ from app.core.security import get_current_user
 from app.services.document_service import process_uploaded_document, get_user_materials, get_material_by_id
 from app.services.ai_summary_service import summarize_material
 from app.services.embedding_service import generate_embedding
-from app.models.study_material import StudyMaterial, Concept
+from app.services.file_extractor import chunk_text_for_vectors
+from app.models.study_material import StudyMaterial, Concept, PdfVector
 from beanie import PydanticObjectId
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -112,7 +113,30 @@ async def upload_document(
                 print(f"⚠️ Failed to save concept {concept_data.get('title')}: {e}")
                 continue
         
-        # Step 5: Return success response
+        # Step 5: Save raw PDF/text chunks as vector DB entries for AI Coach chat
+        saved_vectors = 0
+        try:
+            chunks = chunk_text_for_vectors(material.extracted_text)
+            for index, chunk in enumerate(chunks):
+                chunk_embedding = await generate_embedding(chunk)
+                vector_doc = PdfVector(
+                    student_id=str(current_user.id),
+                    pdf_id=material_id,
+                    chunk_text=chunk,
+                    embedding=chunk_embedding,
+                    metadata={
+                        "subject": subject,
+                        "filename": file.filename,
+                        "chunk_index": index,
+                        "chunk_count": len(chunks),
+                    },
+                )
+                await vector_doc.insert()
+                saved_vectors += 1
+        except Exception as e:
+            print(f"⚠️ Vector storage failed for {file.filename}: {e}")
+
+        # Step 6: Return success response
         return {
             "success": True,
             "message": "Document uploaded and processed successfully",
@@ -122,6 +146,7 @@ async def upload_document(
             "summary": ai_result.get("summary", ""),
             "key_points_count": len(ai_result.get("key_points", [])),
             "concepts_extracted": len(saved_concepts),
+            "vectors_stored": saved_vectors,
             "concepts": saved_concepts
         }
         

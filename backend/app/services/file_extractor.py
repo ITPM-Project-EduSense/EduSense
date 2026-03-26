@@ -10,6 +10,7 @@ Extracts text content from uploaded files:
 
 import io
 from pathlib import Path
+from typing import List
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -91,3 +92,30 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
         return text
     except Exception as e:
         return f"Error extracting text from {filename}: {str(e)}"
+
+
+def chunk_text_for_vectors(text: str, chunk_size: int = 900, overlap: int = 150) -> List[str]:
+    """
+    Split extracted text into overlapping chunks for vector storage/retrieval.
+    """
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return []
+
+    if chunk_size <= overlap:
+        overlap = max(0, chunk_size // 5)
+
+    chunks: List[str] = []
+    start = 0
+    length = len(cleaned)
+
+    while start < length:
+        end = min(length, start + chunk_size)
+        chunk = cleaned[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end >= length:
+            break
+        start = max(0, end - overlap)
+
+    return chunks

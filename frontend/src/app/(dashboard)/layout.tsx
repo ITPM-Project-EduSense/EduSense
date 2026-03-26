@@ -7,7 +7,9 @@ export default function DashboardLayout({
 }) {
   return (
     <>
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        {children}
+      </AppShell>
     </>
   );
 }
