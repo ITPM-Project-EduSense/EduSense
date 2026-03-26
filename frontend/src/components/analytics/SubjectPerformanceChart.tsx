@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, CheckCircle2, Clock3, Circle } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SubjectDetailModal from "./SubjectDetailModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ export default function SubjectPerformanceChart() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedSubject, setSelectedSubject] = useState<SubjectStats | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -141,7 +143,7 @@ export default function SubjectPerformanceChart() {
 
     const overallPct = useMemo(() => {
         if (!tasks.length) return 0;
-        return Math.round(tasks.filter((t) => t.status === "completed").length / tasks.length * 100);
+        return Math.round(tasks.filter((t: Task) => t.status === "completed").length / tasks.length * 100);
     }, [tasks]);
 
     if (loading) return <LoadingSkeleton />;
@@ -169,145 +171,160 @@ export default function SubjectPerformanceChart() {
         );
     }
 
+    const filteredTasks = tasks.filter((t: Task) => t.subject === selectedSubject?.subject);
+
     return (
-        <CardShell>
-            {/* ── Header ── */}
-            <div className="mb-5 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-gray-100 p-2.5 ring-1 ring-gray-300">
-                        <BookOpen size={18} className="text-gray-600" />
+        <>
+            <CardShell>
+                {/* ── Header ── */}
+                <div className="mb-5 flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="rounded-xl bg-gray-100 p-2.5 ring-1 ring-gray-300">
+                            <BookOpen size={18} className="text-gray-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-semibold text-slate-800 leading-tight">
+                                Subject Performance
+                            </h3>
+                            <p className="mt-0.5 text-[11px] text-slate-500">
+                                Task breakdown by subject
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-base font-semibold text-slate-800 leading-tight">
-                            Subject Performance
-                        </h3>
-                        <p className="mt-0.5 text-[11px] text-slate-500">
-                            Task breakdown by subject
-                        </p>
+
+                    {/* Live indicator */}
+                    <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 ring-1 ring-emerald-300">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
+                        <span className="text-[10px] font-medium text-emerald-700">Live</span>
                     </div>
                 </div>
 
-                {/* Live indicator */}
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 ring-1 ring-emerald-300">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
-                    <span className="text-[10px] font-medium text-emerald-700">Live</span>
-                </div>
-            </div>
-
-            {/* ── Summary stats ── */}
-            <div className="mb-5 grid grid-cols-3 gap-2">
-                {[
-                    { label: "Total Tasks", value: tasks.length, color: "text-slate-800" },
-                    { label: "Subjects", value: subjectStats.length, color: "text-blue-600" },
-                    { label: "Completed", value: `${overallPct}%`, color: overallPct === 100 ? "text-emerald-400" : overallPct >= 50 ? "text-amber-400" : "text-rose-400" },
-                ].map((stat) => (
-                    <div
-                        key={stat.label}
-                        className="rounded-xl bg-blue-200 border border-gray-200 px-3 py-3 text-center"
-                    >
-                        <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">{stat.label}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* ── Subject rows ── */}
-            <div className="space-y-3">
-                {subjectStats.map((stats, i) => {
-                    const palette = SUBJECT_PALETTE[i % SUBJECT_PALETTE.length];
-                    const completedPct = (stats.completed / stats.total) * 100;
-                    const inProgressPct = (stats.inProgress / stats.total) * 100;
-                    const pendingPct = (stats.pending / stats.total) * 100;
-
-                    const pctColor =
-                        stats.completionPct === 100 ? "text-emerald-300" :
-                            stats.completionPct >= 50 ? "text-amber-300" :
-                                "text-rose-300";
-
-                    return (
-                        <motion.div
-                            key={stats.subject}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.07, duration: 0.4 }}
-                            className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg shadow-blue-900/30 transition-all duration-200"
+                {/* ── Summary stats ── */}
+                <div className="mb-5 grid grid-cols-3 gap-2">
+                    {[
+                        { label: "Total Tasks", value: tasks.length, color: "text-slate-800" },
+                        { label: "Subjects", value: subjectStats.length, color: "text-blue-600" },
+                        { label: "Completed", value: `${overallPct}%`, color: overallPct === 100 ? "text-emerald-400" : overallPct >= 50 ? "text-amber-400" : "text-rose-400" },
+                    ].map((stat) => (
+                        <div
+                            key={stat.label}
+                            className="rounded-xl bg-blue-200 border border-gray-200 px-3 py-3 text-center"
                         >
-                            {/* Top row */}
-                            <div className="mb-3 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ring-1 ${palette.bg} ${palette.ring} ${palette.text}`}>
-                                        {stats.subject.slice(0, 3).toUpperCase()}
+                            <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                            <p className="mt-0.5 text-[10px] text-slate-500">{stat.label}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ── Subject rows ── */}
+                <div className="space-y-3">
+                    {subjectStats.map((stats: SubjectStats, i: number) => {
+                        const palette = SUBJECT_PALETTE[i % SUBJECT_PALETTE.length];
+                        const completedPct = (stats.completed / stats.total) * 100;
+                        const inProgressPct = (stats.inProgress / stats.total) * 100;
+                        const pendingPct = (stats.pending / stats.total) * 100;
+
+                        const pctColor =
+                            stats.completionPct === 100 ? "text-emerald-300" :
+                                stats.completionPct >= 50 ? "text-amber-300" :
+                                    "text-rose-300";
+
+                        return (
+                            <motion.div
+                                key={stats.subject}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.07, duration: 0.4 }}
+                                onClick={() => setSelectedSubject(stats)}
+                                className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg shadow-blue-900/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95"
+                            >
+                                {/* Top row */}
+                                <div className="mb-3 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ring-1 ${palette.bg} ${palette.ring} ${palette.text}`}>
+                                            {stats.subject.slice(0, 3).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-white">
+                                                {stats.subject}
+                                            </p>
+                                            <p className="text-[10px] text-blue-200">
+                                                {stats.total} task{stats.total !== 1 ? "s" : ""}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold text-white">
-                                            {stats.subject}
+
+                                    <div className="shrink-0 text-right">
+                                        <p className={`text-lg font-bold leading-none ${pctColor}`}>
+                                            {stats.completionPct}%
                                         </p>
-                                        <p className="text-[10px] text-blue-200">
-                                            {stats.total} task{stats.total !== 1 ? "s" : ""}
-                                        </p>
+                                        <p className="mt-0.5 text-[10px] text-blue-200">done</p>
                                     </div>
                                 </div>
 
-                                <div className="shrink-0 text-right">
-                                    <p className={`text-lg font-bold leading-none ${pctColor}`}>
-                                        {stats.completionPct}%
-                                    </p>
-                                    <p className="mt-0.5 text-[10px] text-blue-200">done</p>
+                                {/* Segmented progress bar */}
+                                <div className="flex h-2 overflow-hidden rounded-full bg-white/20">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${completedPct}%` }}
+                                        transition={{ delay: i * 0.07 + 0.15, duration: 0.75, ease: "easeOut" }}
+                                        className="h-full bg-emerald-600"
+                                    />
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${inProgressPct}%` }}
+                                        transition={{ delay: i * 0.07 + 0.3, duration: 0.75, ease: "easeOut" }}
+                                        className="h-full bg-amber-600"
+                                    />
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${pendingPct}%` }}
+                                        transition={{ delay: i * 0.07 + 0.45, duration: 0.75, ease: "easeOut" }}
+                                        className="h-full bg-rose-600"
+                                    />
                                 </div>
-                            </div>
 
-                            {/* Segmented progress bar */}
-                            <div className="flex h-2 overflow-hidden rounded-full bg-white/20">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${completedPct}%` }}
-                                    transition={{ delay: i * 0.07 + 0.15, duration: 0.75, ease: "easeOut" }}
-                                    className="h-full bg-emerald-600"
-                                />
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${inProgressPct}%` }}
-                                    transition={{ delay: i * 0.07 + 0.3, duration: 0.75, ease: "easeOut" }}
-                                    className="h-full bg-amber-600"
-                                />
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${pendingPct}%` }}
-                                    transition={{ delay: i * 0.07 + 0.45, duration: 0.75, ease: "easeOut" }}
-                                    className="h-full bg-rose-600"
-                                />
-                            </div>
+                                {/* Stat pills */}
+                                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-400/25">
+                                        <CheckCircle2 size={9} /> {stats.completed} done
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-400/25">
+                                        <Clock3 size={9} /> {stats.inProgress} active
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-rose-400/15 px-2 py-0.5 text-[10px] font-medium text-rose-300 ring-1 ring-rose-400/25">
+                                        <Circle size={9} /> {stats.pending} pending
+                                    </span>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </div>
 
-                            {/* Stat pills */}
-                            <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-400/25">
-                                    <CheckCircle2 size={9} /> {stats.completed} done
-                                </span>
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-400/25">
-                                    <Clock3 size={9} /> {stats.inProgress} active
-                                </span>
-                                <span className="inline-flex items-center gap-1 rounded-md bg-rose-400/15 px-2 py-0.5 text-[10px] font-medium text-rose-300 ring-1 ring-rose-400/25">
-                                    <Circle size={9} /> {stats.pending} pending
-                                </span>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
+                {/* ── Legend ── */}
+                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-gray-200 pt-4">
+                    {[
+                        { color: "bg-emerald-600", label: "Completed" },
+                        { color: "bg-amber-600", label: "In Progress" },
+                        { color: "bg-rose-600", label: "Pending" },
+                    ].map(({ color, label }) => (
+                        <span key={label} className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                            <span className={`h-2 w-2 rounded-full ${color}`} />
+                            {label}
+                        </span>
+                    ))}
+                </div>
+            </CardShell>
 
-            {/* ── Legend ── */}
-            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-gray-200 pt-4">
-                {[
-                    { color: "bg-emerald-600", label: "Completed" },
-                    { color: "bg-amber-600", label: "In Progress" },
-                    { color: "bg-rose-600", label: "Pending" },
-                ].map(({ color, label }) => (
-                    <span key={label} className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                        <span className={`h-2 w-2 rounded-full ${color}`} />
-                        {label}
-                    </span>
-                ))}
-            </div>
-        </CardShell>
+            {selectedSubject && (
+                <SubjectDetailModal 
+                    isOpen={!!selectedSubject}
+                    onClose={() => setSelectedSubject(null)}
+                    subjectName={selectedSubject.subject}
+                    tasks={filteredTasks}
+                    stats={selectedSubject}
+                />
+            )}
+        </>
     );
 }
