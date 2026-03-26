@@ -59,13 +59,15 @@ export type GpaPrediction = {
   grade: string;
   risk: boolean;
   icon: string;
+  confidence: number;
+  impact: string;
 };
 
 export const gpaPredictions: GpaPrediction[] = [
-  { subject: "Mathematics", grade: "A-", risk: false, icon: "📐" },
-  { subject: "Biology", grade: "C+", risk: true, icon: "🧬" },
-  { subject: "History", grade: "B+", risk: false, icon: "📜" },
-  { subject: "Computer Science", grade: "A", risk: false, icon: "💻" },
+  { subject: "Mathematics", grade: "A-", risk: false, icon: "📐", confidence: 92, impact: "High Consistency" },
+  { subject: "Biology", grade: "C+", risk: true, icon: "🧬", confidence: 64, impact: "Deadline Volatility" },
+  { subject: "History", grade: "B+", risk: false, icon: "📜", confidence: 88, impact: "Steady Engagement" },
+  { subject: "Computer Science", grade: "A", risk: false, icon: "💻", confidence: 95, impact: "Peak Performance" },
 ];
 
 // ── AI Recommendations ──
@@ -122,6 +124,9 @@ export const alerts: Alert[] = [
   { type: "info", message: "Workload spike detected for next Wednesday", time: "1 hr ago" },
   { type: "danger", message: "Biology assignment deadline in 18 hours", time: "1 hr ago" },
   { type: "warning", message: "Study consistency dropped below 60% this week", time: "3 hrs ago" },
+  // Duplicate alerts for validation demonstration
+  { type: "danger", message: "3 high-difficulty tasks scheduled for tomorrow", time: "3 hrs ago" },
+  { type: "info", message: "Workload spike detected for next Wednesday", time: "4 hrs ago" },
   { type: "info", message: "New study pattern insight available", time: "5 hrs ago" },
   { type: "info", message: "Weekly performance report ready to view", time: "6 hrs ago" },
 ];

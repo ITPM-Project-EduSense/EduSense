@@ -28,12 +28,12 @@ type SubjectStats = {
 // ── Colour palette per subject ────────────────────────────────────────────────
 
 const SUBJECT_PALETTE = [
-    { bg: "bg-blue-500/15", ring: "ring-blue-500/30", text: "text-blue-400" },
-    { bg: "bg-violet-500/15", ring: "ring-violet-500/30", text: "text-violet-400" },
-    { bg: "bg-cyan-500/15", ring: "ring-cyan-500/30", text: "text-cyan-400" },
-    { bg: "bg-indigo-500/15", ring: "ring-indigo-500/30", text: "text-indigo-400" },
-    { bg: "bg-sky-500/15", ring: "ring-sky-500/30", text: "text-sky-400" },
-    { bg: "bg-purple-500/15", ring: "ring-purple-500/30", text: "text-purple-400" },
+    { bg: "bg-white/15", ring: "ring-white/25", text: "text-white" },
+    { bg: "bg-white/15", ring: "ring-white/25", text: "text-white" },
+    { bg: "bg-white/15", ring: "ring-white/25", text: "text-white" },
+    { bg: "bg-white/15", ring: "ring-white/25", text: "text-white" },
+    { bg: "bg-white/15", ring: "ring-white/25", text: "text-white" },
+    { bg: "bg-white/15", ring: "ring-white/25", text: "text-white" },
 ] as const;
 
 // ── Data grouping ─────────────────────────────────────────────────────────────
@@ -66,10 +66,10 @@ function groupTasksBySubject(tasks: Task[]): SubjectStats[] {
 
 function CardShell({ children }: { children: React.ReactNode }) {
     return (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white via-blue-50 to-white border border-blue-200 shadow-xl shadow-blue-200/50 p-5">
+        <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-300 shadow-xl shadow-gray-300/50 p-5">
             {/* Ambient glow blobs */}
-            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-200/30 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-indigo-200/30 blur-3xl" />
+            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gray-300/30 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-gray-300/30 blur-3xl" />
             <div className="relative">{children}</div>
         </div>
     );
@@ -81,29 +81,29 @@ function LoadingSkeleton() {
     return (
         <CardShell>
             <div className="mb-5 flex items-center gap-3">
-                <div className="h-9 w-9 animate-pulse rounded-xl bg-blue-200/60" />
+                <div className="h-9 w-9 animate-pulse rounded-xl bg-gray-300/60" />
                 <div className="space-y-1.5">
-                    <div className="h-4 w-36 animate-pulse rounded bg-blue-200/60" />
-                    <div className="h-3 w-24 animate-pulse rounded bg-blue-100/60" />
+                    <div className="h-4 w-36 animate-pulse rounded bg-gray-300/60" />
+                    <div className="h-3 w-24 animate-pulse rounded bg-gray-200/60" />
                 </div>
             </div>
             <div className="mb-5 grid grid-cols-3 gap-2">
                 {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-16 animate-pulse rounded-xl bg-blue-100/60" />
+                    <div key={i} className="h-16 animate-pulse rounded-xl bg-gray-200/60" />
                 ))}
             </div>
             <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                    <div key={i} className="animate-pulse rounded-xl bg-blue-100/60 p-4 space-y-3">
+                    <div key={i} className="animate-pulse rounded-xl bg-gray-200/60 p-4 space-y-3">
                         <div className="flex justify-between">
-                            <div className="h-4 w-32 rounded bg-blue-200/60" />
-                            <div className="h-5 w-12 rounded bg-blue-200/60" />
+                            <div className="h-4 w-32 rounded bg-gray-300/60" />
+                            <div className="h-5 w-12 rounded bg-gray-300/60" />
                         </div>
-                        <div className="h-2 rounded-full bg-blue-200/60" />
+                        <div className="h-2 rounded-full bg-gray-300/60" />
                         <div className="flex gap-2">
-                            <div className="h-4 w-16 rounded-md bg-blue-100/60" />
-                            <div className="h-4 w-16 rounded-md bg-blue-100/60" />
-                            <div className="h-4 w-16 rounded-md bg-blue-100/60" />
+                            <div className="h-4 w-16 rounded-md bg-gray-200/60" />
+                            <div className="h-4 w-16 rounded-md bg-gray-200/60" />
+                            <div className="h-4 w-16 rounded-md bg-gray-200/60" />
                         </div>
                     </div>
                 ))}
@@ -150,7 +150,7 @@ export default function SubjectPerformanceChart() {
         return (
             <CardShell>
                 <p className="text-base font-semibold text-slate-800 mb-1">Subject Performance</p>
-                <p className="text-sm text-rose-400">{error}</p>
+                <p className="text-sm text-rose-600">{error}</p>
             </CardShell>
         );
     }
@@ -159,8 +159,8 @@ export default function SubjectPerformanceChart() {
         return (
             <CardShell>
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="rounded-xl bg-blue-100 p-2.5 ring-1 ring-blue-200">
-                        <BookOpen size={18} className="text-blue-600" />
+                    <div className="rounded-xl bg-gray-100 p-2.5 ring-1 ring-gray-300">
+                        <BookOpen size={18} className="text-gray-600" />
                     </div>
                     <p className="text-base font-semibold text-slate-800">Subject Performance</p>
                 </div>
@@ -174,8 +174,8 @@ export default function SubjectPerformanceChart() {
             {/* ── Header ── */}
             <div className="mb-5 flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-blue-100 p-2.5 ring-1 ring-blue-200">
-                        <BookOpen size={18} className="text-blue-600" />
+                    <div className="rounded-xl bg-gray-100 p-2.5 ring-1 ring-gray-300">
+                        <BookOpen size={18} className="text-gray-600" />
                     </div>
                     <div>
                         <h3 className="text-base font-semibold text-slate-800 leading-tight">
@@ -188,9 +188,9 @@ export default function SubjectPerformanceChart() {
                 </div>
 
                 {/* Live indicator */}
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 ring-1 ring-emerald-200">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                    <span className="text-[10px] font-medium text-emerald-600">Live</span>
+                <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 ring-1 ring-emerald-300">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
+                    <span className="text-[10px] font-medium text-emerald-700">Live</span>
                 </div>
             </div>
 
@@ -198,12 +198,12 @@ export default function SubjectPerformanceChart() {
             <div className="mb-5 grid grid-cols-3 gap-2">
                 {[
                     { label: "Total Tasks", value: tasks.length, color: "text-slate-800" },
-                    { label: "Subjects", value: subjectStats.length, color: "text-blue-400" },
+                    { label: "Subjects", value: subjectStats.length, color: "text-blue-600" },
                     { label: "Completed", value: `${overallPct}%`, color: overallPct === 100 ? "text-emerald-400" : overallPct >= 50 ? "text-amber-400" : "text-rose-400" },
                 ].map((stat) => (
                     <div
                         key={stat.label}
-                        className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-3 text-center"
+                        className="rounded-xl bg-blue-200 border border-gray-200 px-3 py-3 text-center"
                     >
                         <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
                         <p className="mt-0.5 text-[10px] text-slate-500">{stat.label}</p>
@@ -220,9 +220,9 @@ export default function SubjectPerformanceChart() {
                     const pendingPct = (stats.pending / stats.total) * 100;
 
                     const pctColor =
-                        stats.completionPct === 100 ? "text-emerald-400" :
-                            stats.completionPct >= 50 ? "text-amber-400" :
-                                "text-rose-400";
+                        stats.completionPct === 100 ? "text-emerald-300" :
+                            stats.completionPct >= 50 ? "text-amber-300" :
+                                "text-rose-300";
 
                     return (
                         <motion.div
@@ -230,7 +230,7 @@ export default function SubjectPerformanceChart() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.07, duration: 0.4 }}
-                            className="rounded-xl bg-blue-50/60 border border-blue-200 p-4 hover:bg-blue-100/60 hover:border-blue-300 transition-all duration-200"
+                            className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg shadow-blue-900/30 transition-all duration-200"
                         >
                             {/* Top row */}
                             <div className="mb-3 flex items-center justify-between gap-2">
@@ -242,7 +242,7 @@ export default function SubjectPerformanceChart() {
                                         <p className="truncate text-sm font-semibold text-white">
                                             {stats.subject}
                                         </p>
-                                        <p className="text-[10px] text-slate-500">
+                                        <p className="text-[10px] text-blue-200">
                                             {stats.total} task{stats.total !== 1 ? "s" : ""}
                                         </p>
                                     </div>
@@ -252,41 +252,41 @@ export default function SubjectPerformanceChart() {
                                     <p className={`text-lg font-bold leading-none ${pctColor}`}>
                                         {stats.completionPct}%
                                     </p>
-                                    <p className="mt-0.5 text-[10px] text-slate-500">done</p>
+                                    <p className="mt-0.5 text-[10px] text-blue-200">done</p>
                                 </div>
                             </div>
 
                             {/* Segmented progress bar */}
-                            <div className="flex h-2 overflow-hidden rounded-full bg-blue-100">
+                            <div className="flex h-2 overflow-hidden rounded-full bg-white/20">
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${completedPct}%` }}
                                     transition={{ delay: i * 0.07 + 0.15, duration: 0.75, ease: "easeOut" }}
-                                    className="h-full bg-emerald-400"
+                                    className="h-full bg-emerald-600"
                                 />
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${inProgressPct}%` }}
                                     transition={{ delay: i * 0.07 + 0.3, duration: 0.75, ease: "easeOut" }}
-                                    className="h-full bg-amber-400"
+                                    className="h-full bg-amber-600"
                                 />
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${pendingPct}%` }}
                                     transition={{ delay: i * 0.07 + 0.45, duration: 0.75, ease: "easeOut" }}
-                                    className="h-full bg-rose-400"
+                                    className="h-full bg-rose-600"
                                 />
                             </div>
 
                             {/* Stat pills */}
                             <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/20">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-400/25">
                                     <CheckCircle2 size={9} /> {stats.completed} done
                                 </span>
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400 ring-1 ring-amber-500/20">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-400/25">
                                     <Clock3 size={9} /> {stats.inProgress} active
                                 </span>
-                                <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-300 ring-1 ring-blue-400/25">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-rose-400/15 px-2 py-0.5 text-[10px] font-medium text-rose-300 ring-1 ring-rose-400/25">
                                     <Circle size={9} /> {stats.pending} pending
                                 </span>
                             </div>
@@ -296,11 +296,11 @@ export default function SubjectPerformanceChart() {
             </div>
 
             {/* ── Legend ── */}
-            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-blue-200 pt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-gray-200 pt-4">
                 {[
-                    { color: "bg-emerald-400", label: "Completed" },
-                    { color: "bg-amber-400", label: "In Progress" },
-                    { color: "bg-rose-400", label: "Pending" },
+                    { color: "bg-emerald-600", label: "Completed" },
+                    { color: "bg-amber-600", label: "In Progress" },
+                    { color: "bg-rose-600", label: "Pending" },
                 ].map(({ color, label }) => (
                     <span key={label} className="flex items-center gap-1.5 text-[10px] text-slate-500">
                         <span className={`h-2 w-2 rounded-full ${color}`} />

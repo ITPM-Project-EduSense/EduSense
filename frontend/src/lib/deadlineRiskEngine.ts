@@ -45,15 +45,23 @@ export type TaskDeadlineRisk = {
     bonuses:       number;
 };
 
+export type SubjectDeadlineRisk = {
+    subject:   string;
+    riskScore: number;
+    level:     DeadlineRiskLevel;
+    taskCount: number;
+};
+
 export type DeadlineRiskResult = {
-    probability:     number;         // 0–100  (overall, based on top-3)
-    level:           DeadlineRiskLevel;
-    explanation:     string;
-    tooltip:         string;
-    topRiskyTasks:   TaskDeadlineRisk[];
-    dominantFactor:  string;
-    factorBreakdown: { A: number; B: number; C: number; D: number; E: number };
-    upcomingCount:   number;
+    probability:      number;         // 0–100  (overall, based on top-3)
+    level:            DeadlineRiskLevel;
+    explanation:      string;
+    tooltip:          string;
+    topRiskyTasks:    TaskDeadlineRisk[];
+    subjectBreakdowns: SubjectDeadlineRisk[];
+    dominantFactor:   string;
+    factorBreakdown:  { A: number; B: number; C: number; D: number; E: number };
+    upcomingCount:    number;
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -280,14 +288,15 @@ export function calculateDeadlineRisk(
 
     if (!upcomingTasks.length) {
         return {
-            probability:     0,
-            level:           "Low",
-            explanation:     "No upcoming tasks — all deadlines are clear.",
-            tooltip:         TOOLTIP,
-            topRiskyTasks:   [],
-            dominantFactor:  "None",
-            factorBreakdown: { A: 0, B: 0, C: 0, D: 0, E: 0 },
-            upcomingCount:   0,
+            probability:      0,
+            level:            "Low",
+            explanation:      "No upcoming tasks — all deadlines are clear.",
+            tooltip:          TOOLTIP,
+            topRiskyTasks:    [],
+            subjectBreakdowns: [],
+            dominantFactor:   "None",
+            factorBreakdown:  { A: 0, B: 0, C: 0, D: 0, E: 0 },
+            upcomingCount:    0,
         };
     }
 
@@ -320,6 +329,21 @@ export function calculateDeadlineRisk(
         { A: 0, B: 0, C: 0, D: 0, E: 0 },
     );
 
+    // Subject-wise breakdowns
+    const subjects = [...new Set(taskRisks.map((t) => t.subject))];
+    const subjectBreakdowns = subjects.map((s) => {
+        const subjectTasks = taskRisks.filter((t) => t.subject === s);
+        const avgScore = Math.round(
+            subjectTasks.reduce((sum, t) => sum + t.riskScore, 0) / subjectTasks.length,
+        );
+        return {
+            subject:   s,
+            riskScore: avgScore,
+            level:     classifyLevel(avgScore),
+            taskCount: subjectTasks.length,
+        };
+    }).sort((a, b) => b.riskScore - a.riskScore);
+
     // Dominant factor
     const entries: [string, number][] = [
         ["Deadline Proximity", avgF.A],
@@ -336,6 +360,7 @@ export function calculateDeadlineRisk(
         explanation:     buildExplanation(probability, level, avgF, top3),
         tooltip:         TOOLTIP,
         topRiskyTasks:   top3,
+        subjectBreakdowns,
         dominantFactor,
         factorBreakdown: avgF,
         upcomingCount:   upcomingTasks.length,

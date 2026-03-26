@@ -30,13 +30,15 @@ export type RiskTask = {
 };
 
 export type SubjectRiskBreakdown = {
-    subject:       string;
-    riskScore:     number;   // 0–100
-    missedCount:   number;
-    upcomingCount: number;
-    perfDrop:      number;   // percentage drop, 0–100
-    avgDelayDays:  number;
-    factors:       { A: number; B: number; C: number; D: number; E: number };
+    subject:        string;
+    riskScore:      number;   // 0–100
+    missedCount:    number;
+    upcomingCount:  number;
+    completedCount: number;
+    overdueCount:   number;
+    perfDrop:       number;   // percentage drop, 0–100
+    avgDelayDays:   number;
+    factors:        { A: number; B: number; C: number; D: number; E: number };
 };
 
 export type AcademicRiskResult = {
@@ -185,12 +187,14 @@ function calcSubjectRisk(
     if (!hasActiveTasks) {
         return {
             subject,
-            riskScore:     0,
-            missedCount:   0,
-            upcomingCount: 0,
-            perfDrop:      0,
-            avgDelayDays:  0,
-            factors:       { A: 0, B: 0, C: 0, D: 0, E: 0 },
+            riskScore:      0,
+            missedCount:    0,
+            upcomingCount:  0,
+            completedCount: tasks.filter(t => t.status === "completed").length,
+            overdueCount:   0,
+            perfDrop:       0,
+            avgDelayDays:   0,
+            factors:        { A: 0, B: 0, C: 0, D: 0, E: 0 },
         };
     }
 
@@ -200,9 +204,10 @@ function calcSubjectRisk(
     const dR = factorD(tasks);
     const E  = factorE(burnout);
 
-    const cutoff   = new Date(now.getTime() + 7 * MS_PER_DAY);
-    const missed   = tasks.filter((t) => isMissed(t, now)).length;
-    const upcoming = tasks.filter(
+    const cutoff    = new Date(now.getTime() + 7 * MS_PER_DAY);
+    const missed    = tasks.filter((t) => isMissed(t, now)).length;
+    const completed = tasks.filter((t) => t.status === "completed").length;
+    const upcoming  = tasks.filter(
         (t) =>
             t.status !== "completed" &&
             new Date(t.deadline) >= now &&
@@ -211,12 +216,14 @@ function calcSubjectRisk(
 
     return {
         subject,
-        riskScore:     Math.min(100, Math.round(A + B + cR.score + dR.score + E)),
-        missedCount:   missed,
-        upcomingCount: upcoming,
-        perfDrop:      cR.drop,
-        avgDelayDays:  dR.avgDelayDays,
-        factors:       { A, B, C: cR.score, D: dR.score, E },
+        riskScore:      Math.min(100, Math.round(A + B + cR.score + dR.score + E)),
+        missedCount:    missed,
+        upcomingCount:  upcoming,
+        completedCount: completed,
+        overdueCount:   missed, // missed is functionally overdue
+        perfDrop:       cR.drop,
+        avgDelayDays:   dR.avgDelayDays,
+        factors:        { A, B, C: cR.score, D: dR.score, E },
     };
 }
 

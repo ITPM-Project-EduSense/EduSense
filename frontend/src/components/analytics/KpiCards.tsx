@@ -17,6 +17,8 @@ import {
 import { motion } from "framer-motion";
 import { kpiData } from "./analyticsData";
 import { apiFetch } from "@/lib/api";
+import RiskLevelModal from "./RiskLevelModal";
+import DeadlineRiskModal from "./DeadlineRiskModal";
 import {
     calculateAcademicRisk,
     type AcademicRiskResult,
@@ -39,36 +41,36 @@ import {
 
 const riskConfig = {
     Safe: {
-        topStripe: "bg-gradient-to-r from-emerald-400 to-teal-500",
-        iconBg: "bg-emerald-500/15",
-        iconRing: "ring-emerald-500/25",
-        text: "text-emerald-400",
-        bar: "bg-gradient-to-r from-emerald-400 to-teal-400",
-        glow: "shadow-emerald-500/30",
-        badge: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25",
-        subRisk: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+        topStripe: "bg-gradient-to-r from-emerald-600 to-teal-600",
+        iconBg: "bg-emerald-600/15",
+        iconRing: "ring-emerald-600/25",
+        text: "text-emerald-600",
+        bar: "bg-gradient-to-r from-emerald-600 to-teal-600",
+        glow: "shadow-emerald-600/30",
+        badge: "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25",
+        subRisk: "border-emerald-600/30 bg-emerald-600/10 text-emerald-600",
         icon: ShieldCheck,
     },
     Warning: {
-        topStripe: "bg-gradient-to-r from-amber-400 to-orange-400",
-        iconBg: "bg-amber-500/15",
-        iconRing: "ring-amber-500/25",
-        text: "text-amber-400",
-        bar: "bg-gradient-to-r from-amber-400 to-orange-400",
-        glow: "shadow-amber-500/30",
-        badge: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25",
-        subRisk: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+        topStripe: "bg-gradient-to-r from-amber-600 to-orange-600",
+        iconBg: "bg-amber-600/15",
+        iconRing: "ring-amber-600/25",
+        text: "text-amber-600",
+        bar: "bg-gradient-to-r from-amber-600 to-orange-600",
+        glow: "shadow-amber-600/30",
+        badge: "bg-amber-600/15 text-amber-600 ring-1 ring-amber-600/25",
+        subRisk: "border-amber-600/30 bg-amber-600/10 text-amber-600",
         icon: ShieldAlert,
     },
     Critical: {
-        topStripe: "bg-gradient-to-r from-rose-400 to-red-500",
-        iconBg: "bg-rose-500/15",
-        iconRing: "ring-rose-500/25",
-        text: "text-rose-400",
-        bar: "bg-gradient-to-r from-rose-400 to-red-400",
-        glow: "shadow-rose-500/30",
-        badge: "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25",
-        subRisk: "border-rose-500/30 bg-rose-500/10 text-rose-400",
+        topStripe: "bg-gradient-to-r from-rose-600 to-red-700",
+        iconBg: "bg-rose-600/15",
+        iconRing: "ring-rose-600/25",
+        text: "text-rose-600",
+        bar: "bg-gradient-to-r from-rose-600 to-red-700",
+        glow: "shadow-rose-600/30",
+        badge: "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25",
+        subRisk: "border-rose-600/30 bg-rose-600/10 text-rose-600",
         icon: ShieldX,
     },
 };
@@ -78,29 +80,29 @@ const dlColors: Record<DeadlineRiskLevel, {
     text: string; bar: string; glow: string; badge: string;
 }> = {
     Low: {
-        topStripe: "bg-gradient-to-r from-emerald-400 to-teal-500",
-        iconBg: "bg-emerald-500/15", iconRing: "ring-emerald-500/25",
-        text: "text-emerald-400", bar: "bg-gradient-to-r from-emerald-400 to-teal-400",
-        glow: "shadow-emerald-500/30", badge: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25",
+        topStripe: "bg-gradient-to-r from-emerald-600 to-teal-600",
+        iconBg: "bg-emerald-600/15", iconRing: "ring-emerald-600/25",
+        text: "text-emerald-600", bar: "bg-gradient-to-r from-emerald-600 to-teal-600",
+        glow: "shadow-emerald-600/30", badge: "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25",
     },
     Moderate: {
-        topStripe: "bg-gradient-to-r from-amber-400 to-orange-400",
-        iconBg: "bg-amber-500/15", iconRing: "ring-amber-500/25",
-        text: "text-amber-400", bar: "bg-gradient-to-r from-amber-400 to-orange-400",
-        glow: "shadow-amber-500/30", badge: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25",
+        topStripe: "bg-gradient-to-r from-amber-600 to-orange-600",
+        iconBg: "bg-amber-600/15", iconRing: "ring-amber-600/25",
+        text: "text-amber-600", bar: "bg-gradient-to-r from-amber-600 to-orange-600",
+        glow: "shadow-amber-600/30", badge: "bg-amber-600/15 text-amber-600 ring-1 ring-amber-600/25",
     },
     High: {
-        topStripe: "bg-gradient-to-r from-rose-400 to-red-500",
-        iconBg: "bg-rose-500/15", iconRing: "ring-rose-500/25",
-        text: "text-rose-400", bar: "bg-gradient-to-r from-rose-400 to-red-400",
-        glow: "shadow-rose-500/30", badge: "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25",
+        topStripe: "bg-gradient-to-r from-rose-600 to-red-700",
+        iconBg: "bg-rose-600/15", iconRing: "ring-rose-600/25",
+        text: "text-rose-600", bar: "bg-gradient-to-r from-rose-600 to-red-700",
+        glow: "shadow-rose-600/30", badge: "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25",
     },
 };
 
 const burnoutCfg = {
-    High: { topStripe: "bg-gradient-to-r from-rose-400 to-red-500", iconBg: "bg-rose-500/15", iconRing: "ring-rose-500/25", text: "text-rose-400", bar: "bg-gradient-to-r from-rose-400 to-red-400", glow: "shadow-rose-500/30", badge: "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25" },
-    Medium: { topStripe: "bg-gradient-to-r from-amber-400 to-orange-400", iconBg: "bg-amber-500/15", iconRing: "ring-amber-500/25", text: "text-amber-400", bar: "bg-gradient-to-r from-amber-400 to-orange-400", glow: "shadow-amber-500/30", badge: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25" },
-    Low: { topStripe: "bg-gradient-to-r from-emerald-400 to-teal-500", iconBg: "bg-emerald-500/15", iconRing: "ring-emerald-500/25", text: "text-emerald-400", bar: "bg-gradient-to-r from-emerald-400 to-teal-400", glow: "shadow-emerald-500/30", badge: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25" },
+    High: { topStripe: "bg-gradient-to-r from-rose-600 to-red-700", iconBg: "bg-rose-600/15", iconRing: "ring-rose-600/25", text: "text-rose-600", bar: "bg-gradient-to-r from-rose-600 to-red-700", glow: "shadow-rose-600/30", badge: "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25" },
+    Medium: { topStripe: "bg-gradient-to-r from-amber-600 to-orange-600", iconBg: "bg-amber-600/15", iconRing: "ring-amber-600/25", text: "text-amber-600", bar: "bg-gradient-to-r from-amber-600 to-orange-600", glow: "shadow-amber-600/30", badge: "bg-amber-600/15 text-amber-600 ring-1 ring-amber-600/25" },
+    Low: { topStripe: "bg-gradient-to-r from-emerald-600 to-teal-600", iconBg: "bg-emerald-600/15", iconRing: "ring-emerald-600/25", text: "text-emerald-600", bar: "bg-gradient-to-r from-emerald-600 to-teal-600", glow: "shadow-emerald-600/30", badge: "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25" },
 };
 
 // ── Animation variants ────────────────────────────────────────────────────────
@@ -117,20 +119,20 @@ const cardVariants = {
 
 function SkeletonCard() {
     return (
-        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-white via-blue-50 to-white border border-blue-200 shadow-xl shadow-blue-200/50">
-            <div className="h-1 w-full animate-pulse bg-blue-300/60" />
+        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-white via-blue-100 to-white border border-blue-300 shadow-xl shadow-blue-300/50">
+            <div className="h-1 w-full animate-pulse bg-blue-400/60" />
             <div className="p-5 space-y-4">
                 <div className="flex items-start justify-between">
                     <div className="space-y-2">
-                        <div className="h-3 w-28 animate-pulse rounded bg-blue-200/60" />
-                        <div className="h-8 w-20 animate-pulse rounded bg-blue-200/60" />
+                        <div className="h-3 w-28 animate-pulse rounded bg-blue-300/60" />
+                        <div className="h-8 w-20 animate-pulse rounded bg-blue-300/60" />
                     </div>
-                    <div className="h-10 w-10 animate-pulse rounded-xl bg-blue-200/60" />
+                    <div className="h-10 w-10 animate-pulse rounded-xl bg-blue-300/60" />
                 </div>
-                <div className="h-2 w-full animate-pulse rounded-full bg-blue-200/60" />
+                <div className="h-2 w-full animate-pulse rounded-full bg-blue-300/60" />
                 <div className="space-y-1.5">
-                    <div className="h-3 w-full animate-pulse rounded bg-blue-100/60" />
-                    <div className="h-3 w-3/4 animate-pulse rounded bg-blue-100/60" />
+                    <div className="h-3 w-full animate-pulse rounded bg-blue-200/60" />
+                    <div className="h-3 w-3/4 animate-pulse rounded bg-blue-200/60" />
                 </div>
             </div>
         </div>
@@ -145,7 +147,7 @@ function CardShell({ topStripe, glow, children }: {
     children: React.ReactNode;
 }) {
     return (
-        <div className={`flex h-full flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-white via-blue-50 to-white border border-blue-200 shadow-xl shadow-blue-200/50 shadow-lg`}>
+        <div className={`flex h-full flex-col overflow-hidden rounded-2xl bg-white border border-gray-300 shadow-xl shadow-gray-300/50 shadow-lg`}>
             <div className={`h-1 w-full shrink-0 ${topStripe}`} />
             <div className="flex flex-1 flex-col p-5">{children}</div>
         </div>
@@ -154,7 +156,7 @@ function CardShell({ topStripe, glow, children }: {
 
 // ── Academic Risk Card ────────────────────────────────────────────────────────
 
-function AcademicRiskCard({ data, loading }: { data: AcademicRiskResult | null; loading: boolean }) {
+function AcademicRiskCard({ data, loading, onClick }: { data: AcademicRiskResult | null; loading: boolean; onClick: () => void }) {
     const risk = riskConfig[data?.level ?? "Safe"];
     const RiskIcon = risk.icon;
 
@@ -164,7 +166,8 @@ function AcademicRiskCard({ data, loading }: { data: AcademicRiskResult | null; 
         <motion.div
             custom={0} initial="hidden" animate="visible" variants={cardVariants}
             whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="h-full"
+            onClick={onClick}
+            className="h-full cursor-pointer"
         >
             <CardShell topStripe={risk.topStripe} glow={risk.glow}>
                 <div className="flex items-start justify-between">
@@ -183,7 +186,7 @@ function AcademicRiskCard({ data, loading }: { data: AcademicRiskResult | null; 
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
                     <motion.div
                         initial={{ width: 0 }} animate={{ width: `${data!.score}%` }}
                         transition={{ duration: 0.9, ease: "easeOut" }}
@@ -198,7 +201,7 @@ function AcademicRiskCard({ data, loading }: { data: AcademicRiskResult | null; 
                         {data!.dominantFactor}
                     </span>
                     <div className="group relative ml-auto">
-                        <Info size={13} className="cursor-help text-blue-400/50 transition-colors hover:text-blue-500" />
+                        <Info size={13} className="cursor-help text-blue-600/50 transition-colors hover:text-blue-700" />
                         <div className="invisible absolute bottom-full right-0 z-20 mb-2 w-56 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-xs leading-relaxed text-white shadow-xl group-hover:visible">
                             {data?.tooltip ?? "Calculated using: Missed Deadlines (25%), Upcoming Workload (20%), Performance Trend (20%), Delay Consistency (20%), Burnout Level (15%)."}
                             <span className="absolute right-3 top-full border-4 border-transparent border-t-slate-800" />
@@ -211,9 +214,9 @@ function AcademicRiskCard({ data, loading }: { data: AcademicRiskResult | null; 
                         {data!.subjectBreakdowns.map((s) => (
                             <span key={s.subject}
                                 title={`${s.subject}: score ${s.riskScore}/100`}
-                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.riskScore >= 61 ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                                        : s.riskScore >= 31 ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.riskScore >= 61 ? "border-rose-700/30 bg-rose-700/10 text-rose-700"
+                                    : s.riskScore >= 31 ? "border-amber-700/30 bg-amber-700/10 text-amber-700"
+                                        : "border-emerald-700/30 bg-emerald-700/10 text-emerald-700"
                                     }`}
                             >
                                 {s.subject} · {s.riskScore}
@@ -228,7 +231,7 @@ function AcademicRiskCard({ data, loading }: { data: AcademicRiskResult | null; 
 
 // ── Deadline Risk Card ────────────────────────────────────────────────────────
 
-function DeadlineRiskCard({ data, loading }: { data: DeadlineRiskResult | null; loading: boolean }) {
+function DeadlineRiskCard({ data, loading, onClick }: { data: DeadlineRiskResult | null; loading: boolean; onClick: () => void }) {
     const level = data?.level ?? "Low";
     const colors = dlColors[level];
 
@@ -238,7 +241,8 @@ function DeadlineRiskCard({ data, loading }: { data: DeadlineRiskResult | null; 
         <motion.div
             custom={1} initial="hidden" animate="visible" variants={cardVariants}
             whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="h-full"
+            onClick={onClick}
+            className="h-full cursor-pointer"
         >
             <CardShell topStripe={colors.topStripe} glow={colors.glow}>
                 <div className="flex items-start justify-between">
@@ -256,7 +260,7 @@ function DeadlineRiskCard({ data, loading }: { data: DeadlineRiskResult | null; 
                     </div>
                 </div>
 
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
                     <motion.div
                         initial={{ width: 0 }} animate={{ width: `${data!.probability}%` }}
                         transition={{ duration: 0.9, ease: "easeOut" }}
@@ -273,12 +277,12 @@ function DeadlineRiskCard({ data, loading }: { data: DeadlineRiskResult | null; 
                         </span>
                     )}
                     {data?.level === "High" && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-1 text-xs font-medium text-rose-400 ring-1 ring-rose-500/25">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-600/15 px-2.5 py-1 text-xs font-medium text-rose-600 ring-1 ring-rose-600/25">
                             <AlertTriangle size={11} /> Above threshold
                         </span>
                     )}
                     <div className="group relative ml-auto shrink-0">
-                        <Info size={13} className="cursor-help text-blue-400/50 transition-colors hover:text-blue-500" />
+                        <Info size={13} className="cursor-help text-blue-600/50 transition-colors hover:text-blue-700" />
                         <div className="invisible absolute bottom-full right-0 z-20 mb-2 w-56 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-xs leading-relaxed text-white shadow-xl group-hover:visible">
                             {data?.tooltip ?? TOOLTIP_FALLBACK}
                             <span className="absolute right-3 top-full border-4 border-transparent border-t-slate-800" />
@@ -287,13 +291,13 @@ function DeadlineRiskCard({ data, loading }: { data: DeadlineRiskResult | null; 
                 </div>
 
                 {data!.topRiskyTasks.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-1.5 border-t border-blue-200 pt-3">
+                    <div className="mt-4 flex flex-wrap gap-1.5 border-t border-blue-300 pt-3">
                         {data!.topRiskyTasks.map((t) => (
                             <span key={t.taskId}
                                 title={`${t.title} (${t.subject}) — ${t.daysRemaining <= 0 ? "overdue" : `${t.daysRemaining.toFixed(1)} days left`} · score ${t.riskScore}/100`}
-                                className={`inline-flex cursor-default items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${t.level === "High" ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                                        : t.level === "Moderate" ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                className={`inline-flex cursor-default items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${t.level === "High" ? "border-rose-700/30 bg-rose-700/10 text-rose-700"
+                                    : t.level === "Moderate" ? "border-amber-700/30 bg-amber-700/10 text-amber-700"
+                                        : "border-emerald-700/30 bg-emerald-700/10 text-emerald-700"
                                     }`}
                             >
                                 {t.subject} · {t.riskScore}
@@ -323,7 +327,7 @@ function GpaPredictionCard() {
             whileHover={{ y: -4, transition: { duration: 0.2 } }}
             className="h-full"
         >
-            <CardShell topStripe="bg-gradient-to-r from-blue-400 to-indigo-500" glow="shadow-blue-500/20">
+            <CardShell topStripe="bg-gradient-to-r from-blue-600 to-indigo-600" glow="shadow-blue-600/20">
                 <div className="flex items-start justify-between">
                     <div>
                         <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
@@ -334,18 +338,18 @@ function GpaPredictionCard() {
                             <span className="text-sm font-medium text-slate-500">/ {gpaPrediction.max.toFixed(1)}</span>
                         </div>
                     </div>
-                    <div className="rounded-xl bg-blue-500/15 p-2.5 ring-1 ring-blue-500/25">
-                        <GraduationCap size={20} className="text-blue-400" />
+                    <div className="rounded-xl bg-blue-600/15 p-2.5 ring-1 ring-blue-600/25">
+                        <GraduationCap size={20} className="text-blue-600" />
                     </div>
                 </div>
 
                 {/* GPA bar */}
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${(gpaPrediction.value / gpaPrediction.max) * 100}%` }}
                         transition={{ duration: 0.9, ease: "easeOut" }}
-                        className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
+                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600"
                     />
                 </div>
 
@@ -353,8 +357,8 @@ function GpaPredictionCard() {
 
                 <div className="mt-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${gpaPrediction.direction === "up"
-                            ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25"
-                            : "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25"
+                            ? "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25"
+                            : "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25"
                         }`}>
                         {gpaPrediction.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {gpaPrediction.trend} from last semester
@@ -372,7 +376,7 @@ function BurnoutIndexCard({ data, loading }: { data: BurnoutResult | null; loadi
     const colors = burnoutCfg[level];
 
     const TrendIcon = data?.trend === "up" ? TrendingUp : data?.trend === "down" ? TrendingDown : Minus;
-    const trendColor = data?.trend === "up" ? "text-rose-400" : data?.trend === "down" ? "text-emerald-400" : "text-slate-500";
+    const trendColor = data?.trend === "up" ? "text-rose-600" : data?.trend === "down" ? "text-emerald-600" : "text-slate-500";
     const trendLabel = data?.trend === "up" ? "Rising" : data?.trend === "down" ? "Falling" : "Stable";
 
     if (loading) return <SkeletonCard />;
@@ -399,7 +403,7 @@ function BurnoutIndexCard({ data, loading }: { data: BurnoutResult | null; loadi
                     </div>
                 </div>
 
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
                     <motion.div
                         initial={{ width: 0 }} animate={{ width: `${data!.score}%` }}
                         transition={{ duration: 0.9, ease: "easeOut" }}
@@ -419,7 +423,7 @@ function BurnoutIndexCard({ data, loading }: { data: BurnoutResult | null; loadi
                 )}
 
                 {data!.isCriticalWeek && (
-                    <div className="mt-3 flex animate-pulse items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-400 ring-1 ring-rose-500/25 w-fit">
+                    <div className="mt-3 flex animate-pulse items-center gap-1.5 rounded-full bg-rose-600/15 px-2.5 py-1 text-xs font-semibold text-rose-600 ring-1 ring-rose-600/25 w-fit">
                         <AlertTriangle size={12} /> Critical Week Alert
                     </div>
                 )}
@@ -435,6 +439,8 @@ export default function KpiCards() {
     const [burnoutData, setBurnoutData] = useState<BurnoutResult | null>(null);
     const [deadlineRiskData, setDeadlineRiskData] = useState<DeadlineRiskResult | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+    const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -478,10 +484,22 @@ export default function KpiCards() {
 
     return (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <AcademicRiskCard data={riskData} loading={loading} />
-            <DeadlineRiskCard data={deadlineRiskData} loading={loading} />
+            <AcademicRiskCard data={riskData} loading={loading} onClick={() => setIsRiskModalOpen(true)} />
+            <DeadlineRiskCard data={deadlineRiskData} loading={loading} onClick={() => setIsDeadlineModalOpen(true)} />
             <GpaPredictionCard />
             <BurnoutIndexCard data={burnoutData} loading={loading} />
+
+            <RiskLevelModal 
+                isOpen={isRiskModalOpen} 
+                onClose={() => setIsRiskModalOpen(false)} 
+                subjects={riskData?.subjectBreakdowns ?? []} 
+            />
+
+            <DeadlineRiskModal
+                isOpen={isDeadlineModalOpen}
+                onClose={() => setIsDeadlineModalOpen(false)}
+                subjects={deadlineRiskData?.subjectBreakdowns ?? []}
+            />
         </section>
     );
 }
