@@ -204,7 +204,7 @@ export default function SubjectPerformanceChart() {
                     {[
                         { label: "Total Tasks", value: tasks.length, color: "text-slate-800" },
                         { label: "Subjects", value: subjectStats.length, color: "text-blue-600" },
-                        { label: "Completed", value: `${overallPct}%`, color: overallPct === 100 ? "text-emerald-400" : overallPct >= 50 ? "text-amber-400" : "text-rose-400" },
+                        { label: "Completed", value: `${overallPct}%`, color: overallPct === 100 ? "text-emerald-600" : overallPct >= 50 ? "text-amber-600" : "text-rose-600" },
                     ].map((stat) => (
                         <div
                             key={stat.label}
@@ -219,15 +219,19 @@ export default function SubjectPerformanceChart() {
                 {/* ── Subject rows ── */}
                 <div className="space-y-3">
                     {subjectStats.map((stats: SubjectStats, i: number) => {
-                        const palette = SUBJECT_PALETTE[i % SUBJECT_PALETTE.length];
                         const completedPct = (stats.completed / stats.total) * 100;
                         const inProgressPct = (stats.inProgress / stats.total) * 100;
                         const pendingPct = (stats.pending / stats.total) * 100;
 
-                        const pctColor =
-                            stats.completionPct === 100 ? "text-emerald-300" :
-                                stats.completionPct >= 50 ? "text-amber-300" :
-                                    "text-rose-300";
+                        const isHigh = stats.completionPct >= 61;
+                        const isMed = stats.completionPct >= 31 && stats.completionPct < 61;
+
+                        const cardTheme = "bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 border-blue-500/50 shadow-[0_8px_25px_-4px_rgba(37,99,235,0.4)]";
+
+                        const pctColor = "text-white";
+                        const iconTheme = "bg-white/20 text-white ring-white/30 shadow-inner";
+                        const titleColor = "text-white";
+                        const subColor = "text-blue-200";
 
                         return (
                             <motion.div
@@ -236,64 +240,64 @@ export default function SubjectPerformanceChart() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.07, duration: 0.4 }}
                                 onClick={() => setSelectedSubject(stats)}
-                                className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg shadow-blue-900/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95"
+                                className={`group relative overflow-hidden rounded-[1.25rem] border transition-all duration-300 cursor-pointer hover:-translate-y-1 p-4 ${cardTheme}`}
                             >
                                 {/* Top row */}
-                                <div className="mb-3 flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ring-1 ${palette.bg} ${palette.ring} ${palette.text}`}>
+                                <div className="mb-4 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[11px] font-black tracking-wider ring-1 ring-inset ${iconTheme}`}>
                                             {stats.subject.slice(0, 3).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold text-white">
+                                            <p className={`truncate text-[13px] font-black uppercase tracking-tight ${titleColor}`}>
                                                 {stats.subject}
                                             </p>
-                                            <p className="text-[10px] text-blue-200">
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${subColor}`}>
                                                 {stats.total} task{stats.total !== 1 ? "s" : ""}
                                             </p>
                                         </div>
                                     </div>
 
                                     <div className="shrink-0 text-right">
-                                        <p className={`text-lg font-bold leading-none ${pctColor}`}>
-                                            {stats.completionPct}%
+                                        <p className={`text-2xl font-black italic tracking-tighter leading-none ${pctColor}`}>
+                                            {stats.completionPct}<span className={`text-[10px] not-italic uppercase ml-0.5 ${subColor}`}>%</span>
                                         </p>
-                                        <p className="mt-0.5 text-[10px] text-blue-200">done</p>
+                                        <p className={`mt-1 text-[9px] font-black uppercase tracking-widest ${subColor}`}>Completion</p>
                                     </div>
                                 </div>
 
                                 {/* Segmented progress bar */}
-                                <div className="flex h-2 overflow-hidden rounded-full bg-white/20">
+                                <div className="flex h-2 overflow-hidden rounded-full bg-black/20 ring-1 ring-inset ring-black/10 mb-4 shadow-inner">
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${completedPct}%` }}
                                         transition={{ delay: i * 0.07 + 0.15, duration: 0.75, ease: "easeOut" }}
-                                        className="h-full bg-emerald-600"
+                                        className="h-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"
                                     />
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${inProgressPct}%` }}
                                         transition={{ delay: i * 0.07 + 0.3, duration: 0.75, ease: "easeOut" }}
-                                        className="h-full bg-amber-600"
+                                        className="h-full bg-amber-600 shadow-[0_0_10px_rgba(251,191,36,0.8)]"
                                     />
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${pendingPct}%` }}
                                         transition={{ delay: i * 0.07 + 0.45, duration: 0.75, ease: "easeOut" }}
-                                        className="h-full bg-rose-600"
+                                        className="h-full bg-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.8)]"
                                     />
                                 </div>
 
                                 {/* Stat pills */}
-                                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-400/25">
-                                        <CheckCircle2 size={9} /> {stats.completed} done
+                                <div className="flex flex-wrap gap-2">
+                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white border border-white/20 shadow-sm">
+                                        <CheckCircle2 size={10} className="text-white" /> {stats.completed} done
                                     </span>
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-400/25">
-                                        <Clock3 size={9} /> {stats.inProgress} active
+                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white border border-white/20 shadow-sm">
+                                        <Clock3 size={10} className="text-white/80" /> {stats.inProgress} active
                                     </span>
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-rose-400/15 px-2 py-0.5 text-[10px] font-medium text-rose-300 ring-1 ring-rose-400/25">
-                                        <Circle size={9} /> {stats.pending} pending
+                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white border border-white/20 shadow-sm">
+                                        <Circle size={10} className="text-white/50" /> {stats.pending} pending
                                     </span>
                                 </div>
                             </motion.div>
@@ -317,7 +321,7 @@ export default function SubjectPerformanceChart() {
             </CardShell>
 
             {selectedSubject && (
-                <SubjectDetailModal 
+                <SubjectDetailModal
                     isOpen={!!selectedSubject}
                     onClose={() => setSelectedSubject(null)}
                     subjectName={selectedSubject.subject}
