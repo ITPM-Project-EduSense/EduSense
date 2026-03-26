@@ -28,7 +28,14 @@ export default function AiPage() {
 
       {/* 🔥 Styled Tabs */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-semibold">AI Coach</h1>
+        <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition"
+        >
+          Upload PDF
+        </button>
+      </div>
 
         <div className="flex ml-auto bg-gray-100 rounded-3xl p-1">
           {tabs.map((tab) => {
@@ -61,6 +68,16 @@ export default function AiPage() {
           <SmartQuiz uploadedPdfs={uploadedPdfs} />
         )}
       </div>
+
+      {/* 🔹 Upload Button */}
+      {/* <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition"
+        >
+          Upload PDF
+        </button>
+      </div> */}
 
       {/* 🔹 Modal */}
       <PdfUploaderModal
