@@ -1,9 +1,9 @@
-import AiCoach from '@/components/ai-coach/AiCoach'
+import SmartQuiz from '@/components/ai-coach/SmartQuiz';
 
 export default function aiPage(){
   return (
     <>
-      <AiCoach></AiCoach>
+      
     </>
   )
 }
