@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
 
 const MOCK_SESSIONS: Record<string, { label: string; url: string; platform: string }[]> = {
@@ -129,6 +129,41 @@ function apiGroupToGroup(g: {
     };
 }
 
+// --- NEW COMPONENT FOR ACTIVE STATUS GRAPH ---
+function ActivityGraph() {
+    const data = [10, 25, 15, 45, 30, 60, 40, 85, 55, 70, 90, 80]; // Mock points
+    const points = data.map((val, i) => `${(i * 40)},${100 - val}`).join(" ");
+
+    return (
+        <div className="pc-activity-card">
+            <div className="pc-activity-header">
+                <div className="pc-section-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Live Peer Activity
+                </div>
+                <div className="pc-live-indicator">
+                    <span className="pc-live-dot"></span> 12 Groups Active Now
+                </div>
+            </div>
+            <div className="pc-graph-container">
+                <svg viewBox="0 0 440 100" className="pc-graph-svg">
+                    <defs>
+                        <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <polyline fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={points} />
+                    <polygon fill="url(#lineGradient)" points={`0,100 ${points} 440,100`} />
+                </svg>
+                <div className="pc-graph-labels">
+                    <span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>Now</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function PeerConnectHome() {
     const [groups, setGroups] = useState<Group[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
@@ -172,7 +207,15 @@ export default function PeerConnectHome() {
     });
 
     const handleCreate = async () => {
-        if (!groupName.trim() || !groupModule || !groupSchedule.trim()) return;
+        if (!groupName.trim() || !groupModule || !groupSchedule.trim()) {
+            setCreateError("Please fill in all required fields.");
+            return;
+        }
+        const maxVal = parseInt(groupMax);
+        if (isNaN(maxVal) || maxVal < 2 || maxVal > 10) {
+            setCreateError("Max members must be between 2 and 10.");
+            return;
+        }
         setCreating(true);
         setCreateError("");
         try {
@@ -183,7 +226,7 @@ export default function PeerConnectHome() {
                     name: groupName.trim(),
                     module: groupModule,
                     schedule: groupSchedule.trim(),
-                    max_members: parseInt(groupMax) || 6,
+                    max_members: maxVal,
                     tags,
                 }),
             });
@@ -220,11 +263,6 @@ export default function PeerConnectHome() {
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
-        /*
-          KEY FIX: .pc-wrap has NO position:fixed, NO min-height:100vh, NO full-bleed.
-          It just fills the content area that AppShell's <main> provides.
-          AppShell already does: lg:ml-[260px] so the sidebar is already accounted for.
-        */
         .pc-wrap {
           width: 100%;
           background: #D4D7DE;
@@ -236,7 +274,7 @@ export default function PeerConnectHome() {
           padding: 2.5rem 2rem 6rem;
         }
 
-        .pc-hero { margin-bottom: 3.5rem; }
+        .pc-hero { margin-bottom: 2.5rem; }
         .pc-hero-label {
           display: inline-flex;
           align-items: center;
@@ -311,17 +349,63 @@ export default function PeerConnectHome() {
           box-shadow: 0 12px 40px rgba(37,99,235,0.3);
         }
 
+        /* --- GRAPH STYLES --- */
+        .pc-activity-card {
+            background: #FFFFFF;
+            border-radius: 18px;
+            padding: 1.5rem;
+            margin-bottom: 3rem;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        .pc-activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .pc-live-indicator {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #34A853;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(52, 168, 83, 0.1);
+            padding: 0.4rem 0.8rem;
+            border-radius: 100px;
+        }
+        .pc-live-dot {
+            width: 6px; height: 6px;
+            background: #34A853;
+            border-radius: 50%;
+            animation: pc-pulse 1.5s infinite;
+        }
+        .pc-graph-container { width: 100%; position: relative; }
+        .pc-graph-svg { width: 100%; height: 80px; filter: drop-shadow(0 4px 4px rgba(37, 99, 237, 0.1)); }
+        .pc-graph-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.75rem;
+            font-size: 0.65rem;
+            color: #8A8AAA;
+            font-family: 'DM Sans', sans-serif;
+            padding: 0 5px;
+        }
+
         .pc-section-title {
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-weight: 700;
           font-size: 1rem;
           letter-spacing: -0.01em;
-          margin-bottom: 1.1rem;
+          margin-bottom: 0;
           display: flex;
           align-items: center;
           gap: 0.65rem;
           color: #1E40AF;
         }
+        /* (Remaining styles unchanged below) */
         .pc-count {
           background: rgba(0,0,0,0.07);
           border-radius: 100px;
@@ -447,7 +531,6 @@ export default function PeerConnectHome() {
 
         .pc-empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; color: #8A8AAA; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
 
-        /* MODAL — position:fixed is fine here, it's intentional overlay behaviour */
         .pc-modal-overlay {
           position: fixed;
           inset: 0;
@@ -601,127 +684,168 @@ export default function PeerConnectHome() {
                     </div>
                 );
             })() : (
+                <div className="pc-wrap">
+                    <div className="pc-main">
+                        <header className="pc-hero">
+                            <div className="pc-hero-label">Community Hub</div>
+                            <h1>Peer <em>Connect</em></h1>
+                            <p>Find your tribe, share resources, and conquer your modules with peer-led study groups.</p>
+                            <button className="pc-create-btn" onClick={() => setShowCreateModal(true)}>
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                                Create New Group
+                            </button>
+                        </header>
 
-            /* ── LIST VIEW ── */
-            <div className="pc-wrap">
-                <div className="pc-main">
-                    <div className="pc-hero">
-                        <div className="pc-hero-label">Study Together</div>
-                        <h1>Find your <em>academic</em><br />study circle.</h1>
-                        <p>Join or create study groups tailored to your modules. Learn better, together.</p>
-                        <button className="pc-create-btn" onClick={() => setShowCreateModal(true)}>
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
-                            Create a Study Group
-                        </button>
-                    </div>
+                        {/* --- NEW ACTIVITY GRAPH SECTION --- */}
+                        <ActivityGraph />
 
-                    <div style={{ marginBottom: "1.75rem", position: "relative" }}>
-                        <input
-                            style={{ width: "100%", background: "#fff", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 10, padding: "0.62rem 1rem 0.62rem 2.4rem", fontSize: "0.85rem", fontFamily: "'DM Sans',sans-serif", outline: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
-                            placeholder="Search groups by name, module or tag…"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <svg style={{ position: "absolute", left: "0.8rem", top: "50%", transform: "translateY(-50%)", color: "#9A9AB0" }} width="15" height="15" viewBox="0 0 16 16" fill="none">
-                            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
-                            <path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                        </svg>
-                    </div>
+                        <section className="pc-modules-section">
+                            <div className="pc-section-title">
+                                Targeted Modules
+                                <span className="pc-count">{modules.length}</span>
+                            </div>
+                            <div className="pc-modules-grid">
+                                {modules.map((m) => (
+                                    <div
+                                        key={m.code}
+                                        className={`pc-module-card ${activeFilter === m.code ? "pc-active" : ""}`}
+                                        style={{ "--card-color": m.color } as any}
+                                        onClick={() => setActiveFilter(activeFilter === m.code ? "All" : m.code)}
+                                    >
+                                        <div className="pc-module-dot" />
+                                        <div className="pc-module-code">{m.code}</div>
+                                        <div className="pc-module-name">{m.name}</div>
+                                        <div className="pc-module-members">{m.members} students</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
 
-                    <div className="pc-modules-section">
-                        <div className="pc-section-title">Browse by Module <span className="pc-count">{modules.length} modules</span></div>
-                        <div className="pc-modules-grid">
-                            {modules.map((mod) => (
-                                <div key={mod.code} className={`pc-module-card ${selectedModule === mod.code ? "pc-active" : ""}`} style={{ ["--card-color" as string]: mod.color }} onClick={() => setSelectedModule(selectedModule === mod.code ? null : mod.code)}>
-                                    <div className="pc-module-dot" />
-                                    <div className="pc-module-code">{mod.code}</div>
-                                    <div className="pc-module-name">{mod.name}</div>
-                                    <div className="pc-module-members">{mod.members} in groups</div>
+                        <div className="pc-section-divider" />
+
+                        <section className="pc-groups-section">
+                            <div className="pc-section-title" style={{ marginBottom: "1.5rem" }}>
+                                Discover Peer Groups
+                                <span className="pc-count">{filteredGroups.length}</span>
+                            </div>
+
+                            <div style={{ marginBottom: "2rem" }}>
+                                <div className="pc-filter-bar">
+                                    {["All", ...modules.map(m => m.code)].map((f) => (
+                                        <button key={f} className={`pc-filter-chip ${activeFilter === f ? "pc-active" : ""}`} onClick={() => setActiveFilter(f)}>
+                                            {f}
+                                        </button>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                <div style={{ position: "relative" }}>
+                                    <input
+                                        type="text"
+                                        className="pc-form-input"
+                                        placeholder="Search by group name, module, or tags..."
+                                        style={{ background: "#FFFFFF", paddingLeft: "2.5rem" }}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <svg style={{ position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)", color: "#8A8AAA" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                                </div>
+                            </div>
 
-                    <div className="pc-section-divider" />
-
-                    <div>
-                        <div className="pc-section-title">Open Groups <span className="pc-count">{loadingGroups ? "…" : `${filteredGroups.length} available`}</span></div>
-                        <div className="pc-filter-bar">
-                            <button className={`pc-filter-chip ${activeFilter === "All" ? "pc-active" : ""}`} onClick={() => setActiveFilter("All")}>All</button>
-                            {modules.map((mod) => (
-                                <button key={mod.code} className={`pc-filter-chip ${activeFilter === mod.code ? "pc-active" : ""}`} onClick={() => setActiveFilter(activeFilter === mod.code ? "All" : mod.code)}>{mod.code}</button>
-                            ))}
-                        </div>
-                        <div className="pc-groups-grid">
-                            {loadingGroups ? (
-                                <div className="pc-empty-state">Loading groups…</div>
-                            ) : filteredGroups.length === 0 ? (
-                                <div className="pc-empty-state">No groups yet. <span style={{ color: "#2563EB", cursor: "pointer" }} onClick={() => setShowCreateModal(true)}>Create the first one!</span></div>
-                            ) : (
-                                filteredGroups.map((group) => {
-                                    const fillPct = (group.members / group.max) * 100;
-                                    const isJoined = joinedGroups.has(group.id);
-                                    const isFull = group.members >= group.max;
-                                    const isLoading = joiningId === group.id;
-                                    return (
-                                        <div key={group.id} className="pc-group-card" onClick={() => setSelectedGroup(group)}>
-                                            <div className="pc-group-card-top">
-                                                <div className="pc-group-module-badge" style={{ background: `${group.moduleColor}18`, color: group.moduleColor, border: `1px solid ${group.moduleColor}35` }}>
-                                                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: group.moduleColor, display: "inline-block" }} />
-                                                    {group.module}
-                                                </div>
-                                            </div>
-                                            <div className="pc-group-name">{group.name}</div>
-                                            <div className="pc-group-schedule">
-                                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" /><path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
-                                                {group.schedule}
-                                            </div>
-                                            {group.tags.length > 0 && <div className="pc-group-tags">{group.tags.map((t) => <span key={t} className="pc-tag">{t}</span>)}</div>}
-                                            <div className="pc-group-footer">
-                                                <div className="pc-member-bar-wrap">
-                                                    <div className="pc-member-bar-label">{group.members}/{group.max} members</div>
-                                                    <div className="pc-member-bar"><div className="pc-member-bar-fill" style={{ width: `${fillPct}%`, background: group.moduleColor }} /></div>
-                                                </div>
-                                                <button className={`pc-join-btn ${isJoined ? "pc-joined" : "pc-default"}`} disabled={isLoading || (!isJoined && isFull)} onClick={(e) => { e.stopPropagation(); handleJoin(group.id); }}>
-                                                    {isLoading ? "…" : isJoined ? "✓ Joined" : isFull ? "Full" : "Join"}
-                                                </button>
-                                            </div>
+                            <div className="pc-groups-grid">
+                                {loadingGroups ? (
+                                    Array.from({ length: 6 }).map((_, i) => (
+                                        <div key={i} className="pc-group-card" style={{ opacity: 0.6, pointerEvents: "none" }}>
+                                            <div style={{ height: 20, width: "60%", background: "#eee", borderRadius: 4, marginBottom: 12 }} />
+                                            <div style={{ height: 14, width: "80%", background: "#f5f5f5", borderRadius: 4, marginBottom: 20 }} />
+                                            <div style={{ height: 32, background: "#fafafa", borderRadius: 8 }} />
                                         </div>
-                                    );
-                                })
-                            )}
-                        </div>
+                                    ))
+                                ) : filteredGroups.length > 0 ? (
+                                    filteredGroups.map((g) => {
+                                        const isJoined = joinedGroups.has(g.id);
+                                        const isFull = g.members >= g.max && !isJoined;
+                                        const isLoading = joiningId === g.id;
+                                        return (
+                                            <div key={g.id} className="pc-group-card" onClick={() => setSelectedGroup(g)}>
+                                                <div className="pc-group-card-top">
+                                                    <div className="pc-group-module-badge" style={{ background: `${g.moduleColor}15`, color: g.moduleColor }}>
+                                                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: g.moduleColor }} />
+                                                        {g.module}
+                                                    </div>
+                                                </div>
+                                                <div className="pc-group-name">{g.name}</div>
+                                                <div className="pc-group-schedule">
+                                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" /><path d="M6 3.5V6l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
+                                                    {g.schedule}
+                                                </div>
+                                                <div className="pc-group-tags">
+                                                    {g.tags.map(t => <span key={t} className="pc-tag">{t}</span>)}
+                                                </div>
+                                                <div className="pc-group-footer">
+                                                    <div className="pc-member-bar-wrap">
+                                                        <div className="pc-member-bar-label">{g.members}/{g.max} members</div>
+                                                        <div className="pc-member-bar">
+                                                            <div className="pc-member-bar-fill" style={{ width: `${(g.members / g.max) * 100}%`, background: g.moduleColor }} />
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        className={`pc-join-btn ${isJoined ? "pc-joined" : "pc-default"}`}
+                                                        disabled={isLoading || isFull}
+                                                        onClick={(e) => { e.stopPropagation(); handleJoin(g.id); }}
+                                                    >
+                                                        {isLoading ? "…" : isJoined ? "✓ Joined" : isFull ? "Full" : "Join"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="pc-empty-state">
+                                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: "1rem", opacity: 0.5 }}><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                                        <p>No groups found matching your criteria.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
                     </div>
                 </div>
-            </div>
             )}
 
-            {/* CREATE MODAL */}
+            {/* ── CREATE MODAL ── */}
             {showCreateModal && (
-                <div className="pc-modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowCreateModal(false)}>
-                    <div className="pc-modal">
+                <div className="pc-modal-overlay" onClick={() => !creating && setShowCreateModal(false)}>
+                    <div className="pc-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="pc-modal-header">
-                            <div className="pc-modal-title">New Study Group</div>
+                            <div className="pc-modal-title">Create Study Group</div>
                             <button className="pc-modal-close" onClick={() => setShowCreateModal(false)}>×</button>
                         </div>
-                        <div className="pc-form-group"><label className="pc-form-label">Group Name</label><input className="pc-form-input" placeholder="e.g. Weekend Warriors" value={groupName} onChange={(e) => setGroupName(e.target.value)} /></div>
-                        <div className="pc-form-group"><label className="pc-form-label">Module</label>
-                            <select className="pc-form-select" value={groupModule} onChange={(e) => setGroupModule(e.target.value)}>
-                                <option value="">Select a module…</option>
-                                {modules.map((m) => <option key={m.code} value={m.code}>{m.code} — {m.name}</option>)}
-                            </select>
-                        </div>
-                        <div className="pc-form-group"><label className="pc-form-label">Meeting Schedule</label><input className="pc-form-input" placeholder="e.g. Saturdays 2PM @ Library" value={groupSchedule} onChange={(e) => setGroupSchedule(e.target.value)} /></div>
                         <div className="pc-form-group">
-                            <label className="pc-form-label">Max Members</label>
-                            <input className="pc-form-input" type="number" placeholder="6" min={2} max={10} value={groupMax} onChange={(e) => setGroupMax(e.target.value)} style={parseInt(groupMax) > 10 ? { borderColor: "#EF4444" } : {}} />
-                            {parseInt(groupMax) > 10 && <div className="pc-form-hint" style={{ color: "#EF4444" }}>Maximum allowed is 10 members.</div>}
-                            {parseInt(groupMax) < 2 && groupMax !== "" && <div className="pc-form-hint" style={{ color: "#EF4444" }}>Minimum is 2 members.</div>}
+                            <label className="pc-form-label">Group Name</label>
+                            <input className="pc-form-input" placeholder="e.g. Midterm Grind Team" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
                         </div>
-                        <div className="pc-form-group"><label className="pc-form-label">Tags</label><input className="pc-form-input" placeholder="e.g. Beginner-friendly, Online, Exam Prep" value={groupTags} onChange={(e) => setGroupTags(e.target.value)} /><div className="pc-form-hint">Separate tags with commas</div></div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                            <div className="pc-form-group">
+                                <label className="pc-form-label">Module</label>
+                                <select className="pc-form-select" value={groupModule} onChange={(e) => setGroupModule(e.target.value)}>
+                                    <option value="">Select...</option>
+                                    {modules.map(m => <option key={m.code} value={m.code}>{m.code}</option>)}
+                                </select>
+                            </div>
+                            <div className="pc-form-group">
+                                <label className="pc-form-label">Max Members</label>
+                                <input type="number" className="pc-form-input" min="2" max="10" value={groupMax} onChange={(e) => setGroupMax(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="pc-form-group">
+                            <label className="pc-form-label">Schedule</label>
+                            <input className="pc-form-input" placeholder="e.g. Mon & Wed, 8pm" value={groupSchedule} onChange={(e) => setGroupSchedule(e.target.value)} />
+                        </div>
+                        <div className="pc-form-group">
+                            <label className="pc-form-label">Tags (comma separated)</label>
+                            <input className="pc-form-input" placeholder="e.g. NoobsWelcome, FastPaced" value={groupTags} onChange={(e) => setGroupTags(e.target.value)} />
+                        </div>
                         {createError && <div className="pc-form-error">{createError}</div>}
-                        <button className="pc-modal-submit" disabled={creating || !groupName.trim() || !groupModule || !groupSchedule.trim() || parseInt(groupMax) > 10 || parseInt(groupMax) < 2} onClick={handleCreate}>
-                            {creating ? "Creating…" : "Create Group →"}
+                        <button className="pc-modal-submit" disabled={creating} onClick={handleCreate}>
+                            {creating ? "Creating..." : "Launch Group"}
                         </button>
                     </div>
                 </div>
