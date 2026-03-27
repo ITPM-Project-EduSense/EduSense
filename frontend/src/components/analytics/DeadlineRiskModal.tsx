@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, Clock, CheckCircle2, Ghost, BarChart3, TrendingUp } from "lucide-react";
 
 interface SubjectDeadlineRisk {
-    subject:   string;
+    subject: string;
     riskScore: number;
-    level:     string;
+    level: string;
     taskCount: number;
 }
 
@@ -141,15 +141,14 @@ export default function DeadlineRiskModal({ isOpen, onClose, subjects }: Deadlin
                                             <span className="text-xl font-black text-white/70">%</span>
                                         </div>
                                         <div className="h-3 w-full rounded-full bg-black/20 overflow-hidden ring-1 ring-inset ring-black/20">
-                                            <motion.div 
+                                            <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${averageHazard}%` }}
                                                 transition={{ duration: 1.5, ease: "circOut" }}
-                                                className={`h-full rounded-full ${
-                                                    averageHazard >= 61 ? "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]" : 
-                                                    averageHazard >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" : 
-                                                    "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
-                                                }`}
+                                                className={`h-full rounded-full ${averageHazard >= 61 ? "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]" :
+                                                        averageHazard >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" :
+                                                            "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
+                                                    }`}
                                             />
                                         </div>
                                     </div>
@@ -180,7 +179,7 @@ export default function DeadlineRiskModal({ isOpen, onClose, subjects }: Deadlin
                                     </div>
                                 </div>
 
-                                <button 
+                                <button
                                     onClick={onClose}
                                     className={`relative z-10 mt-10 w-full rounded-[1.25rem] bg-white py-4 text-xs font-black uppercase tracking-widest transition-all hover:shadow-xl hover:scale-105 active:scale-95 ${theme.btnText} ${theme.btnHover}`}
                                 >
@@ -215,9 +214,9 @@ export default function DeadlineRiskModal({ isOpen, onClose, subjects }: Deadlin
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {filteredSubjects.map((s, idx) => {
                                                 const isHigh = s.riskScore >= 61;
-                                                const isMod  = s.riskScore >= 31;
-                                                const color  = isHigh ? "text-rose-600" : isMod ? "text-amber-600" : "text-emerald-600";
-                                                const bg     = isHigh ? "bg-rose-50" : isMod ? "bg-amber-50" : "bg-emerald-50";
+                                                const isMod = s.riskScore >= 31;
+                                                const color = isHigh ? "text-rose-600" : isMod ? "text-amber-600" : "text-emerald-600";
+                                                const bg = isHigh ? "bg-rose-50" : isMod ? "bg-amber-50" : "bg-emerald-50";
                                                 const accent = isHigh ? "bg-rose-500" : isMod ? "bg-amber-500" : "bg-emerald-500";
                                                 const border = isHigh ? "border-rose-100" : isMod ? "border-amber-100" : "border-emerald-100";
 
@@ -295,7 +294,7 @@ export default function DeadlineRiskModal({ isOpen, onClose, subjects }: Deadlin
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 <div className="px-10 py-4 bg-white border-t border-slate-200 flex justify-end">
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
                                         Predictive Intelligence Engine · EduSense

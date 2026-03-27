@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, AlertCircle, ShieldCheck, ShieldAlert, ShieldX, Ghost, CheckCircle2, TrendingUp } from "lucide-react";
 
 interface SubjectRisk {
-    subject:        string;
-    riskScore:      number;
+    subject: string;
+    riskScore: number;
     completedCount: number;
-    overdueCount:   number;
+    overdueCount: number;
 }
 
 interface RiskLevelModalProps {
@@ -141,15 +141,14 @@ export default function RiskLevelModal({ isOpen, onClose, subjects }: RiskLevelM
                                             <span className="text-xl font-black text-white/70">%</span>
                                         </div>
                                         <div className="h-3 w-full rounded-full bg-black/20 overflow-hidden ring-1 ring-inset ring-black/20">
-                                            <motion.div 
+                                            <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${averageRisk}%` }}
                                                 transition={{ duration: 1.5, ease: "circOut" }}
-                                                className={`h-full rounded-full ${
-                                                    averageRisk >= 61 ? "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]" : 
-                                                    averageRisk >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" : 
-                                                    "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
-                                                }`}
+                                                className={`h-full rounded-full ${averageRisk >= 61 ? "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]" :
+                                                        averageRisk >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" :
+                                                            "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
+                                                    }`}
                                             />
                                         </div>
                                     </div>
@@ -180,7 +179,7 @@ export default function RiskLevelModal({ isOpen, onClose, subjects }: RiskLevelM
                                     </div>
                                 </div>
 
-                                <button 
+                                <button
                                     onClick={onClose}
                                     className={`relative z-10 mt-10 w-full rounded-[1.25rem] bg-white py-4 text-xs font-black uppercase tracking-widest transition-all hover:shadow-xl hover:scale-105 active:scale-95 ${theme.btnText} ${theme.btnHover}`}
                                 >
@@ -214,11 +213,11 @@ export default function RiskLevelModal({ isOpen, onClose, subjects }: RiskLevelM
                                     {filteredSubjects.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {filteredSubjects.map((s, idx) => {
-                                                const risk = 
+                                                const risk =
                                                     s.riskScore >= 61 ? { label: "High Risk", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200", accent: "bg-rose-500", icon: ShieldX } :
-                                                    s.riskScore >= 31 ? { label: "Medium Risk", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", accent: "bg-amber-500", icon: ShieldAlert } :
-                                                    { label: "Low Risk", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", accent: "bg-emerald-500", icon: ShieldCheck };
-                                                
+                                                        s.riskScore >= 31 ? { label: "Medium Risk", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", accent: "bg-amber-500", icon: ShieldAlert } :
+                                                            { label: "Low Risk", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", accent: "bg-emerald-500", icon: ShieldCheck };
+
                                                 const RiskIcon = risk.icon;
 
                                                 return (
@@ -305,7 +304,7 @@ export default function RiskLevelModal({ isOpen, onClose, subjects }: RiskLevelM
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 <div className="px-10 py-4 bg-white border-t border-slate-200 flex justify-end">
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
                                         EduSense System · AI Risk Core

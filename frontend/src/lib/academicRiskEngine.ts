@@ -14,40 +14,40 @@
    score.  Intelligent overrides are applied last.
 ───────────────────────────────────────────────────────────────────────────── */
 
-export type TaskStatus     = "pending" | "in_progress" | "completed";
+export type TaskStatus = "pending" | "in_progress" | "completed";
 export type TaskDifficulty = "easy" | "medium" | "hard";
-export type BurnoutLevel   = "Low" | "Medium" | "High";
-export type RiskLevel      = "Safe" | "Warning" | "Critical";
+export type BurnoutLevel = "Low" | "Medium" | "High";
+export type RiskLevel = "Safe" | "Warning" | "Critical";
 
 export type RiskTask = {
-    id:         string;
-    subject:    string;
-    deadline:   string;   // ISO string
+    id: string;
+    subject: string;
+    deadline: string;   // ISO string
     difficulty: TaskDifficulty;
-    status:     TaskStatus;
+    status: TaskStatus;
     updated_at: string;   // used as completion_date proxy
     created_at: string;
 };
 
 export type SubjectRiskBreakdown = {
-    subject:        string;
-    riskScore:      number;   // 0–100
-    missedCount:    number;
-    upcomingCount:  number;
+    subject: string;
+    riskScore: number;   // 0–100
+    missedCount: number;
+    upcomingCount: number;
     completedCount: number;
-    overdueCount:   number;
-    perfDrop:       number;   // percentage drop, 0–100
-    avgDelayDays:   number;
-    factors:        { A: number; B: number; C: number; D: number; E: number };
+    overdueCount: number;
+    perfDrop: number;   // percentage drop, 0–100
+    avgDelayDays: number;
+    factors: { A: number; B: number; C: number; D: number; E: number };
 };
 
 export type AcademicRiskResult = {
-    score:             number;   // 0–100
-    level:             RiskLevel;
-    explanation:       string;
-    tooltip:           string;
-    dominantFactor:    string;
-    factorBreakdown:   { A: number; B: number; C: number; D: number; E: number };
+    score: number;   // 0–100
+    level: RiskLevel;
+    explanation: string;
+    tooltip: string;
+    dominantFactor: string;
+    factorBreakdown: { A: number; B: number; C: number; D: number; E: number };
     subjectBreakdowns: SubjectRiskBreakdown[];
 };
 
@@ -106,9 +106,9 @@ function factorB(tasks: RiskTask[], now: Date): number {
 
     // Base score by count
     let base: number;
-    if      (upcoming.length >= 5) base = 20;
+    if (upcoming.length >= 5) base = 20;
     else if (upcoming.length >= 3) base = 12;
-    else                           base = 5;
+    else base = 5;
 
     // Hard tasks add pressure (+2 each, capped at max)
     const hardBonus = upcoming.filter((t) => t.difficulty === "hard").length * 2;
@@ -121,9 +121,9 @@ function subjectPerfDrop(
     tasks: RiskTask[],
     now: Date,
 ): { score: number; drop: number } {
-    const thisWeekMon  = mondayOfWeek(now);
-    const prevWeekMon  = new Date(thisWeekMon.getTime() - 7 * MS_PER_DAY);
-    const prevWeekEnd  = new Date(thisWeekMon.getTime() - 1);
+    const thisWeekMon = mondayOfWeek(now);
+    const prevWeekMon = new Date(thisWeekMon.getTime() - 7 * MS_PER_DAY);
+    const prevWeekEnd = new Date(thisWeekMon.getTime() - 1);
 
     const thisWeekTasks = tasks.filter((t) => {
         const d = new Date(t.deadline);
@@ -156,10 +156,10 @@ function factorD(tasks: RiskTask[]): { score: number; avgDelayDays: number } {
         ) / lateTasks.length;
 
     let score: number;
-    if      (avg > 5) score = 20;
+    if (avg > 5) score = 20;
     else if (avg > 2) score = 15;
     else if (avg > 1) score = 10;
-    else              score = 5;
+    else score = 5;
 
     return { score, avgDelayDays: avg };
 }
@@ -187,27 +187,27 @@ function calcSubjectRisk(
     if (!hasActiveTasks) {
         return {
             subject,
-            riskScore:      0,
-            missedCount:    0,
-            upcomingCount:  0,
+            riskScore: 0,
+            missedCount: 0,
+            upcomingCount: 0,
             completedCount: tasks.filter(t => t.status === "completed").length,
-            overdueCount:   0,
-            perfDrop:       0,
-            avgDelayDays:   0,
-            factors:        { A: 0, B: 0, C: 0, D: 0, E: 0 },
+            overdueCount: 0,
+            perfDrop: 0,
+            avgDelayDays: 0,
+            factors: { A: 0, B: 0, C: 0, D: 0, E: 0 },
         };
     }
 
-    const A  = factorA(tasks, now);
-    const B  = factorB(tasks, now);
+    const A = factorA(tasks, now);
+    const B = factorB(tasks, now);
     const cR = subjectPerfDrop(tasks, now);
     const dR = factorD(tasks);
-    const E  = factorE(burnout);
+    const E = factorE(burnout);
 
-    const cutoff    = new Date(now.getTime() + 7 * MS_PER_DAY);
-    const missed    = tasks.filter((t) => isMissed(t, now)).length;
+    const cutoff = new Date(now.getTime() + 7 * MS_PER_DAY);
+    const missed = tasks.filter((t) => isMissed(t, now)).length;
     const completed = tasks.filter((t) => t.status === "completed").length;
-    const upcoming  = tasks.filter(
+    const upcoming = tasks.filter(
         (t) =>
             t.status !== "completed" &&
             new Date(t.deadline) >= now &&
@@ -216,14 +216,14 @@ function calcSubjectRisk(
 
     return {
         subject,
-        riskScore:      Math.min(100, Math.round(A + B + cR.score + dR.score + E)),
-        missedCount:    missed,
-        upcomingCount:  upcoming,
+        riskScore: Math.min(100, Math.round(A + B + cR.score + dR.score + E)),
+        missedCount: missed,
+        upcomingCount: upcoming,
         completedCount: completed,
-        overdueCount:   missed, // missed is functionally overdue
-        perfDrop:       cR.drop,
-        avgDelayDays:   dR.avgDelayDays,
-        factors:        { A, B, C: cR.score, D: dR.score, E },
+        overdueCount: missed, // missed is functionally overdue
+        perfDrop: cR.drop,
+        avgDelayDays: dR.avgDelayDays,
+        factors: { A, B, C: cR.score, D: dR.score, E },
     };
 }
 
@@ -240,14 +240,14 @@ function buildExplanation(
 
     const causes: string[] = [];
 
-    const highRiskSubjects = breakdowns.filter((s) => s.riskScore > 60).map((s) => s.subject);
+    const highRiskSubjects = breakdowns.filter((s) => s.riskScore >= 61).map((s) => s.subject);
     if (highRiskSubjects.length)
         causes.push(`high risk in ${highRiskSubjects.join(" & ")}`);
 
-    if      (f.A >= 15) causes.push("high missed deadline ratio");
-    else if (f.A >= 8)  causes.push("missed deadlines detected");
+    if (f.A >= 15) causes.push("high missed deadline ratio");
+    else if (f.A >= 8) causes.push("missed deadlines detected");
 
-    if      (f.B >= 16) causes.push("heavy upcoming workload");
+    if (f.B >= 16) causes.push("heavy upcoming workload");
     else if (f.B >= 12) causes.push("moderate workload pressure this week");
 
     const droppingSubjects = breakdowns.filter((s) => s.perfDrop > 10).map((s) => s.subject);
@@ -264,8 +264,8 @@ function buildExplanation(
 
     const prefix =
         level === "Critical" ? "Critical — " :
-        level === "Warning"  ? "Risk elevated due to " :
-        "";
+            level === "Warning" ? "Risk elevated due to " :
+                "";
 
     const body = causes.slice(0, 3).join(", ");
     return prefix + body[0].toUpperCase() + body.slice(1) + ".";
@@ -282,17 +282,17 @@ export function calculateAcademicRisk(
     // Edge case — no tasks
     if (!tasks.length) {
         return {
-            score:             0,
-            level:             "Safe",
-            explanation:       "No tasks found. Add tasks to begin risk analysis.",
-            tooltip:           TOOLTIP,
-            dominantFactor:    "None",
-            factorBreakdown:   { A: 0, B: 0, C: 0, D: 0, E: 0 },
+            score: 0,
+            level: "Safe",
+            explanation: "No tasks found. Add tasks to begin risk analysis.",
+            tooltip: TOOLTIP,
+            dominantFactor: "None",
+            factorBreakdown: { A: 0, B: 0, C: 0, D: 0, E: 0 },
             subjectBreakdowns: [],
         };
     }
 
-    const subjects   = [...new Set(tasks.map((t) => t.subject))];
+    const subjects = [...new Set(tasks.map((t) => t.subject))];
     const breakdowns = subjects.map((s) => calcSubjectRisk(s, tasks, now, burnout));
 
     // Overall score = unweighted average of subject scores
@@ -321,38 +321,38 @@ export function calculateAcademicRisk(
     // 2. Clean slate (no misses, no drop) → cap at 29 regardless of burnout.
     //    Burnout alone cannot push an otherwise clean record into Warning.
     const totalMissed = tasks.filter((t) => isMissed(t, now)).length;
-    const noDrop      = breakdowns.every((s) => s.perfDrop <= 5);
+    const noDrop = breakdowns.every((s) => s.perfDrop <= 5);
     if (totalMissed === 0 && noDrop)
         overall = Math.min(overall, 29);
 
-    // 3. Any subject risk > 75 → overall must be at least Warning (≥ 31)
-    if (breakdowns.some((s) => s.riskScore > 75) && overall < 31)
+    // 3. Any subject risk >= 61 (Critical) → overall must be at least Warning (≥ 31)
+    if (breakdowns.some((s) => s.riskScore >= 61) && overall < 31)
         overall = 31;
 
     overall = Math.round(Math.min(100, Math.max(0, overall)));
 
     const level: RiskLevel =
         overall >= 61 ? "Critical" :
-        overall >= 31 ? "Warning"  :
-        "Safe";
+            overall >= 31 ? "Warning" :
+                "Safe";
 
     // Dominant factor = highest average contribution
     const factorEntries: [string, number][] = [
-        ["Missed Deadlines",  avgF.A],
-        ["Workload Density",  avgF.B],
-        ["Performance Drop",  avgF.C],
+        ["Missed Deadlines", avgF.A],
+        ["Workload Density", avgF.B],
+        ["Performance Drop", avgF.C],
         ["Delay Consistency", avgF.D],
-        ["Burnout Level",     avgF.E],
+        ["Burnout Level", avgF.E],
     ];
     const dominantFactor = factorEntries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
 
     return {
-        score:             overall,
+        score: overall,
         level,
-        explanation:       buildExplanation(overall, level, breakdowns, avgF),
-        tooltip:           TOOLTIP,
+        explanation: buildExplanation(overall, level, breakdowns, avgF),
+        tooltip: TOOLTIP,
         dominantFactor,
-        factorBreakdown:   avgF,
+        factorBreakdown: avgF,
         subjectBreakdowns: breakdowns,
     };
 }

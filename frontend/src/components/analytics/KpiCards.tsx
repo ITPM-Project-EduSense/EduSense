@@ -357,8 +357,8 @@ function GpaPredictionCard() {
 
                 <div className="mt-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${gpaPrediction.direction === "up"
-                            ? "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25"
-                            : "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25"
+                        ? "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25"
+                        : "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25"
                         }`}>
                         {gpaPrediction.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {gpaPrediction.trend} from last semester
@@ -489,10 +489,10 @@ export default function KpiCards() {
             <GpaPredictionCard />
             <BurnoutIndexCard data={burnoutData} loading={loading} />
 
-            <RiskLevelModal 
-                isOpen={isRiskModalOpen} 
-                onClose={() => setIsRiskModalOpen(false)} 
-                subjects={riskData?.subjectBreakdowns ?? []} 
+            <RiskLevelModal
+                isOpen={isRiskModalOpen}
+                onClose={() => setIsRiskModalOpen(false)}
+                subjects={riskData?.subjectBreakdowns ?? []}
             />
 
             <DeadlineRiskModal
