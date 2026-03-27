@@ -2,4 +2,4 @@
 uvicorn app.main:app --reload
 
 
-supabase pw - Supabase@2026
+# Configure your Supabase credentials securely (e.g., via environment variables); do not store real passwords in this file.

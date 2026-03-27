@@ -47,7 +47,7 @@ class PdfVector(Document):
     MongoDB document model for raw PDF chunks and vector embeddings.
     Allows for strict context matching for the AI Coach.
     """
-    student_id: str = Field(..., description="ID of the student/user")
+    user_id: str = Field(..., description="ID of the student/user")
     pdf_id: str = Field(..., description="Reference to the StudyMaterial document")
     chunk_text: str = Field(..., description="Raw text chunk extracted from the PDF")
     embedding: List[float] = Field(default_factory=list, description="Vector embedding of the chunk")

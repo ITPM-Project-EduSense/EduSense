@@ -117,22 +117,31 @@ async def upload_document(
         saved_vectors = 0
         try:
             chunks = chunk_text_for_vectors(material.extracted_text)
+            MAX_VECTOR_CHUNKS = 200
+            if len(chunks) > MAX_VECTOR_CHUNKS:
+                chunks = chunks[:MAX_VECTOR_CHUNKS]
             for index, chunk in enumerate(chunks):
-                chunk_embedding = await generate_embedding(chunk)
-                vector_doc = PdfVector(
-                    student_id=str(current_user.id),
-                    pdf_id=material_id,
-                    chunk_text=chunk,
-                    embedding=chunk_embedding,
-                    metadata={
-                        "subject": subject,
-                        "filename": file.filename,
-                        "chunk_index": index,
-                        "chunk_count": len(chunks),
-                    },
-                )
-                await vector_doc.insert()
-                saved_vectors += 1
+                if not chunk or not chunk.strip():
+                    continue
+                try:
+                    chunk_embedding = await generate_embedding(chunk)
+                    vector_doc = PdfVector(
+                        user_id=str(current_user.id),
+                        pdf_id=material_id,
+                        chunk_text=chunk,
+                        embedding=chunk_embedding,
+                        metadata={
+                            "subject": subject,
+                            "filename": file.filename,
+                            "chunk_index": index,
+                            "chunk_count": len(chunks),
+                        },
+                    )
+                    await vector_doc.insert()
+                    saved_vectors += 1
+                except Exception as chunk_error:
+                    print(f"⚠️ Failed to store vector for chunk {index} of {file.filename}: {chunk_error}")
+                    continue
         except Exception as e:
             print(f"⚠️ Vector storage failed for {file.filename}: {e}")
 

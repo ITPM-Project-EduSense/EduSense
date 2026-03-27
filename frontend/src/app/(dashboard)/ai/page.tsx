@@ -1,19 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageCircle, FileText, Brain } from "lucide-react";
 
 import Ai from "@/components/ai-coach/AiChat";
 import PdfSummarizer from "@/components/ai-coach/PdfSummarizer";
 import SmartQuiz from "@/components/ai-coach/SmartQuiz";
 import PdfUploaderModal from "@/components/ai-coach/PdfUploaderModal";
+import { UploadedPdf } from "@/components/ai-coach/types";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
 export default function AiPage() {
   const [activeTab, setActiveTab] = useState("chat");
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadedPdfs, setUploadedPdfs] = useState<any[]>([]);
+  const [uploadedPdfs, setUploadedPdfs] = useState<UploadedPdf[]>([]);
 
-  const handleUploadSuccess = (pdf: any) => {
+  // Fetch existing materials on mount so Summary/Quiz are populated after reload
+  useEffect(() => {
+    const fetchMaterials = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/documents/materials`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.materials)) {
+          const pdfs: UploadedPdf[] = data.materials.map((m: { id: string; filename: string; subject?: string; created_at: string }) => ({
+            id: m.id,
+            filename: m.filename,
+            subject: m.subject || "General",
+            uploadedAt: m.created_at,
+          }));
+          setUploadedPdfs(pdfs);
+        }
+      } catch {
+        // Silently ignore fetch errors on mount
+      }
+    };
+    fetchMaterials();
+  }, []);
+
+  const handleUploadSuccess = (pdf: UploadedPdf) => {
     setUploadedPdfs((prev) => [...prev, pdf]);
   };
 

@@ -1,13 +1,14 @@
 "use client";
 import React, { useState } from "react";
 import { X, Upload, Loader2 } from "lucide-react";
+import { UploadedPdf } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onUploadSuccess: (newPdf: any) => void;
+  onUploadSuccess: (newPdf: UploadedPdf) => void;
 }
 
 export default function PdfUploaderModal({ isOpen, onClose, onUploadSuccess }: Props) {
@@ -32,7 +33,7 @@ export default function PdfUploaderModal({ isOpen, onClose, onUploadSuccess }: P
     formData.append("subject", `Study Material: ${file.name.replace(/\.[^/.]+$/, "")}`);
 
     try {
-      const res = await fetch(`${API_BASE}/chat/upload`, {
+      const res = await fetch(`${API_BASE}/documents/upload`, {
         method: "POST",
         credentials: "include",
         body: formData,

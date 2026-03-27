@@ -14,7 +14,6 @@ import {
   BarChart3,
   Bell,
   Settings,
-  UserCircle,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -39,7 +38,6 @@ const navBottom: NavItem[] = [
   { name: "User Management", href: "/users", icon: Users },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Profile", href: "/usersProfile", icon: UserCircle },
 ];
 
 type CurrentUser = {

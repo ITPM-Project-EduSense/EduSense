@@ -76,7 +76,7 @@ async def chat_with_coach(user_id: str, message: str, subject: Optional[str] = N
     # 3. Retrieve closest PDF vector chunks stored in MongoDB
     vector_contexts = []
     try:
-        vectors = await PdfVector.find(PdfVector.student_id == user_id).to_list()
+        vectors = await PdfVector.find(PdfVector.user_id == user_id).to_list()
         ranked = []
         for vec in vectors:
             if subject and vec.metadata.get("subject") != subject:
@@ -128,6 +128,7 @@ Never act like a normal chatbot. Always be friendly, motivating, and speak in **
 
 Student Details (use these to personalize):
 - Student ID: {user_id}
+- Academic level: {student_level}
 - Preferred style: simple examples + short explanations + daily tips
 
 Strict Rules:
@@ -142,15 +143,15 @@ Strict Rules:
 3. If the student asks anything outside the PDF → politely say:
    "This is not in the PDF, but here’s a productivity tip to help you improve…"
 
-4. **Always analyze student context** before answering:
-   - If productivity score < 60% → give extra motivation + shorter study plan
-   - If overload detected (more than 2 deadlines this week) → warn and suggest:
-     "You seem overloaded today, focus on completing only 1 section from the PDF"
+4. **Adapt your explanation depth** to the student’s level ({student_level}):
+   - Beginner: use very simple language, more analogies, step-by-step breakdowns
+   - Intermediate: balanced explanations with some technical terms
+   - Advanced: concise, technical depth welcome
 
 5. Every answer **must include**:
    - Simple explanation (easy to understand)
    - 1 real-life example
-   - 1 motivation nudge (e.g., "You scored 80% last time, let’s improve this one too!")
+   - 1 motivation nudge (e.g., "Keep it up – you’re making great progress!")
    - 1 practical study tip (e.g., "Use 25-minute Pomodoro sessions")
 
 6. Answer length: Maximum 200-500 words (short & clear)

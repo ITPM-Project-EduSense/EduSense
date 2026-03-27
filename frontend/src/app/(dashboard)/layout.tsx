@@ -6,10 +6,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <AppShell>
-        {children}
-      </AppShell>
-    </>
+    <AppShell>
+      {children}
+    </AppShell>
   );
 }
