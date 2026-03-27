@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from beanie import Document
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Task(Document):
@@ -55,6 +55,29 @@ class TaskCreate(BaseModel):
     difficulty: str = Field(..., pattern="^(easy|medium|hard)$")
     status: str = Field(default="pending", pattern="^(pending|in_progress|completed)$")
 
+    @field_validator("title", "subject")
+    @classmethod
+    def normalize_required_text(cls, value: str) -> str:
+        cleaned = " ".join(value.strip().split())
+        if not cleaned:
+            raise ValueError("This field cannot be empty")
+        return cleaned
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_deadline_in_future(self):
+        now = datetime.now(self.deadline.tzinfo) if self.deadline.tzinfo else datetime.utcnow()
+        if self.deadline <= now:
+            raise ValueError("Deadline must be in the future")
+        return self
+
 
 class TaskUpdate(BaseModel):
     """Schema for updating an existing task (request body)."""
@@ -64,6 +87,32 @@ class TaskUpdate(BaseModel):
     deadline: Optional[datetime] = None
     difficulty: Optional[str] = Field(None, pattern="^(easy|medium|hard)$")
     status: Optional[str] = Field(None, pattern="^(pending|in_progress|completed)$")
+
+    @field_validator("title", "subject")
+    @classmethod
+    def normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = " ".join(value.strip().split())
+        if not cleaned:
+            raise ValueError("This field cannot be empty")
+        return cleaned
+
+    @field_validator("description")
+    @classmethod
+    def normalize_optional_description(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_optional_deadline(self):
+        if self.deadline is not None:
+            now = datetime.now(self.deadline.tzinfo) if self.deadline.tzinfo else datetime.utcnow()
+            if self.deadline <= now:
+                raise ValueError("Deadline must be in the future")
+        return self
 
 
 class TaskResponse(BaseModel):

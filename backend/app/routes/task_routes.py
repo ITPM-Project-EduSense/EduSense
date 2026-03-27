@@ -8,11 +8,29 @@ from app.core.security import get_current_user
 from app.services.priority_service import (
     calculate_priority_score,
     get_priority_breakdown,
-    get_priority_label,
 )
 from app.services.overload_service import detect_overload_risk
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+
+async def get_user_task_or_404(task_id: str, current_user: User) -> Task:
+    """Fetch a task by id and ensure it belongs to the authenticated user."""
+    try:
+        object_id = PydanticObjectId(task_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid task id format",
+        )
+
+    task = await Task.get(object_id)
+    if not task or task.user_id != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task with ID {task_id} not found",
+        )
+    return task
 
 
 def task_to_response(task: Task) -> TaskResponse:
@@ -126,14 +144,9 @@ async def recalculate_all_priorities():
     response_model=TaskResponse,
     summary="Get a single task by ID",
 )
-async def get_task(task_id: str):
+async def get_task(task_id: str, current_user: User = Depends(get_current_user)):
     """Retrieve a single task by its ID."""
-    task = await Task.get(PydanticObjectId(task_id))
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with ID {task_id} not found",
-        )
+    task = await get_user_task_or_404(task_id, current_user)
 
     # Recalculate priority
     task.priority_score = calculate_priority_score(task)
@@ -147,17 +160,12 @@ async def get_task(task_id: str):
     "/{task_id}/priority",
     summary="Get AI priority breakdown for a task",
 )
-async def get_task_priority(task_id: str):
+async def get_task_priority(task_id: str, current_user: User = Depends(get_current_user)):
     """
     Get a detailed AI-powered priority analysis for a task.
     Includes score breakdown, explanation, and suggestions.
     """
-    task = await Task.get(PydanticObjectId(task_id))
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with ID {task_id} not found",
-        )
+    task = await get_user_task_or_404(task_id, current_user)
 
     breakdown = get_priority_breakdown(task)
 
@@ -177,14 +185,13 @@ async def get_task_priority(task_id: str):
     response_model=TaskResponse,
     summary="Update an existing task",
 )
-async def update_task(task_id: str, task_data: TaskUpdate):
+async def update_task(
+    task_id: str,
+    task_data: TaskUpdate,
+    current_user: User = Depends(get_current_user),
+):
     """Update an existing task and recalculate its priority."""
-    task = await Task.get(PydanticObjectId(task_id))
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with ID {task_id} not found",
-        )
+    task = await get_user_task_or_404(task_id, current_user)
 
     # Only update fields that were provided (not None)
     update_fields = task_data.model_dump(exclude_none=True)
@@ -193,7 +200,7 @@ async def update_task(task_id: str, task_data: TaskUpdate):
         await task.set(update_fields)
 
     # Refresh and recalculate priority
-    task = await Task.get(PydanticObjectId(task_id))
+    task = await get_user_task_or_404(task_id, current_user)
     task.priority_score = calculate_priority_score(task)
     await task.set({"priority_score": task.priority_score})
 
@@ -206,13 +213,8 @@ async def update_task(task_id: str, task_data: TaskUpdate):
     status_code=status.HTTP_200_OK,
     summary="Delete a task",
 )
-async def delete_task(task_id: str):
+async def delete_task(task_id: str, current_user: User = Depends(get_current_user)):
     """Delete a task by its ID."""
-    task = await Task.get(PydanticObjectId(task_id))
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with ID {task_id} not found",
-        )
+    task = await get_user_task_or_404(task_id, current_user)
     await task.delete()
     return {"message": f"Task '{task.title}' deleted successfully"}

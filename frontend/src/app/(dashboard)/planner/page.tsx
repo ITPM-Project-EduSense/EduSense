@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Calendar,
@@ -25,7 +25,8 @@ import {
   Minus,
   ArrowLeft,
 } from "lucide-react";
-import { generateSmartSchedule, getSmartScheduleByTask } from "@/lib/scheduleApi";
+import { generateSmartSchedule } from "@/lib/scheduleApi";
+import { validateFiles } from "@/lib/validation";
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 interface Task {
@@ -88,6 +89,9 @@ interface SmartSchedule {
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+const PLANNER_FILE_ALLOWED_EXTENSIONS = [".pdf", ".pptx", ".docx"];
+const PLANNER_MAX_FILE_SIZE = 10 * 1024 * 1024;
+const PLANNER_MAX_FILES = 5;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -165,7 +169,7 @@ function buildCalendar(sessions: Session[]) {
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
-export default function PlannerPage() {
+function PlannerPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -225,13 +229,31 @@ export default function PlannerPage() {
   /* ─── File handling ─────────────────────────────────────────────────── */
   const addFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
-    const allowed = [".pdf", ".pptx", ".docx"];
-    const valid = Array.from(newFiles).filter((f) =>
-      allowed.some((ext) => f.name.toLowerCase().endsWith(ext))
-    );
+
+    const incoming = Array.from(newFiles);
     setFiles((prev) => {
       const existing = new Set(prev.map((f) => f.name));
-      return [...prev, ...valid.filter((f) => !existing.has(f.name))];
+      const combined = [...prev, ...incoming.filter((f) => !existing.has(f.name))];
+
+      const allErrors = validateFiles(combined, {
+        allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
+        maxSizeBytes: PLANNER_MAX_FILE_SIZE,
+        maxFiles: PLANNER_MAX_FILES,
+      });
+
+      if (allErrors.length > 0) {
+        setError(allErrors[0]);
+      } else {
+        setError(null);
+      }
+
+      return combined.filter((file) => {
+        const fileErrors = validateFiles([file], {
+          allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
+          maxSizeBytes: PLANNER_MAX_FILE_SIZE,
+        });
+        return fileErrors.length === 0;
+      }).slice(0, PLANNER_MAX_FILES);
     });
   };
 
@@ -247,6 +269,23 @@ export default function PlannerPage() {
   /* ─── Generate schedule ─────────────────────────────────────────────── */
   const handleGenerate = async () => {
     if (!taskId) return;
+
+    const fileErrors = validateFiles(files, {
+      allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
+      maxSizeBytes: PLANNER_MAX_FILE_SIZE,
+      maxFiles: PLANNER_MAX_FILES,
+    });
+
+    if (fileErrors.length > 0) {
+      setError(fileErrors[0]);
+      return;
+    }
+
+    if (task && new Date(task.deadline).getTime() <= Date.now()) {
+      setError("This task deadline has passed. Update the task deadline before generating a schedule.");
+      return;
+    }
+
     setGenerating(true);
     setError(null);
     setGeneratingStep("Extracting text from documents...");
@@ -449,7 +488,7 @@ export default function PlannerPage() {
               <p className="text-sm font-semibold text-slate-600">
                 Drop files here or <span className="text-indigo-600">browse</span>
               </p>
-              <p className="text-xs text-slate-400 mt-1">PDF · PPTX · DOCX · Multiple files OK</p>
+              <p className="text-xs text-slate-400 mt-1">PDF · PPTX · DOCX · Max 5 files · 10MB each</p>
             </div>
 
             {/* File list */}
@@ -981,5 +1020,22 @@ export default function PlannerPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PlannerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
+            <p className="text-gray-500 text-base">Loading planner...</p>
+          </div>
+        </div>
+      }
+    >
+      <PlannerPageContent />
+    </Suspense>
   );
 }

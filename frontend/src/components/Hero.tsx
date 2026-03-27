@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, type Transition } from "framer-motion";
 import { CalendarClock, CheckCircle2, Sparkles, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const floatTransition = (duration: number, delay = 0) => ({
+const floatTransition = (duration: number, delay = 0): Transition => ({
   duration,
   repeat: Number.POSITIVE_INFINITY,
   repeatType: "reverse" as const,
-  ease: "easeInOut",
+  ease: "easeInOut" as const,
   delay,
 });
 
