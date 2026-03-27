@@ -164,6 +164,91 @@ function ActivityGraph() {
     );
 }
 
+// ── NEW: Invite Member Component ──
+function InviteMemberCard({ moduleColor }: { moduleColor: string }) {
+    const [email, setEmail] = useState("");
+    const [touched, setTouched] = useState(false);
+    const [invitedList, setInvitedList] = useState<string[]>([]);
+    const [successMsg, setSuccessMsg] = useState("");
+
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isValidEmail = EMAIL_REGEX.test(email.trim());
+    const showError = touched && email.trim() !== "" && !isValidEmail;
+    const alreadyInvited = invitedList.includes(email.trim().toLowerCase());
+
+    const handleInvite = () => {
+        if (!isValidEmail || alreadyInvited) return;
+        setInvitedList((prev) => [...prev, email.trim().toLowerCase()]);
+        setSuccessMsg(`Invite sent to ${email.trim()}`);
+        setEmail("");
+        setTouched(false);
+        setTimeout(() => setSuccessMsg(""), 3000);
+    };
+
+    return (
+        <div className="pc-invite-card">
+            <div className="pc-mat-card-title" style={{ background: moduleColor }}>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <path d="M9.5 6A2.5 2.5 0 1 0 7 3.5 2.5 2.5 0 0 0 9.5 6zM2 11.5a5.5 5.5 0 0 1 7.45-5.14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M11 9.5v3M9.5 11h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                Invite a Member
+            </div>
+
+            <div className="pc-invite-input-row">
+                <div style={{ flex: 1, position: "relative" }}>
+                    <input
+                        className="pc-form-input"
+                        type="email"
+                        placeholder="Enter email address..."
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setTouched(true); setSuccessMsg(""); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
+                        style={{
+                            background: "#F7F7FA",
+                            borderColor: showError ? "rgba(239,68,68,0.6)" : alreadyInvited && touched ? "rgba(239,68,68,0.6)" : undefined,
+                            paddingRight: "2.4rem",
+                        }}
+                    />
+                    {isValidEmail && !alreadyInvited && (
+                        <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#34D399", fontSize: "1rem" }}>✓</span>
+                    )}
+                </div>
+                <button
+                    className="pc-invite-btn"
+                    style={{ background: moduleColor }}
+                    disabled={!isValidEmail || alreadyInvited}
+                    onClick={handleInvite}
+                >
+                    Send Invite
+                </button>
+            </div>
+
+            {showError && (
+                <p className="pc-invite-hint pc-invite-error">Please enter a valid email address (e.g. name@domain.com)</p>
+            )}
+            {alreadyInvited && touched && (
+                <p className="pc-invite-hint pc-invite-error">This email has already been invited.</p>
+            )}
+            {successMsg && (
+                <p className="pc-invite-hint pc-invite-success">{successMsg}</p>
+            )}
+
+            {invitedList.length > 0 && (
+                <div className="pc-invited-list">
+                    <p className="pc-invited-list-label">Pending invites</p>
+                    {invitedList.map((e) => (
+                        <div key={e} className="pc-invited-chip">
+                            <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            {e}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function PeerConnectHome() {
     const [groups, setGroups] = useState<Group[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
@@ -177,8 +262,17 @@ export default function PeerConnectHome() {
     const [groupSchedule, setGroupSchedule] = useState("");
     const [groupMax, setGroupMax] = useState("6");
     const [groupTags, setGroupTags] = useState("");
+    // ── NEW: group leader name state ──
+    const [groupLeader, setGroupLeader] = useState("");
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
+
+    // ── NEW: derived flag — all required fields filled ──
+    const isFormValid =
+        groupName.trim() !== "" &&
+        groupModule !== "" &&
+        groupSchedule.trim() !== "" &&
+        groupLeader.trim() !== "";
 
     const [joinedGroups, setJoinedGroups] = useState<Set<string>>(
         () => new Set<string>(JSON.parse(localStorage.getItem("joinedGroups") ?? "[]"))
@@ -235,6 +329,8 @@ export default function PeerConnectHome() {
             setJoinedGroups((prev) => new Set(prev).add(newGroup.id));
             setShowCreateModal(false);
             setGroupName(""); setGroupModule(""); setGroupSchedule(""); setGroupMax("6"); setGroupTags("");
+            // ── NEW: reset leader field on success ──
+            setGroupLeader("");
         } catch (err: unknown) {
             setCreateError(err instanceof Error ? err.message : "Failed to create group");
         } finally {
@@ -601,6 +697,19 @@ export default function PeerConnectHome() {
         .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #1A1A2E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
         .pc-material-size { font-size: 0.7rem; color: #9A9AB0; margin-top: 0.12rem; font-family: 'DM Sans', sans-serif; }
         .pc-material-dl { color: #B0B0C8; font-size: 0.95rem; }
+
+        /* ── NEW: Invite card styles ── */
+        .pc-invite-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 1.35rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-top: 1.35rem; }
+        .pc-invite-input-row { display: flex; gap: 0.65rem; align-items: flex-start; }
+        .pc-invite-btn { padding: 0.65rem 1.15rem; border-radius: 9px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; opacity: 1; flex-shrink: 0; }
+        .pc-invite-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .pc-invite-btn:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .pc-invite-hint { font-size: 0.72rem; font-family: 'DM Sans', sans-serif; margin-top: 0.45rem; }
+        .pc-invite-error { color: #EF4444; }
+        .pc-invite-success { color: #34A853; }
+        .pc-invited-list { margin-top: 1rem; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        .pc-invited-list-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #9A9AB0; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 0.35rem; }
+        .pc-invited-chip { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; color: #34A853; background: rgba(52,168,83,0.08); border: 1px solid rgba(52,168,83,0.2); border-radius: 100px; padding: 0.28rem 0.75rem; width: fit-content; }
       `}</style>
 
             {/* ── DETAIL VIEW ── */}
@@ -680,6 +789,8 @@ export default function PeerConnectHome() {
                                     </div>
                                 </div>
                             </div>
+                            {/* ── NEW: Invite Member card, below the two existing cards ── */}
+                            <InviteMemberCard moduleColor={selectedGroup.moduleColor} />
                         </div>
                     </div>
                 );
@@ -822,6 +933,11 @@ export default function PeerConnectHome() {
                             <label className="pc-form-label">Group Name</label>
                             <input className="pc-form-input" placeholder="e.g. Midterm Grind Team" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
                         </div>
+                        {/* ── NEW: Group Leader Name field ── */}
+                        <div className="pc-form-group">
+                            <label className="pc-form-label">Group Leader Name</label>
+                            <input className="pc-form-input" placeholder="e.g. Jane Doe" value={groupLeader} onChange={(e) => setGroupLeader(e.target.value)} />
+                        </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                             <div className="pc-form-group">
                                 <label className="pc-form-label">Module</label>
@@ -844,7 +960,8 @@ export default function PeerConnectHome() {
                             <input className="pc-form-input" placeholder="e.g. NoobsWelcome, FastPaced" value={groupTags} onChange={(e) => setGroupTags(e.target.value)} />
                         </div>
                         {createError && <div className="pc-form-error">{createError}</div>}
-                        <button className="pc-modal-submit" disabled={creating} onClick={handleCreate}>
+                        {/* ── CHANGED: disabled unless isFormValid (or creating) ── */}
+                        <button className="pc-modal-submit" disabled={creating || !isFormValid} onClick={handleCreate}>
                             {creating ? "Creating..." : "Launch Group"}
                         </button>
                     </div>
