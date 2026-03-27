@@ -8,7 +8,7 @@ class Settings:
     PROJECT_NAME = "EduSense"
 
     # Database
-    DATABASE_URL = "mongodb+srv://edusense42_db_user:edusense2003%23@cluster0.wnctjbm.mongodb.net/?appName=Cluster0"
+    DATABASE_URL = os.getenv("DATABASE_URL")
     DATABASE_NAME = os.getenv("DATABASE_NAME", "edusense_db")
 
     # JWT
