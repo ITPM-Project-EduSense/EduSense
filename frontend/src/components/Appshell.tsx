@@ -48,10 +48,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="relative min-h-screen bg-[#F9FAFB]">
+
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} />
 
-      <main className="min-h-screen lg:ml-[260px]">
+      <main className="min-h-screen lg:ml-[272px]">
         <Header onMenuClick={() => setSidebarOpen(true)} user={user} />
         {children}
       </main>
