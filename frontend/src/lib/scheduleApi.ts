@@ -33,7 +33,7 @@ export interface StudySession {
   day_name: string;
   topics: string[];
   duration_hours: number;
-  focus_level: string;
+  focus_level: 'low' | 'medium' | 'high';
   tips: string;
 }
 
