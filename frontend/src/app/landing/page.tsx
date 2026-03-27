@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import {
   Brain,
@@ -219,6 +218,7 @@ export default function LandingPage() {
   const router = useRouter();
   const hero = useInView(0.1);
   const features = useInView(0.1);
+  const workflow = useInView(0.1);
   const vision = useInView(0.1);
   const stats = useInView(0.1);
   const cta = useInView(0.1);
@@ -417,7 +417,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFBFD] overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] overflow-hidden">
 
       {/* ─── Navigation ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100/80">
@@ -430,7 +430,7 @@ export default function LandingPage() {
               height={36}
               className="h-9 w-9 rounded-xl border border-slate-200 object-cover shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
             />
-            <span className="text-xl font-bold text-slate-800 tracking-tight font-[family-name:var(--font-playfair)]">
+            <span className="text-xl font-semibold text-slate-800 tracking-tight">
               Edu<span className="text-indigo-500">Sense</span>
             </span>
           </div>
@@ -481,7 +481,7 @@ export default function LandingPage() {
                 </button>
                 <button
                   onClick={handleRegister}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-500 text-white rounded-lg text-[13px] font-medium shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 hover:-translate-y-0.5 transition-all duration-200"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-lg text-[13px] font-medium shadow-lg hover:scale-105 transition-all duration-300"
                 >
                   Register <ArrowRight size={14} />
                 </button>
@@ -561,7 +561,7 @@ export default function LandingPage() {
                 <button
                   type="submit"
                   disabled={isSavingProfile || isProfileLoading}
-                  className="px-5 py-2 rounded-lg bg-indigo-500 text-white text-[13px] font-semibold shadow-[0_2px_8px_rgba(99,102,241,0.3)] hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[13px] font-semibold shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSavingProfile ? "Saving..." : "Save Changes"}
                 </button>
@@ -572,11 +572,11 @@ export default function LandingPage() {
       )}
 
       {/* ─── HERO SECTION ─── */}
-      <section ref={hero.ref} className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden">
+      <section ref={hero.ref} className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
         {/* Background Effects */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-indigo-100/40 via-blue-50/30 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-20 right-[10%] w-[400px] h-[400px] bg-gradient-to-b from-violet-100/30 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-40 left-[5%] w-[300px] h-[300px] bg-gradient-to-b from-sky-100/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-[920px] h-[620px] bg-gradient-to-b from-indigo-100/60 via-violet-100/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-16 right-[4%] w-[420px] h-[420px] bg-gradient-to-br from-violet-200/35 to-indigo-100/5 rounded-full blur-3xl" />
+        <div className="absolute top-44 left-[2%] w-[320px] h-[320px] bg-gradient-to-tr from-sky-200/25 to-transparent rounded-full blur-3xl" />
         <FloatingParticles />
 
         {/* Floating UI Decorations */}
@@ -587,73 +587,140 @@ export default function LandingPage() {
           <AnimatedNotification delay="0.5s" className="bottom-[80px] right-[6%]" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-6 text-center">
-          {/* Badge */}
-          <div
-            className={`inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-[12px] font-medium text-indigo-600 mb-6 transition-all duration-700 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-          >
-            <Sparkles size={13} />
-            AI-Powered Student Productivity Platform
-          </div>
+        <div className="relative max-w-6xl mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-14 items-center">
+            <div>
+              <div
+                className={`inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-[12px] font-medium text-indigo-600 mb-7 transition-all duration-700 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              >
+                <Sparkles size={13} />
+                AI-Powered Student Productivity Platform
+              </div>
 
-          {/* Heading */}
-          <h1
-            className={`text-5xl md:text-[68px] font-bold text-slate-800 leading-[1.08] tracking-tight mb-6 font-[family-name:var(--font-playfair)] transition-all duration-700 delay-100 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
-          >
-            Study Smarter,
-            <br />
-            <span className="relative">
-              Not Harder
-              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
-                <path d="M2 8 Q75 2 150 6 Q225 10 298 4" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" className="animate-[drawLine_1.5s_ease_forwards_0.8s]" strokeDasharray="300" strokeDashoffset="300" />
-              </svg>
-            </span>
-          </h1>
+              <h1
+                className={`text-5xl sm:text-6xl md:text-[66px] font-semibold leading-tight tracking-tight mb-6 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 bg-clip-text text-transparent transition-all duration-700 delay-100 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+              >
+                Study Smarter,
+                <br />
+                <span>Not Harder</span>
+              </h1>
 
-          {/* Subtitle */}
-          <p
-            className={`text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
-          >
-            EduSense transforms how university students manage academics — with
-            <span className="text-indigo-500 font-medium"> AI-driven task prioritization</span>,
-            <span className="text-indigo-500 font-medium"> smart study schedules</span>, and
-            <span className="text-indigo-500 font-medium"> intelligent collaboration</span>.
-          </p>
+              <p
+                className={`text-[17px] md:text-xl text-slate-600 max-w-xl mb-9 leading-relaxed transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+              >
+                EduSense gives university students an AI command center for academic success, combining
+                intelligent task prioritization, adaptive schedules, and productivity coaching in one modern platform.
+              </p>
 
-          {/* CTA Buttons */}
-          <div
-            className={`flex items-center justify-center gap-4 transition-all duration-700 delay-300 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
-          >
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="group inline-flex items-center gap-2 px-7 py-3.5 bg-indigo-500 text-white rounded-xl text-[15px] font-semibold shadow-[0_4px_20px_rgba(99,102,241,0.35)] hover:bg-indigo-600 hover:shadow-[0_8px_30px_rgba(99,102,241,0.45)] hover:-translate-y-1 transition-all duration-300"
-            >
-              Explore Dashboard
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-            <a
-              href="#features"
-              className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-slate-700 rounded-xl text-[15px] font-semibold border border-slate-200 shadow-sm hover:border-indigo-300 hover:text-indigo-600 hover:-translate-y-1 transition-all duration-300"
-            >
-              Learn More
-            </a>
-          </div>
+              <div
+                className={`flex flex-wrap items-center gap-4 transition-all duration-700 delay-300 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+              >
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="group inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-[15px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
+                >
+                  Explore Dashboard
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <a
+                  href="#features"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 bg-white/80 backdrop-blur-md text-slate-700 rounded-xl text-[15px] font-semibold border border-slate-200 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                >
+                  Learn More
+                </a>
+              </div>
 
-          {/* Tech Badges */}
-          <div
-            className={`flex items-center justify-center gap-3 mt-12 transition-all duration-700 delay-500 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-          >
-            {["Next.js", "FastAPI", "MongoDB", "Gemini AI", "Tailwind"].map((tech) => (
-              <span key={tech} className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[11px] font-medium text-slate-500 shadow-sm">
-                {tech}
-              </span>
-            ))}
+              <div
+                className={`flex flex-wrap items-center gap-2.5 mt-10 transition-all duration-700 delay-500 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              >
+                {["Next.js", "FastAPI", "MongoDB", "Gemini AI", "Tailwind"].map((tech) => (
+                  <span key={tech} className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[11px] font-medium text-slate-500 shadow-sm">
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className={`relative transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
+              <div className="absolute -inset-3 bg-gradient-to-br from-indigo-500/15 to-violet-500/10 blur-2xl rounded-[28px]" />
+              <div className="relative rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md shadow-[0_24px_80px_rgba(15,23,42,0.15)] hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/90 flex items-center justify-between">
+                  <div>
+                    <div className="text-[13px] font-semibold text-slate-800">EduSense Dashboard Preview</div>
+                    <div className="text-[11px] text-slate-500">Realtime AI planning insights</div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
+                    <CheckCircle size={11} /> Online
+                  </span>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-[12px] font-semibold text-slate-700">Study Plan Tasks</div>
+                      <span className="text-[10px] text-slate-400">Today</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {[
+                        { task: "DSA Assignment", badge: "High", tone: "bg-rose-50 text-rose-600" },
+                        { task: "Database Revision", badge: "Medium", tone: "bg-amber-50 text-amber-600" },
+                        { task: "UI Prototype Review", badge: "Low", tone: "bg-emerald-50 text-emerald-600" },
+                      ].map((row) => (
+                        <div key={row.task} className="flex items-center justify-between text-[12px]">
+                          <span className="text-slate-600">{row.task}</span>
+                          <span className={`px-2 py-0.5 rounded-full font-semibold ${row.tone}`}>{row.badge}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                      <div className="flex items-center gap-2 mb-2 text-[12px] font-semibold text-slate-700">
+                        <TrendingUp size={14} className="text-indigo-500" /> Productivity Score
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                        <div className="h-full w-[78%] bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-1000" />
+                      </div>
+                      <div className="text-[11px] text-slate-500">78% this week</div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                      <div className="flex items-center gap-2 mb-2 text-[12px] font-semibold text-slate-700">
+                        <Target size={14} className="text-violet-500" /> Priority Indicator
+                      </div>
+                      <div className="text-2xl font-bold text-slate-800 leading-none">7.8</div>
+                      <div className="text-[11px] text-rose-500 mt-1">High Focus Required</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center gap-2 mb-3 text-[12px] font-semibold text-slate-700">
+                      <Calendar size={14} className="text-indigo-500" /> AI Schedule Items
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { slot: "08:00 - 10:00", topic: "Machine Learning Notes", color: "bg-indigo-500" },
+                        { slot: "13:00 - 14:30", topic: "Group Project Sync", color: "bg-violet-500" },
+                        { slot: "19:00 - 20:00", topic: "Quick Revision Sprint", color: "bg-emerald-500" },
+                      ].map((item) => (
+                        <div key={item.topic} className="flex items-center gap-3 text-[11px]">
+                          <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                          <span className="text-slate-500">{item.slot}</span>
+                          <span className="text-slate-700 font-medium">{item.topic}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ─── STATS BAR ─── */}
-      <section ref={stats.ref} className="relative py-8 bg-white border-y border-slate-100">
+      <section ref={stats.ref} className="relative py-8 bg-white/80 backdrop-blur border-y border-slate-100">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
@@ -682,16 +749,17 @@ export default function LandingPage() {
 
       {/* ─── FEATURES / MODULES ─── */}
       <section ref={features.ref} id="features" className="relative py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.08),transparent_42%)]" />
         <div className="max-w-6xl mx-auto px-6">
           {/* Section Header */}
           <div className={`text-center mb-16 transition-all duration-700 ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-full text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mb-4">
               <Target size={12} /> Core Modules
             </div>
-            <h2 className="text-4xl md:text-[44px] font-bold text-slate-800 tracking-tight font-[family-name:var(--font-playfair)] mb-4">
+            <h2 className="text-4xl md:text-[44px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
               Four Intelligent Modules
             </h2>
-            <p className="text-lg text-slate-500 max-w-xl mx-auto">
+            <p className="text-lg text-slate-600 max-w-xl mx-auto">
               Each module works together to create a comprehensive AI-assisted academic experience
             </p>
           </div>
@@ -738,7 +806,7 @@ export default function LandingPage() {
             ].map((feature, i) => (
               <div
                 key={feature.title}
-                className={`group relative bg-white rounded-2xl border border-slate-100 p-7 hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                className={`group relative bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl p-7 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
                 style={{ transitionDelay: `${i * 120}ms` }}
               >
                 {/* Top gradient line */}
@@ -757,10 +825,10 @@ export default function LandingPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-slate-800 mb-2 font-[family-name:var(--font-playfair)]">
+                  <h3 className="text-xl font-semibold text-slate-800 mb-2 tracking-tight leading-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-[14px] text-slate-500 leading-relaxed mb-5">
+                  <p className="text-[14px] text-slate-600 leading-relaxed mb-5">
                     {feature.desc}
                   </p>
 
@@ -773,6 +841,68 @@ export default function LandingPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── AI WORKFLOW SECTION ─── */}
+      <section ref={workflow.ref} className="relative py-24 bg-gradient-to-br from-[#0F172A] via-[#111827] to-[#020617] overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.24),transparent_40%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.2),transparent_35%)]" />
+
+        <div className="relative max-w-6xl mx-auto px-6">
+          <div className={`text-center mb-14 transition-all duration-700 ${workflow.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[11px] font-semibold text-indigo-300 uppercase tracking-wider mb-4">
+              <Zap size={12} /> AI Workflow
+            </div>
+            <h2 className="text-4xl md:text-[44px] font-semibold text-white tracking-tight leading-tight mb-4">
+              How EduSense Works
+            </h2>
+            <p className="text-slate-300 max-w-2xl mx-auto text-[16px]">
+              A focused 4-step pipeline that turns raw lecture materials into actionable study execution.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                step: "Step 1",
+                title: "Upload Lecture Material",
+                desc: "Share notes, slides, and references in one place.",
+                icon: <BookOpen size={18} />,
+              },
+              {
+                step: "Step 2",
+                title: "AI Analyzes Documents",
+                desc: "EduSense extracts concepts and identifies difficulty.",
+                icon: <Brain size={18} />,
+              },
+              {
+                step: "Step 3",
+                title: "AI Generates Study Plan",
+                desc: "Get a prioritized schedule based on deadlines and workload.",
+                icon: <Calendar size={18} />,
+              },
+              {
+                step: "Step 4",
+                title: "Productivity Analytics",
+                desc: "Track progress and refine your habits every week.",
+                icon: <BarChart3 size={18} />,
+              },
+            ].map((item, i) => (
+              <div
+                key={item.title}
+                className={`rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 hover:-translate-y-1 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(6,182,212,0.22)] transition-all duration-300 ${workflow.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                style={{ transitionDelay: `${i * 120}ms` }}
+              >
+                <div className="inline-flex w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white items-center justify-center mb-4 shadow-lg">
+                  {item.icon}
+                </div>
+                <div className="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-2">{item.step}</div>
+                <h3 className="text-[17px] font-semibold text-white mb-2 leading-snug">{item.title}</h3>
+                <p className="text-[13px] text-slate-300 leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -792,12 +922,12 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[11px] font-semibold text-indigo-400 uppercase tracking-wider mb-5">
                 <Globe size={12} /> Our Vision
               </div>
-              <h2 className="text-4xl md:text-[42px] font-bold text-white leading-tight tracking-tight font-[family-name:var(--font-playfair)] mb-6">
+              <h2 className="text-4xl md:text-[42px] font-semibold text-white leading-tight tracking-tight mb-6">
                 Transforming Student
                 <br />
                 <span className="text-indigo-400">Productivity</span> with AI
               </h2>
-              <p className="text-[16px] text-slate-400 leading-relaxed mb-8">
+              <p className="text-[16px] text-slate-300 leading-relaxed mb-8">
                 EduSense reimagines the traditional student management system. Instead of passively storing data,
                 we actively analyze behavior and provide intelligent decision support — turning every student
                 into a more organized, productive, and engaged learner.
@@ -830,7 +960,7 @@ export default function LandingPage() {
             <div className={`relative transition-all duration-700 delay-200 ${vision.inView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"}`}>
               <div className="relative w-full aspect-square max-w-[420px] mx-auto">
                 {/* Central orb */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl shadow-[0_0_60px_rgba(99,102,241,0.3)] flex items-center justify-center animate-[pulse_3s_ease-in-out_infinite]">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl shadow-[0_0_90px_rgba(99,102,241,0.45)] flex items-center justify-center animate-[pulse_3s_ease-in-out_infinite]">
                   <Brain size={48} className="text-white" />
                 </div>
 
@@ -876,22 +1006,22 @@ export default function LandingPage() {
 
       {/* ─── CTA SECTION ─── */}
       <section ref={cta.ref} className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-indigo-50/40 to-violet-50/30" />
         <div className={`relative max-w-3xl mx-auto px-6 text-center transition-all duration-700 ${cta.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div className="inline-flex items-center gap-2 mb-5">
             {[...Array(5)].map((_, i) => (
               <Star key={i} size={18} className="text-amber-400 fill-amber-400" />
             ))}
           </div>
-          <h2 className="text-4xl md:text-[44px] font-bold text-slate-800 tracking-tight font-[family-name:var(--font-playfair)] mb-4">
+          <h2 className="text-4xl md:text-[44px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
             Ready to Boost Your <span className="text-indigo-500">Productivity?</span>
           </h2>
-          <p className="text-lg text-slate-500 mb-10 max-w-lg mx-auto">
+          <p className="text-lg text-slate-600 mb-10 max-w-lg mx-auto">
             Join EduSense and experience the future of AI-assisted academic planning.
           </p>
           <button
             onClick={() => router.push("/dashboard")}
-            className="group inline-flex items-center gap-2 px-8 py-4 bg-indigo-500 text-white rounded-xl text-[16px] font-semibold shadow-[0_4px_24px_rgba(99,102,241,0.35)] hover:bg-indigo-600 hover:shadow-[0_8px_32px_rgba(99,102,241,0.45)] hover:-translate-y-1 transition-all duration-300"
+            className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-[16px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
           >
             Go to Dashboard
             <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -913,7 +1043,7 @@ export default function LandingPage() {
                   height={36}
                   className="h-9 w-9 rounded-xl border border-slate-700 object-cover shadow-lg"
                 />
-                <span className="text-lg font-bold text-white tracking-tight font-[family-name:var(--font-playfair)]">
+                <span className="text-lg font-semibold text-white tracking-tight">
                   Edu<span className="text-indigo-400">Sense</span>
                 </span>
               </div>

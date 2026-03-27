@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { type FieldErrors, validateLoginInput } from "@/lib/validation";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,16 +16,27 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const validationErrors = validateLoginInput(email, password);
+    setFieldErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       await apiFetch("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+        }),
       });
 
       router.push("/landing");
@@ -75,11 +87,15 @@ export default function LoginPage() {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, email: "" }));
+                  }}
                   className="w-full outline-none bg-transparent"
                   placeholder="student@example.com"
                 />
               </div>
+              {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
             </div>
 
             <div>
@@ -90,11 +106,15 @@ export default function LoginPage() {
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, password: "" }));
+                  }}
                   className="w-full outline-none bg-transparent"
                   placeholder="********"
                 />
               </div>
+              {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
             </div>
 
             <button
