@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
-import Topbar from "@/components/Topbar";
+import Header from "@/components/Header";
 
 const publicRoutes = ["/landing"];
 
@@ -52,7 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} />
 
       <main className="min-h-screen lg:ml-[260px]">
-        <Topbar onMenuClick={() => setSidebarOpen(true)} user={user} />
+        <Header onMenuClick={() => setSidebarOpen(true)} user={user} />
         {children}
       </main>
     </div>
