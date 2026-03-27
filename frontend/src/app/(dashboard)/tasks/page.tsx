@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import {
+  type FieldErrors,
+  validateFiles,
+  validateTaskInput,
+} from "@/lib/validation";
+import {
   CalendarClock,
   CheckCircle2,
   Circle,
@@ -51,6 +56,10 @@ const defaultForm: TaskForm = {
   status: "pending",
 };
 
+const TASK_FILE_ALLOWED_EXTENSIONS = [".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg"];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_FILES = 5;
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -91,6 +100,7 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(defaultForm);
   const [taskFiles, setTaskFiles] = useState<File[]>([]);
+  const [formErrors, setFormErrors] = useState<FieldErrors>({});
 
   const loadTasks = async () => {
     try {
@@ -132,6 +142,7 @@ export default function TasksPage() {
     setEditingTask(null);
     setForm(defaultForm);
     setTaskFiles([]);
+    setFormErrors({});
     setShowModal(true);
   };
 
@@ -146,19 +157,38 @@ export default function TasksPage() {
       status: task.status,
     });
     setTaskFiles([]);
+    setFormErrors({});
     setShowModal(true);
   };
 
   const addTaskFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
-    const allowed = [".pdf", ".pptx", ".docx", ".png", ".jpg", ".jpeg"];
-    const valid = Array.from(newFiles).filter((f) =>
-      allowed.some((ext) => f.name.toLowerCase().endsWith(ext))
-    );
+    const candidates = Array.from(newFiles);
 
     setTaskFiles((prev) => {
       const existing = new Set(prev.map((f) => f.name));
-      return [...prev, ...valid.filter((f) => !existing.has(f.name))];
+      const uniqueCandidates = candidates.filter((f) => !existing.has(f.name));
+      const combined = [...prev, ...uniqueCandidates];
+
+      const fileErrors = validateFiles(combined, {
+        allowedExtensions: TASK_FILE_ALLOWED_EXTENSIONS,
+        maxSizeBytes: MAX_UPLOAD_BYTES,
+        maxFiles: MAX_UPLOAD_FILES,
+      });
+
+      if (fileErrors.length > 0) {
+        setError(fileErrors[0]);
+      } else {
+        setError(null);
+      }
+
+      return combined.filter((file) => {
+        const fileLevelErrors = validateFiles([file], {
+          allowedExtensions: TASK_FILE_ALLOWED_EXTENSIONS,
+          maxSizeBytes: MAX_UPLOAD_BYTES,
+        });
+        return fileLevelErrors.length === 0;
+      }).slice(0, MAX_UPLOAD_FILES);
     });
   };
 
@@ -168,13 +198,28 @@ export default function TasksPage() {
 
   const submitForm = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.title.trim() || !form.subject.trim() || !form.deadline) return;
+    const validationErrors = validateTaskInput(form);
+    setFormErrors(validationErrors);
+
+    const fileErrors = !editingTask
+      ? validateFiles(taskFiles, {
+          allowedExtensions: TASK_FILE_ALLOWED_EXTENSIONS,
+          maxSizeBytes: MAX_UPLOAD_BYTES,
+          maxFiles: MAX_UPLOAD_FILES,
+        })
+      : [];
+
+    if (Object.keys(validationErrors).length > 0 || fileErrors.length > 0) {
+      setError(fileErrors[0] || "Please correct the highlighted form errors.");
+      return;
+    }
 
     try {
       setSaving(true);
+      setError(null);
       const payload = {
         title: form.title.trim(),
-        description: form.description.trim(),
+        description: form.description.trim() || null,
         subject: form.subject.trim(),
         deadline: new Date(form.deadline).toISOString(),
         difficulty: form.difficulty,
@@ -220,6 +265,7 @@ export default function TasksPage() {
       setShowModal(false);
       setForm(defaultForm);
       setEditingTask(null);
+      setFormErrors({});
       setTaskFiles([]);
       await loadTasks();
 
@@ -436,22 +482,33 @@ export default function TasksPage() {
             <form onSubmit={submitForm} className="mt-4 space-y-3">
               <input
                 value={form.title}
-                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, title: e.target.value }));
+                  setFormErrors((prev) => ({ ...prev, title: "" }));
+                }}
                 placeholder="Task title"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
                 required
               />
+              {formErrors.title && <p className="text-xs text-rose-600">{formErrors.title}</p>}
               <textarea
                 value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, description: e.target.value }));
+                  setFormErrors((prev) => ({ ...prev, description: "" }));
+                }}
                 placeholder="Description (optional)"
                 rows={3}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
               />
+              {formErrors.description && <p className="text-xs text-rose-600">{formErrors.description}</p>}
               <div className="grid gap-3 md:grid-cols-2">
                 <input
                   value={form.subject}
-                  onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, subject: e.target.value }));
+                    setFormErrors((prev) => ({ ...prev, subject: "" }));
+                  }}
                   placeholder="Subject"
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
                   required
@@ -459,11 +516,20 @@ export default function TasksPage() {
                 <input
                   type="datetime-local"
                   value={form.deadline}
-                  onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, deadline: e.target.value }));
+                    setFormErrors((prev) => ({ ...prev, deadline: "" }));
+                  }}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
                   required
                 />
               </div>
+              {(formErrors.subject || formErrors.deadline) && (
+                <div className="space-y-1">
+                  {formErrors.subject && <p className="text-xs text-rose-600">{formErrors.subject}</p>}
+                  {formErrors.deadline && <p className="text-xs text-rose-600">{formErrors.deadline}</p>}
+                </div>
+              )}
               <div className="grid gap-3 md:grid-cols-2">
                 <select
                   value={form.difficulty}
@@ -492,7 +558,7 @@ export default function TasksPage() {
                   </label>
                   <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 hover:border-blue-300 hover:bg-blue-50">
                     <Upload size={14} />
-                    Upload PDF, DOCX, PPTX, PNG, JPG
+                    Upload PDF, DOCX, PPTX, PNG, JPG (max 5 files, 10MB each)
                     <input
                       type="file"
                       multiple
