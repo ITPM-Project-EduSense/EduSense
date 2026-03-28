@@ -21,6 +21,17 @@ class Settings:
     # Cookies
     COOKIE_SECURE = os.getenv("COOKIE_SECURE", "False") == "True"
 
+    # Email Configuration
+    SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@edusense.app")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+    # Reset Token
+    RESET_TOKEN_EXPIRE_HOURS = int(os.getenv("RESET_TOKEN_EXPIRE_HOURS", 24))
+
     # External APIs
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")

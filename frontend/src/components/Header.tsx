@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, Search, X } from "lucide-react";
+import { useSearch } from "@/context/SearchContext";
 
 type CurrentUser = {
   full_name?: string;
@@ -13,6 +14,8 @@ type HeaderProps = {
 };
 
 export default function Header({ onMenuClick, user }: HeaderProps) {
+  const { searchQuery, setSearchQuery, clearSearch } = useSearch();
+
   const initials = user?.full_name
     ? user.full_name
         .split(" ")
@@ -44,13 +47,24 @@ export default function Header({ onMenuClick, user }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 md:flex md:w-72">
+        <div className="hidden items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 md:flex md:w-72 group hover:bg-slate-200 transition">
           <Search size={16} className="text-slate-400" />
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search tasks, subjects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
           />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="text-slate-400 hover:text-slate-600 transition"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <button

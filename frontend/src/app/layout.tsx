@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { ToastProvider } from "@/components/Toast";
+import { SearchProvider } from "@/context/SearchContext";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -21,7 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} font-[family-name:var(--font-poppins)]`}>
-        {children}
+        <SearchProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </SearchProvider>
       </body>
     </html>
   );

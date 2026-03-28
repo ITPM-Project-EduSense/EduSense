@@ -16,6 +16,10 @@ class User(Document):
     program_name: Optional[str] = Field(default=None, max_length=120)
     year_of_study: Optional[int] = Field(default=None, ge=1, le=8)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Password reset fields
+    reset_token_hash: Optional[str] = None
+    reset_token_expires_at: Optional[datetime] = None
 
     class Settings:
         name = "users"  # Mongo collection name

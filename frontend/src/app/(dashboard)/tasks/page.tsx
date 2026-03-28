@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { useToast } from "@/components/Toast";
+import { useSearch } from "@/context/SearchContext";
 import {
   type FieldErrors,
   validateFiles,
@@ -87,10 +89,12 @@ function statusClass(value: TaskStatus) {
 export default function TasksPage() {
   const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
   const router = useRouter();
+  const { addToast } = useToast();
+  const { searchQuery } = useSearch();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all");
@@ -101,16 +105,21 @@ export default function TasksPage() {
   const [form, setForm] = useState<TaskForm>(defaultForm);
   const [taskFiles, setTaskFiles] = useState<File[]>([]);
   const [formErrors, setFormErrors] = useState<FieldErrors>({});
+  const [deleteConfirmTask, setDeleteConfirmTask] = useState<Task | null>(null);
+
+  // Sync global search to local search
+  useEffect(() => {
+    setSearch(searchQuery);
+  }, [searchQuery]);
 
   const loadTasks = async () => {
     try {
       setLoading(true);
-      setError(null);
       const data = await apiFetch("/tasks");
       setTasks(Array.isArray(data) ? data : []);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to load tasks";
-      setError(message);
+      addToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -118,7 +127,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     loadTasks();
-  }, []);
+  }, [addToast]);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -177,9 +186,7 @@ export default function TasksPage() {
       });
 
       if (fileErrors.length > 0) {
-        setError(fileErrors[0]);
-      } else {
-        setError(null);
+        addToast(fileErrors[0], "warning");
       }
 
       return combined.filter((file) => {
@@ -210,13 +217,12 @@ export default function TasksPage() {
       : [];
 
     if (Object.keys(validationErrors).length > 0 || fileErrors.length > 0) {
-      setError(fileErrors[0] || "Please correct the highlighted form errors.");
+      addToast(fileErrors[0] || "Please correct the highlighted form errors.", "error");
       return;
     }
 
     try {
       setSaving(true);
-      setError(null);
       const payload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
@@ -233,12 +239,14 @@ export default function TasksPage() {
           method: "PUT",
           body: JSON.stringify(payload),
         });
+        addToast(`"${form.title}" updated successfully!`, "success");
       } else {
         const createdTask = await apiFetch("/tasks", {
           method: "POST",
           body: JSON.stringify(payload),
         });
         createdTaskId = createdTask?.id || null;
+        addToast(`"${form.title}" created successfully!`, "success");
 
         // If assignment files were uploaded on create, trigger smart analysis immediately.
         if (createdTaskId && taskFiles.length > 0) {
@@ -274,7 +282,7 @@ export default function TasksPage() {
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to save task";
-      setError(message);
+      addToast(message, "error");
     } finally {
       setSaving(false);
     }
@@ -287,22 +295,33 @@ export default function TasksPage() {
         method: "PUT",
         body: JSON.stringify({ status: nextStatus }),
       });
+      addToast(`Task marked as ${nextStatus === "completed" ? "completed" : "pending"}`, "success");
       await loadTasks();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to update status";
-      setError(message);
+      addToast(message, "error");
     }
   };
 
   const removeTask = async (task: Task) => {
-    const proceed = window.confirm(`Delete "${task.title}"?`);
-    if (!proceed) return;
     try {
+      setDeleting(task.id);
       await apiFetch(`/tasks/${task.id}`, { method: "DELETE" });
+      addToast(`"${task.title}" deleted successfully!`, "success");
       await loadTasks();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Failed to delete task";
-      setError(message);
+      let message = "Failed to delete task";
+      if (e instanceof Error) {
+        // Sanitize error messages to remove localhost references
+        message = e.message.replace(/http:\/\/localhost:\d+\/api\//g, "");
+        if (message.startsWith("Failed to fetch")) {
+          message = "Unable to delete task. Please try again.";
+        }
+      }
+      addToast(message, "error");
+    } finally {
+      setDeleting(null);
+      setDeleteConfirmTask(null);
     }
   };
 
@@ -394,12 +413,6 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {error && (
-          <section className="mb-6 rounded-xl border border-rose-200/60 bg-rose-50/90 backdrop-blur-sm px-4 py-3 text-sm text-rose-700 shadow-sm">
-            {error}
-          </section>
-        )}
-
         {/* Tasks List */}
         <div className="space-y-3">
           {!loading && filteredTasks.length === 0 && (
@@ -462,11 +475,16 @@ export default function TasksPage() {
                       Plan
                     </button>
                     <button
-                      onClick={() => removeTask(task)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition-all hover:bg-rose-50"
+                      onClick={() => setDeleteConfirmTask(task)}
+                      disabled={deleting === task.id}
+                      title="Delete task permanently"
+                      className="group relative inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition-all hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <Trash2 size={12} />
-                      Delete
+                      {deleting === task.id ? "Deleting..." : "Delete"}
+                      <span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-slate-900">
+                        Delete task permanently
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -475,10 +493,47 @@ export default function TasksPage() {
           })}
         </div>
 
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-modal-backdrop">
+            <div className="w-full max-w-sm rounded-xl border border-slate-200/60 bg-white/95 backdrop-blur-md p-6 shadow-xl animate-modal-in">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-rose-100 p-3 text-rose-600">
+                  <Trash2 size={20} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-slate-900">Delete task?</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Are you sure you want to delete <span className="font-medium">"{deleteConfirmTask.title}"</span>? This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteConfirmTask(null)}
+                  disabled={deleting === deleteConfirmTask.id}
+                  className="rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => removeTask(deleteConfirmTask)}
+                  disabled={deleting === deleteConfirmTask.id}
+                  className="rounded-lg bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-rose-700 disabled:opacity-60 shadow-sm hover:shadow-md"
+                >
+                  {deleting === deleteConfirmTask.id ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-xl border border-slate-200/60 bg-white/95 backdrop-blur-md p-6 shadow-xl">
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-modal-backdrop">
+            <div 
+              className="w-full max-w-xl rounded-xl border border-slate-200/60 bg-white/95 backdrop-blur-md p-6 shadow-xl animate-modal-in"
+            >
               <h2 className="text-lg font-semibold text-slate-900">{editingTask ? "Edit Task" : "Create Task"}</h2>
               <p className="mt-1 text-sm text-slate-600">
                 {editingTask ? "Update task details." : "Add a new task to your workspace."}

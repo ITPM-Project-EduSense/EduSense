@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { ProgressRing, SimpleBarChart } from "@/components/VisualIndicators";
+import { SkeletonMetricCard, SkeletonActivityCard } from "@/components/Skeletons";
+import { useToast } from "@/components/Toast";
+import { useSearch } from "@/context/SearchContext";
 
 type Task = {
   id: string;
@@ -27,22 +31,36 @@ function formatDue(deadline: string) {
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState("");
+  const { addToast } = useToast();
+  const { searchQuery } = useSearch();
 
   useEffect(() => {
-    const loadTasks = async () => {
+    const loadUserAndTasks = async () => {
       try {
+        // Fetch user info
+        const userData = await apiFetch("/users/me");
+        setUserName(userData.full_name || "");
+      } catch (error) {
+        console.error("Failed to load user:", error);
+        addToast("Failed to load profile", "error");
+      }
+
+      try {
+        // Fetch tasks
         const taskData = await apiFetch("/tasks");
         setTasks(Array.isArray(taskData) ? (taskData as Task[]) : []);
       } catch (error) {
         console.error("Failed to load dashboard tasks:", error);
         setTasks([]);
+        addToast("Failed to load tasks", "error");
       } finally {
         setLoading(false);
       }
     };
 
-    loadTasks();
-  }, []);
+    loadUserAndTasks();
+  }, [addToast]);
 
   const metrics = useMemo(() => {
     const total = tasks.length;
@@ -70,10 +88,21 @@ export default function DashboardPage() {
   }, [tasks]);
 
   const timeline = useMemo(() => {
-    const prioritized = tasks
+    let prioritized = tasks
       .filter((task) => task.status !== "completed")
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
-      .slice(0, 5);
+      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      prioritized = prioritized.filter((task) =>
+        task.title.toLowerCase().includes(query) ||
+        task.subject.toLowerCase().includes(query) ||
+        (task.description?.toLowerCase().includes(query) ?? false)
+      );
+    }
+
+    prioritized = prioritized.slice(0, 5);
 
     if (prioritized.length === 0) {
       return [
@@ -102,7 +131,7 @@ export default function DashboardPage() {
         due: formatDue(item.deadline),
       };
     });
-  }, [tasks]);
+  }, [tasks, searchQuery]);
 
   const subjectMix = useMemo(() => {
     const entries = new Map<string, number>();
@@ -144,7 +173,9 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-900">Study Workspace</h1>
+          <h1 className="text-4xl font-bold text-slate-900">
+            Welcome back, {userName || "Learner"}
+          </h1>
           <p className="mt-2 text-sm text-slate-600">Your AI-powered learning command center</p>
         </div>
 
@@ -163,21 +194,39 @@ export default function DashboardPage() {
 
         {/* Key Metrics */}
         <div className="mb-8 grid gap-6 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Study Hours</p>
-            <p className="mt-4 text-3xl font-bold text-slate-900">{loading ? "--" : `${metrics.studyHours}h`}</p>
-            <p className="mt-2 text-xs text-slate-500">This period</p>
-          </div>
-          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Focus Score</p>
-            <p className="mt-4 text-3xl font-bold text-slate-900">{loading ? "--" : `${metrics.focusScore}%`}</p>
-            <p className="mt-2 text-xs text-slate-500">Peak performance</p>
-          </div>
-          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Completion Rate</p>
-            <p className="mt-4 text-3xl font-bold text-slate-900">{loading ? "--" : `${completionRate}%`}</p>
-            <p className="mt-2 text-xs text-slate-500">{metrics.completed} of {metrics.total} tasks</p>
-          </div>
+          {loading ? (
+            <>
+              <SkeletonMetricCard />
+              <SkeletonMetricCard />
+              <SkeletonMetricCard />
+            </>
+          ) : (
+            <>
+              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Study Hours</p>
+                  <p className="mt-1 text-sm text-slate-500">This period</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-slate-900">{metrics.studyHours}h</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow flex items-center justify-center">
+                <div className="text-center">
+                  <ProgressRing value={metrics.focusScore} color="indigo" size={100} />
+                  <p className="mt-2 text-xs font-medium text-slate-600">Peak performance</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow flex items-center justify-center">
+                <div className="text-center">
+                  <ProgressRing value={completionRate} color="emerald" size={100} />
+                  <p className="mt-2 text-xs font-medium text-slate-600">{metrics.completed} of {metrics.total} tasks</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Main Content Grid */}
@@ -188,7 +237,11 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Active Tasks</h2>
             </div>
             <div className="divide-y divide-slate-200/50 p-6">
-              {timeline.length > 0 ? (
+              {loading ? (
+                <div className="space-y-3">
+                  <SkeletonActivityCard />
+                </div>
+              ) : timeline.length > 0 ? (
                 <ul className="space-y-3">
                   {timeline.map((item) => (
                     <li key={item.title} className="flex items-start gap-3 py-1">
@@ -219,23 +272,27 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Upcoming Deadlines</h2>
               </div>
               <div className="p-6">
-                <ul className="space-y-6">
-                  {timeline.map((item, index) => (
-                    <li key={`${item.title}-${index}`} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white shadow-sm">
-                          {index + 1}
+                {loading ? (
+                  <SkeletonActivityCard />
+                ) : (
+                  <ul className="space-y-6">
+                    {timeline.map((item, index) => (
+                      <li key={`${item.title}-${index}`} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white shadow-sm">
+                            {index + 1}
+                          </div>
+                          {index < timeline.length - 1 && <div className="mt-3 w-px flex-grow bg-slate-200/50" style={{ height: "36px" }} />}
                         </div>
-                        {index < timeline.length - 1 && <div className="mt-3 w-px flex-grow bg-slate-200/50" style={{ height: "36px" }} />}
-                      </div>
-                      <div className="flex-1 pt-0.5">
-                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                        <p className="mt-1 text-xs text-slate-500">{item.subject}</p>
-                        <p className="mt-2 text-xs font-medium text-indigo-600">{item.due}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        <div className="flex-1 pt-0.5">
+                          <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                          <p className="mt-1 text-xs text-slate-500">{item.subject}</p>
+                          <p className="mt-2 text-xs font-medium text-indigo-600">{item.due}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 
@@ -244,22 +301,18 @@ export default function DashboardPage() {
               <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Subject Load</h2>
               </div>
-              <div className="space-y-4 p-6">
-                {subjectMix.length > 0 ? (
-                  subjectMix.map((subject) => {
-                    const width = Math.min(100, Math.max(12, subject.value * 20));
-                    return (
-                      <div key={subject.subject}>
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-900">{subject.subject}</span>
-                          <span className="text-xs font-medium text-slate-600">{subject.value}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-slate-200/50">
-                          <div className="h-1.5 rounded-full bg-indigo-600 transition-all duration-300 shadow-sm" style={{ width: `${width}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })
+              <div className="p-6">
+                {loading ? (
+                  <SkeletonActivityCard />
+                ) : subjectMix.length > 0 ? (
+                  <SimpleBarChart
+                    data={subjectMix.map((subject, idx) => ({
+                      label: subject.subject.substring(0, 12),
+                      value: subject.value,
+                      color: ["indigo", "blue", "emerald", "amber", "rose"][idx % 5] as any,
+                    }))}
+                    height={220}
+                  />
                 ) : (
                   <p className="text-center text-sm text-slate-500">No subject data</p>
                 )}
