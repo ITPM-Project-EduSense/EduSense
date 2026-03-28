@@ -25,7 +25,7 @@ class UserCreate(BaseModel):
     """Request model for user registration."""
     full_name: str = Field(min_length=2, max_length=60)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=6, max_length=128)
     program_name: Optional[str] = Field(default=None, max_length=120)
     year_of_study: Optional[int] = Field(default=None, ge=1, le=8)
 
@@ -35,21 +35,21 @@ class UserCreate(BaseModel):
         cleaned = " ".join(value.strip().split())
         if len(cleaned) < 2:
             raise ValueError("Full name must be at least 2 characters")
+        if cleaned.isdigit():
+            raise ValueError("Name cannot contain only numbers")
         return cleaned
 
     @field_validator("email")
     @classmethod
-    def normalize_email(cls, value: EmailStr) -> EmailStr:
-        return EmailStr(str(value).strip().lower())
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, value: str) -> str:
         pwd = value.strip()
-        if len(pwd) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if not any(ch.isalpha() for ch in pwd) or not any(ch.isdigit() for ch in pwd):
-            raise ValueError("Password must include at least one letter and one number")
+        if len(pwd) < 6:
+            raise ValueError("Password must be at least 6 characters")
         return pwd
 
     @field_validator("program_name")
@@ -68,8 +68,8 @@ class UserLogin(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def normalize_login_email(cls, value: EmailStr) -> EmailStr:
-        return EmailStr(str(value).strip().lower())
+    def normalize_login_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
     @field_validator("password")
     @classmethod

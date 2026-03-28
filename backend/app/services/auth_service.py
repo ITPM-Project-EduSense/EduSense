@@ -49,10 +49,10 @@ class AuthService:
         user = await User.find_one({"email": email_lower})
 
         if not user:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise HTTPException(status_code=401, detail="Incorrect user credential password or email are incorrect")
 
         if not verify_password(password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise HTTPException(status_code=401, detail="Incorrect user credential password or email are incorrect")
 
         token = create_access_token({
             "user_id": str(user.id),

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -16,6 +16,7 @@ type CurrentUser = {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -43,6 +44,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [isPublicRoute, pathname]);
 
+  const handleLogout = async () => {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+      await fetch(`${apiBase}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      router.push("/login");
+    }
+  };
+
   if (isPublicRoute) {
     return <>{children}</>;
   }
@@ -50,7 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-screen bg-[#F9FAFB]">
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} onLogout={handleLogout} />
 
       <main className="min-h-screen lg:ml-[272px]">
         <Header onMenuClick={() => setSidebarOpen(true)} user={user} />

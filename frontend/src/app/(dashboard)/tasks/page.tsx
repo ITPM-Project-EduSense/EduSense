@@ -307,312 +307,321 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl p-4 lg:p-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 lg:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">Task Workspace</p>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-900">Task List</h1>
-            <p className="mt-1 text-sm text-slate-600">Manage assignments with filters, priorities, and planner shortcuts.</p>
-          </div>
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Plus size={16} />
-            New Task
-          </button>
-        </div>
-      </section>
-
-      <section className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[
-          { label: "All Tasks", value: stats.total, icon: Circle },
-          { label: "Pending", value: stats.pending, icon: Clock3 },
-          { label: "In Progress", value: stats.inProgress, icon: CalendarClock },
-          { label: "Completed", value: stats.completed, icon: CheckCircle2 },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <article key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-2xl font-semibold text-slate-900">{loading ? "--" : item.value}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-600">
-                  <Icon size={16} />
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 lg:p-5">
-        <div className="grid gap-3 md:grid-cols-4">
-          <div className="relative md:col-span-2">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search title, subject or description"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
-            />
-          </div>
-
-          <div className="relative">
-            <Filter size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "all" | TaskStatus)}
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 px-4 py-8 md:px-8">
+      <div className="mx-auto w-full max-w-7xl">
+        {/* Header Card */}
+        <div className="mb-8 rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Task Management</p>
+              <h1 className="mt-2 text-4xl font-bold text-slate-900">Task List</h1>
+              <p className="mt-2 text-sm text-slate-600">Organize, track, and prioritize your assignments</p>
+            </div>
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-700 shadow-sm hover:shadow-md"
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as "all" | TaskDifficulty)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-            >
-              <option value="all">All Difficulty</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
+              <Plus size={16} />
+              New Task
+            </button>
           </div>
         </div>
-      </section>
 
-      {error && (
-        <section className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </section>
-      )}
+        {/* Stats Grid */}
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[
+            { label: "All Tasks", value: stats.total, icon: Circle },
+            { label: "Pending", value: stats.pending, icon: Clock3 },
+            { label: "In Progress", value: stats.inProgress, icon: CalendarClock },
+            { label: "Completed", value: stats.completed, icon: CheckCircle2 },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <article key={item.label} className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{item.label}</p>
+                    <p className="mt-3 text-2xl font-bold text-slate-900">{loading ? "--" : item.value}</p>
+                  </div>
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-indigo-600">
+                    <Icon size={16} />
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
 
-      <section className="mt-6 space-y-3">
-        {!loading && filteredTasks.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-            No tasks match your current filters.
+        {/* Filters Card */}
+        <div className="mb-6 rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-4 shadow-sm lg:p-5">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="relative md:col-span-2">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search tasks..."
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              />
+            </div>
+
+            <div className="relative">
+              <Filter size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as "all" | TaskStatus)}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value as "all" | TaskDifficulty)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              >
+                <option value="all">All Difficulty</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
           </div>
+        </div>
+
+        {error && (
+          <section className="mb-6 rounded-xl border border-rose-200/60 bg-rose-50/90 backdrop-blur-sm px-4 py-3 text-sm text-rose-700 shadow-sm">
+            {error}
+          </section>
         )}
 
-        {filteredTasks.map((task) => {
-          const remaining = daysLeft(task.deadline);
-          return (
-            <article key={task.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex flex-wrap items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-base font-semibold text-slate-900">{task.title}</h3>
-                    <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass(task.status)}`}>
-                      {task.status.replace("_", " ")}
-                    </span>
-                    <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${difficultyClass(task.difficulty)}`}>
-                      {task.difficulty}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">{task.subject}</p>
-                  {task.description && <p className="mt-2 text-sm text-slate-600">{task.description}</p>}
-                </div>
+        {/* Tasks List */}
+        <div className="space-y-3">
+          {!loading && filteredTasks.length === 0 && (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white/90 backdrop-blur-md p-8 text-center text-sm text-slate-500 shadow-sm">
+              No tasks match your current filters.
+            </div>
+          )}
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
-                  <p className="text-xs text-slate-500">Deadline</p>
-                  <p className="text-sm font-medium text-slate-800">{formatDate(task.deadline)}</p>
-                  <p className={`text-xs ${remaining <= 1 ? "text-rose-600" : "text-slate-500"}`}>
-                    {remaining < 0 ? `${Math.abs(remaining)}d overdue` : `${remaining}d left`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                <p className="text-xs text-slate-500">
-                  Priority score: <span className="font-semibold text-slate-700">{(task.priority_score || 0).toFixed(1)}</span>
-                </p>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => toggleTaskStatus(task)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Mark {task.status === "completed" ? "Pending" : "Completed"}
-                  </button>
-                  <button
-                    onClick={() => openEdit(task)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    <Pencil size={12} />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => router.push(`/planner?task_id=${task.id}`)}
-                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                  >
-                    Plan
-                  </button>
-                  <button
-                    onClick={() => removeTask(task)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50"
-                  >
-                    <Trash2 size={12} />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      {showModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
-            <h2 className="text-lg font-semibold text-slate-900">{editingTask ? "Edit Task" : "Create Task"}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Fill task details and save changes.
-              {!editingTask ? " You can also upload assignment files now." : ""}
-            </p>
-
-            <form onSubmit={submitForm} className="mt-4 space-y-3">
-              <input
-                value={form.title}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, title: e.target.value }));
-                  setFormErrors((prev) => ({ ...prev, title: "" }));
-                }}
-                placeholder="Task title"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                required
-              />
-              {formErrors.title && <p className="text-xs text-rose-600">{formErrors.title}</p>}
-              <textarea
-                value={form.description}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, description: e.target.value }));
-                  setFormErrors((prev) => ({ ...prev, description: "" }));
-                }}
-                placeholder="Description (optional)"
-                rows={3}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-              />
-              {formErrors.description && <p className="text-xs text-rose-600">{formErrors.description}</p>}
-              <div className="grid gap-3 md:grid-cols-2">
-                <input
-                  value={form.subject}
-                  onChange={(e) => {
-                    setForm((prev) => ({ ...prev, subject: e.target.value }));
-                    setFormErrors((prev) => ({ ...prev, subject: "" }));
-                  }}
-                  placeholder="Subject"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                  required
-                />
-                <input
-                  type="datetime-local"
-                  value={form.deadline}
-                  onChange={(e) => {
-                    setForm((prev) => ({ ...prev, deadline: e.target.value }));
-                    setFormErrors((prev) => ({ ...prev, deadline: "" }));
-                  }}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                  required
-                />
-              </div>
-              {(formErrors.subject || formErrors.deadline) && (
-                <div className="space-y-1">
-                  {formErrors.subject && <p className="text-xs text-rose-600">{formErrors.subject}</p>}
-                  {formErrors.deadline && <p className="text-xs text-rose-600">{formErrors.deadline}</p>}
-                </div>
-              )}
-              <div className="grid gap-3 md:grid-cols-2">
-                <select
-                  value={form.difficulty}
-                  onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value as TaskDifficulty }))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
-
-              {!editingTask && (
-                <div className="rounded-xl border border-slate-200 p-3">
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Assignment files (optional)
-                  </label>
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 hover:border-blue-300 hover:bg-blue-50">
-                    <Upload size={14} />
-                    Upload PDF, DOCX, PPTX, PNG, JPG (max 5 files, 10MB each)
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg"
-                      onChange={(e) => addTaskFiles(e.target.files)}
-                      className="hidden"
-                    />
-                  </label>
-                  {taskFiles.length > 0 && (
-                    <div className="mt-2 space-y-1.5">
-                      {taskFiles.map((file) => (
-                        <div
-                          key={file.name}
-                          className="flex items-center justify-between rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700"
-                        >
-                          <span className="truncate">{file.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeTaskFile(file.name)}
-                            className="ml-2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                            aria-label={`Remove ${file.name}`}
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
+          {filteredTasks.map((task) => {
+            const remaining = daysLeft(task.deadline);
+            return (
+              <article key={task.id} className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-semibold text-slate-900">{task.title}</h3>
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass(task.status)}`}>
+                        {task.status.replace("_", " ")}
+                      </span>
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${difficultyClass(task.difficulty)}`}>
+                        {task.difficulty}
+                      </span>
                     </div>
-                  )}
-                </div>
-              )}
+                    <p className="mt-1 text-sm text-slate-600">{task.subject}</p>
+                    {task.description && <p className="mt-2 text-sm text-slate-600">{task.description}</p>}
+                  </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setTaskFiles([]);
-                  }}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {saving ? "Saving..." : editingTask ? "Save Changes" : "Create Task"}
-                </button>
-              </div>
-            </form>
-          </div>
+                  <div className="rounded-lg border border-slate-200/60 bg-indigo-50/50 px-4 py-3 text-right">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Deadline</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatDate(task.deadline)}</p>
+                    <p className={`mt-1 text-xs font-medium ${remaining <= 1 ? "text-rose-600" : "text-slate-600"}`}>
+                      {remaining < 0 ? `${Math.abs(remaining)}d overdue` : `${remaining}d left`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 pt-4">
+                  <p className="text-xs text-slate-600">
+                    Priority: <span className="font-semibold text-slate-900">{(task.priority_score || 0).toFixed(1)}/10</span>
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => toggleTaskStatus(task)}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-all hover:bg-slate-50"
+                    >
+                      Mark {task.status === "completed" ? "Pending" : "Done"}
+                    </button>
+                    <button
+                      onClick={() => openEdit(task)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-all hover:bg-slate-50"
+                    >
+                      <Pencil size={12} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => router.push(`/planner?task_id=${task.id}`)}
+                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-indigo-700"
+                    >
+                      Plan
+                    </button>
+                    <button
+                      onClick={() => removeTask(task)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition-all hover:bg-rose-50"
+                    >
+                      <Trash2 size={12} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
-      )}
+
+        {/* Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-xl rounded-xl border border-slate-200/60 bg-white/95 backdrop-blur-md p-6 shadow-xl">
+              <h2 className="text-lg font-semibold text-slate-900">{editingTask ? "Edit Task" : "Create Task"}</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {editingTask ? "Update task details." : "Add a new task to your workspace."}
+              </p>
+
+              <form onSubmit={submitForm} className="mt-5 space-y-4">
+                <input
+                  value={form.title}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, title: e.target.value }));
+                    setFormErrors((prev) => ({ ...prev, title: "" }));
+                  }}
+                  placeholder="Task title"
+                  className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  required
+                />
+                {formErrors.title && <p className="text-xs text-rose-600">{formErrors.title}</p>}
+
+                <textarea
+                  value={form.description}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, description: e.target.value }));
+                    setFormErrors((prev) => ({ ...prev, description: "" }));
+                  }}
+                  placeholder="Description (optional)"
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                />
+                {formErrors.description && <p className="text-xs text-rose-600">{formErrors.description}</p>}
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input
+                    value={form.subject}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, subject: e.target.value }));
+                      setFormErrors((prev) => ({ ...prev, subject: "" }));
+                    }}
+                    placeholder="Subject"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    required
+                  />
+                  <input
+                    type="datetime-local"
+                    value={form.deadline}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, deadline: e.target.value }));
+                      setFormErrors((prev) => ({ ...prev, deadline: "" }));
+                    }}
+                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    required
+                  />
+                </div>
+                {(formErrors.subject || formErrors.deadline) && (
+                  <div className="space-y-1">
+                    {formErrors.subject && <p className="text-xs text-rose-600">{formErrors.subject}</p>}
+                    {formErrors.deadline && <p className="text-xs text-rose-600">{formErrors.deadline}</p>}
+                  </div>
+                )}
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <select
+                    value={form.difficulty}
+                    onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value as TaskDifficulty }))}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                {!editingTask && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                    <label className="mb-3 block text-sm font-semibold text-slate-900">
+                      Assignment files (optional)
+                    </label>
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-sm text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors">
+                      <Upload size={16} className="text-slate-400" />
+                      <span>Upload PDF, DOCX, PPTX, PNG, JPG (max 5 files, 10MB each)</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg"
+                        onChange={(e) => addTaskFiles(e.target.files)}
+                        className="hidden"
+                      />
+                    </label>
+                    {taskFiles.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {taskFiles.map((file) => (
+                          <div
+                            key={file.name}
+                            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+                          >
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeTaskFile(file.name)}
+                              className="ml-2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-200/50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setTaskFiles([]);
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-700 disabled:opacity-60 shadow-sm hover:shadow-md"
+                  >
+                    {saving ? "Saving..." : editingTask ? "Save Changes" : "Create Task"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

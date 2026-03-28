@@ -140,95 +140,144 @@ export default function DashboardPage() {
   }, [tasks]);
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-4 py-6 md:px-6">
-      <div className="mx-auto max-w-6xl bg-white p-6 md:p-8">
-        <div className="space-y-6 divide-y divide-slate-200">
-          <section className="pb-6">
-            <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Study Workspace</h2>
-          </section>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-slate-900">Study Workspace</h1>
+          <p className="mt-2 text-sm text-slate-600">Your AI-powered learning command center</p>
+        </div>
 
-          <section className="pt-6">
-            <p className="text-sm text-slate-700">{suggestionText}</p>
-            <button className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-all duration-300 hover:bg-slate-800">
+        {/* Quick Action Card */}
+        <div className="mb-8 rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <p className="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Next Priority</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">{suggestionText}</p>
+            </div>
+            <button className="whitespace-nowrap rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 shadow-sm hover:shadow-md">
               Start Focus
             </button>
-          </section>
+          </div>
+        </div>
 
-          <section className="pt-6">
-            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-600">
-              <span>
-                Study hours: <strong className="font-semibold text-slate-900">{loading ? "--" : `${metrics.studyHours}h`}</strong>
-              </span>
-              <span>
-                Focus score: <strong className="font-semibold text-slate-900">{loading ? "--" : `${metrics.focusScore}%`}</strong>
-              </span>
-              <span>
-                Completion rate: <strong className="font-semibold text-slate-900">{loading ? "--" : `${completionRate}%`}</strong>
-              </span>
+        {/* Key Metrics */}
+        <div className="mb-8 grid gap-6 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Study Hours</p>
+            <p className="mt-4 text-3xl font-bold text-slate-900">{loading ? "--" : `${metrics.studyHours}h`}</p>
+            <p className="mt-2 text-xs text-slate-500">This period</p>
+          </div>
+          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Focus Score</p>
+            <p className="mt-4 text-3xl font-bold text-slate-900">{loading ? "--" : `${metrics.focusScore}%`}</p>
+            <p className="mt-2 text-xs text-slate-500">Peak performance</p>
+          </div>
+          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Completion Rate</p>
+            <p className="mt-4 text-3xl font-bold text-slate-900">{loading ? "--" : `${completionRate}%`}</p>
+            <p className="mt-2 text-xs text-slate-500">{metrics.completed} of {metrics.total} tasks</p>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Active Tasks */}
+          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden lg:col-span-1">
+            <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Active Tasks</h2>
             </div>
-          </section>
-
-          <section className="grid gap-6 pt-6 lg:grid-cols-12">
-            <div className="lg:col-span-7">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Task list</h3>
-              <ul className="mt-3 space-y-2">
-                {timeline.map((item) => (
-                  <li key={item.title} className="flex items-start gap-3 py-1">
-                    <input type="checkbox" checked={item.due === "Done"} readOnly className="mt-1 h-4 w-4 rounded border-slate-300" />
-                    <div>
-                      <p className="text-sm text-slate-800">{item.title}</p>
-                      <p className="text-xs text-slate-500">{item.subject}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="space-y-6 lg:col-span-5">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Timeline</h3>
-                <ul className="mt-3 space-y-3">
-                  {timeline.map((item, index) => (
-                    <li key={`${item.title}-${index}`} className="grid grid-cols-[16px_1fr] gap-3">
-                      <div className="relative mt-1">
-                        <span className="block h-2 w-2 rounded-full bg-slate-400" />
-                        {index < timeline.length - 1 && <span className="absolute left-[3px] top-3 h-8 w-px bg-slate-200" />}
+            <div className="divide-y divide-slate-200/50 p-6">
+              {timeline.length > 0 ? (
+                <ul className="space-y-3">
+                  {timeline.map((item) => (
+                    <li key={item.title} className="flex items-start gap-3 py-1">
+                      <input
+                        type="checkbox"
+                        checked={item.due === "Done"}
+                        readOnly
+                        className="mt-1 h-4 w-4 rounded border border-indigo-300 bg-indigo-50 accent-indigo-600"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{item.subject}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-slate-800">{item.title}</p>
-                        <p className="text-xs text-slate-500">{item.due}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-center text-sm text-slate-500">No active tasks</p>
+              )}
+            </div>
+          </div>
+
+          {/* Timeline & Insights */}
+          <div className="space-y-8 lg:col-span-2">
+            {/* Timeline */}
+            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
+              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Upcoming Deadlines</h2>
+              </div>
+              <div className="p-6">
+                <ul className="space-y-6">
+                  {timeline.map((item, index) => (
+                    <li key={`${item.title}-${index}`} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white shadow-sm">
+                          {index + 1}
+                        </div>
+                        {index < timeline.length - 1 && <div className="mt-3 w-px flex-grow bg-slate-200/50" style={{ height: "36px" }} />}
+                      </div>
+                      <div className="flex-1 pt-0.5">
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">{item.subject}</p>
+                        <p className="mt-2 text-xs font-medium text-indigo-600">{item.due}</p>
                       </div>
                     </li>
                   ))}
                 </ul>
               </div>
+            </div>
 
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">AI Insights</h3>
-                <p className="mt-3 text-sm text-slate-600">Work on the nearest deadline first, then move to medium-effort subjects while your focus is high.</p>
+            {/* Subject Load Distribution */}
+            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
+              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Subject Load</h2>
               </div>
-
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Subject heatmap</h3>
-                <div className="mt-3 space-y-3">
-                  {subjectMix.map((subject) => {
+              <div className="space-y-4 p-6">
+                {subjectMix.length > 0 ? (
+                  subjectMix.map((subject) => {
                     const width = Math.min(100, Math.max(12, subject.value * 20));
                     return (
                       <div key={subject.subject}>
-                        <div className="mb-1 flex items-center justify-between text-sm">
-                          <span className="text-slate-700">{subject.subject}</span>
-                          <span className="text-slate-500">{subject.value}</span>
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-900">{subject.subject}</span>
+                          <span className="text-xs font-medium text-slate-600">{subject.value}</span>
                         </div>
-                        <div className="h-1.5 rounded-full bg-slate-100">
-                          <div className="h-1.5 rounded-full bg-slate-500" style={{ width: `${width}%` }} />
+                        <div className="h-1.5 rounded-full bg-slate-200/50">
+                          <div className="h-1.5 rounded-full bg-indigo-600 transition-all duration-300 shadow-sm" style={{ width: `${width}%` }} />
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                  })
+                ) : (
+                  <p className="text-center text-sm text-slate-500">No subject data</p>
+                )}
               </div>
             </div>
-          </section>
+
+            {/* AI Insights */}
+            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
+              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">AI Insights</h2>
+              </div>
+              <div className="p-6">
+                <p className="text-sm leading-relaxed text-slate-700">
+                  Focus on tasks with the nearest deadlines first to maximize your completion rate. Schedule high-complexity subjects during peak mental hours (8-11 AM) for optimal retention.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

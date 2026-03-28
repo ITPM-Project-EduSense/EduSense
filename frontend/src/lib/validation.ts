@@ -21,8 +21,8 @@ export function validateLoginInput(email: string, password: string): FieldErrors
   const cleanPassword = password.trim();
   if (!cleanPassword) {
     errors.password = "Password is required.";
-  } else if (cleanPassword.length < 8) {
-    errors.password = "Password must be at least 8 characters.";
+  } else if (cleanPassword.length < 6) {
+    errors.password = "Password must be at least 6 characters.";
   }
 
   return errors;
@@ -38,6 +38,8 @@ export function validateRegisterInput(fullName: string, email: string, password:
     errors.fullName = "Full name must be at least 2 characters.";
   } else if (cleanName.length > 60) {
     errors.fullName = "Full name must be 60 characters or less.";
+  } else if (/^\d+$/.test(cleanName)) {
+    errors.fullName = "Name cannot contain only numbers.";
   }
 
   const cleanEmail = email.trim().toLowerCase();
@@ -50,10 +52,8 @@ export function validateRegisterInput(fullName: string, email: string, password:
   const cleanPassword = password.trim();
   if (!cleanPassword) {
     errors.password = "Password is required.";
-  } else if (cleanPassword.length < 8) {
-    errors.password = "Password must be at least 8 characters.";
-  } else if (!/[A-Za-z]/.test(cleanPassword) || !/\d/.test(cleanPassword)) {
-    errors.password = "Password must include at least one letter and one number.";
+  } else if (cleanPassword.length < 6) {
+    errors.password = "Password must be at least 6 characters.";
   }
 
   return errors;
