@@ -704,6 +704,9 @@ export default function TasksPage() {
                         {task.title}
                       </h3>
                       <p className="mt-1.5 text-sm font-medium text-slate-600">{task.subject}</p>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {task.task_type} · {task.estimated_hours}h estimated
+                      </p>
                       {task.description && (
                         <p className="mt-2 line-clamp-1 text-sm text-slate-500">{task.description}</p>
                       )}
@@ -843,6 +846,37 @@ export default function TasksPage() {
                     type="datetime-local"
                     value={form.deadline}
                     onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Task Type</label>
+                  <select
+                    value={form.task_type}
+                    onChange={(e) => setForm((prev) => ({ ...prev, task_type: e.target.value as TaskType }))}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+                  >
+                    <option value="reading">Reading</option>
+                    <option value="assignment">Assignment</option>
+                    <option value="exam">Exam</option>
+                    <option value="coding">Coding</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Estimated Hours</label>
+                  <input
+                    type="number"
+                    min={0.5}
+                    max={200}
+                    step={0.5}
+                    value={form.estimated_hours}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, estimated_hours: Number(e.target.value) || 1 }))
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
                     required
                   />

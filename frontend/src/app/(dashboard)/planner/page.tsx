@@ -342,6 +342,11 @@ function PlannerPageContent() {
   const handleGenerate = async () => {
     if (!taskId) return;
 
+    if (files.length === 0) {
+      setError("Attach at least one study material before generating a plan.");
+      return;
+    }
+
     const fileErrors = validateFiles(files, {
       allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
       maxSizeBytes: PLANNER_MAX_FILE_SIZE,
@@ -626,7 +631,7 @@ function PlannerPageContent() {
             {/* Generate button */}
             <button
               onClick={handleGenerate}
-              disabled={!taskId}
+              disabled={!taskId || files.length === 0}
               className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Brain size={18} />
