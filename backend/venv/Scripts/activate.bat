@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\palih\Desktop\New folder\EduSense\backend\venv
+set VIRTUAL_ENV=D:\Y3S2\ITPM\EduSense\backend\venv
 
 if not defined PROMPT set PROMPT=$P$G
 
