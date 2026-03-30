@@ -41,6 +41,8 @@ def task_to_response(task: Task) -> TaskResponse:
         description=task.description,
         subject=task.subject,
         deadline=task.deadline,
+        task_type=task.task_type,
+        estimated_hours=task.estimated_hours,
         difficulty=task.difficulty,
         status=task.status,
         priority_score=task.priority_score,
@@ -57,13 +59,15 @@ def task_to_response(task: Task) -> TaskResponse:
     summary="Create a new academic task",
 )
 async def create_task(task_data: TaskCreate, current_user: User = Depends(get_current_user)):
-    """Create a new academic task with auto-calculated priority."""
+    """Create a new task only. Scheduling is intentionally decoupled from task creation."""
     task = Task(
         user_id=str(current_user.id),
         title=task_data.title,
         description=task_data.description,
         subject=task_data.subject,
         deadline=task_data.deadline,
+        task_type=task_data.task_type,
+        estimated_hours=task_data.estimated_hours,
         difficulty=task_data.difficulty,
         status=task_data.status,
     )

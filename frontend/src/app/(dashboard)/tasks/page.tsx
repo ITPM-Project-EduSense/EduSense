@@ -467,9 +467,9 @@ export default function TasksPage() {
 
                   // Empty cells for days before month starts
                   for (let i = 0; i < firstDay; i++) {
-                    days.push(
-                      <div key={`empty-${i}`} className="aspect-square rounded-lg bg-slate-50" />
-                    );
+                      days.push(
+                        <div key={`empty-${i}`} className="h-32 rounded-lg bg-slate-50" />
+                      );
                   }
 
                   // Calendar days
@@ -481,33 +481,47 @@ export default function TasksPage() {
 
                     days.push(
                       <button
-                        key={day}
-                        onClick={() => navigateToAnalytics(date)}
-                        className={`aspect-square rounded-lg border-2 transition-all duration-200 p-2 flex flex-col items-center justify-between hover:shadow-md ${
+                          key={day}
+                          onClick={() => navigateToAnalytics(date)}
+                          className={`h-32 rounded-lg border-2 transition-all duration-200 p-2 flex flex-col overflow-hidden hover:shadow-md cursor-pointer ${
                           isToday
                             ? "border-blue-400 bg-blue-50"
                             : "border-slate-200 bg-white hover:border-blue-300"
                         }`}
                       >
-                        <span className={`text-sm font-semibold ${isToday ? "text-blue-600" : "text-slate-700"}`}>
+                          {/* Day number */}
+                          <span className={`text-xs font-bold mb-1 ${isToday ? "text-blue-600" : "text-slate-600"}`}>
                           {day}
                         </span>
-                        {tasksForDay.length > 0 && (
-                          <div className="flex flex-wrap gap-0.5 justify-center">
-                            {tasksForDay.slice(0, 2).map((task) => (
-                              <div
-                                key={task.id}
-                                className={`h-2 w-2 rounded-full ${priorityColor(task.priority_score)}`}
-                                title={task.title}
-                              />
-                            ))}
-                            {tasksForDay.length > 2 && (
-                              <span className="text-xs font-bold text-slate-500">
-                                +{tasksForDay.length - 2}
-                              </span>
+
+                          {/* Tasks list */}
+                          <div className="flex-1 overflow-y-auto space-y-1 text-left min-w-0">
+                            {tasksForDay.length > 0 ? (
+                              tasksForDay.slice(0, 3).map((task) => (
+                                <div
+                                  key={task.id}
+                                  className={`text-xs rounded px-1.5 py-0.5 truncate font-medium ${
+                                      (task.priority_score ?? 0) >= 7
+                                      ? "bg-rose-100 text-rose-700 border-l-2 border-rose-400"
+                                        : (task.priority_score ?? 0) >= 4
+                                      ? "bg-amber-100 text-amber-700 border-l-2 border-amber-400"
+                                      : "bg-emerald-100 text-emerald-700 border-l-2 border-emerald-400"
+                                  }`}
+                                  title={`${task.title} (${task.subject})`}
+                                >
+                                  <div className="truncate">{task.title}</div>
+                                  <div className="text-xs opacity-75 truncate">{task.subject}</div>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-400">No tasks</span>
+                            )}
+                            {tasksForDay.length > 3 && (
+                              <div className="text-xs font-semibold text-slate-500 px-1.5">
+                                +{tasksForDay.length - 3} more
+                              </div>
                             )}
                           </div>
-                        )}
                       </button>
                     );
                   }

@@ -12,6 +12,17 @@ class Task(Document):
     description: Optional[str] = Field(None, max_length=1000)
     subject: str = Field(..., min_length=1, max_length=100)
     deadline: datetime
+    task_type: str = Field(
+        default="reading",
+        pattern="^(reading|assignment|exam|coding)$",
+        description="Type of task for strategy-aware scheduling"
+    )
+    estimated_hours: float = Field(
+        default=2.0,
+        ge=0.5,
+        le=200,
+        description="Estimated effort required in hours"
+    )
     difficulty: str = Field(
         ..., pattern="^(easy|medium|hard)$",
         description="Task difficulty: easy, medium, or hard"
@@ -38,6 +49,8 @@ class Task(Document):
                 "description": "Complete binary tree implementation",
                 "subject": "Data Structures",
                 "deadline": "2026-03-15T23:59:00",
+                "task_type": "assignment",
+                "estimated_hours": 8,
                 "difficulty": "hard",
                 "status": "pending"
             }
@@ -52,6 +65,8 @@ class TaskCreate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     subject: str = Field(..., min_length=1, max_length=100)
     deadline: datetime
+    task_type: str = Field(default="reading", pattern="^(reading|assignment|exam|coding)$")
+    estimated_hours: float = Field(default=2.0, ge=0.5, le=200)
     difficulty: str = Field(..., pattern="^(easy|medium|hard)$")
     status: str = Field(default="pending", pattern="^(pending|in_progress|completed)$")
 
@@ -85,6 +100,8 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     subject: Optional[str] = Field(None, min_length=1, max_length=100)
     deadline: Optional[datetime] = None
+    task_type: Optional[str] = Field(None, pattern="^(reading|assignment|exam|coding)$")
+    estimated_hours: Optional[float] = Field(None, ge=0.5, le=200)
     difficulty: Optional[str] = Field(None, pattern="^(easy|medium|hard)$")
     status: Optional[str] = Field(None, pattern="^(pending|in_progress|completed)$")
 
@@ -122,6 +139,8 @@ class TaskResponse(BaseModel):
     description: Optional[str]
     subject: str
     deadline: datetime
+    task_type: str
+    estimated_hours: float
     difficulty: str
     status: str
     priority_score: Optional[float]
