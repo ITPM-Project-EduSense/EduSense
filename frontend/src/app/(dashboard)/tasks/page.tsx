@@ -94,6 +94,9 @@ export default function TasksPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(defaultForm);
+  
+  const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadTasks = async () => {
     try {
@@ -204,14 +207,21 @@ export default function TasksPage() {
   };
 
   const removeTask = async (task: Task) => {
-    const proceed = window.confirm(`Delete "${task.title}"?`);
-    if (!proceed) return;
+    setDeleteConfirm(task);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await apiFetch(`/tasks/${task.id}`, { method: "DELETE" });
+      setIsDeleting(true);
+      await apiFetch(`/tasks/${deleteConfirm.id}`, { method: "DELETE" });
       await loadTasks();
+      setDeleteConfirm(null);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to delete task";
       setError(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -430,6 +440,57 @@ export default function TasksPage() {
         </div>
 
         <div className="space-y-3">
+          {/* Loading Skeleton */}
+          {loading && (
+            <>
+              {[...Array(3)].map((_, idx) => (
+                <div
+                  key={idx}
+                  className="animate-pulse rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                >
+                  {/* Header skeleton */}
+                  <div className="border-b border-slate-100 px-6 py-4">
+                    <div className="flex items-start gap-3 justify-between">
+                      <div className="flex-1">
+                        <div className="h-6 w-3/4 rounded-lg bg-slate-200" />
+                        <div className="mt-3 h-4 w-20 rounded-lg bg-slate-100" />
+                        <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100" />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="h-6 w-20 rounded-full bg-slate-200" />
+                        <div className="h-6 w-16 rounded-full bg-slate-200" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle skeleton */}
+                  <div className="grid grid-cols-3 gap-4 px-6 py-4 bg-slate-50">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex gap-3">
+                        <div className="h-5 w-5 rounded-lg bg-slate-200" />
+                        <div className="flex-1">
+                          <div className="h-3 w-16 rounded bg-slate-200" />
+                          <div className="mt-2 h-4 w-20 rounded bg-slate-200" />
+                          <div className="mt-2 h-3 w-12 rounded bg-slate-100" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer skeleton */}
+                  <div className="flex gap-2 px-6 py-4 bg-slate-50">
+                    <div className="flex-1" />
+                    <div className="flex gap-2">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="h-8 w-20 rounded-lg bg-slate-200" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
           {!loading && filteredTasks.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
               <p className="font-medium">No tasks match your filters</p>
@@ -641,6 +702,50 @@ export default function TasksPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm animate-in zoom-in-95 rounded-2xl border border-rose-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-rose-100 p-3">
+                <Trash2 size={24} className="text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Delete Task?</h3>
+                <p className="mt-0.5 text-sm text-slate-600">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4">
+              <p className="text-sm font-semibold text-slate-900">"{deleteConfirm.title}"</p>
+              <p className="mt-1 text-xs text-slate-600">Subject: {deleteConfirm.subject}</p>
+              {deleteConfirm.description && (
+                <p className="mt-2 line-clamp-2 text-xs text-slate-500">{deleteConfirm.description}</p>
+              )}
+            </div>
+
+            <div className="mt-4 flex gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Keep Task
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:from-rose-700 hover:to-red-700 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? "Deleting..." : "Delete Task"}
+              </button>
+            </div>
           </div>
         </div>
       )}
