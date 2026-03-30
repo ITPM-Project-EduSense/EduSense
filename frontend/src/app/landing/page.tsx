@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 import {
   Brain,
   Calendar,

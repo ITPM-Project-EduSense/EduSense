@@ -81,8 +81,7 @@ export function TrendingIndicator({
   showChange = true,
 }: TrendingIndicatorProps) {
   const change = value - previousValue;
-  const changePercent =
-    previousValue === 0 ? 0 : ((change / previousValue) * 100).toFixed(1);
+  const changePercent = previousValue === 0 ? 0 : (change / previousValue) * 100;
   const isPositive = change >= 0;
 
   return (
@@ -103,7 +102,7 @@ export function TrendingIndicator({
             ) : (
               <TrendingDown size={16} />
             )}
-            {Math.abs(changePercent)}%
+            {Math.abs(changePercent).toFixed(1)}%
           </div>
         )}
       </div>
