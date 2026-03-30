@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(request: NextRequest) {
-  // Check for edusense_token (set by backend after login)
-  const token = request.cookies.get("edusense_token");
+export async function middleware(request: NextRequest) {
+  const legacyToken = request.cookies.get("edusense_token");
+  const nextAuthToken = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
   const isDashboardPage =
     request.nextUrl.pathname.startsWith("/dashboard") ||
@@ -16,8 +20,8 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/notifications") ||
     request.nextUrl.pathname.startsWith("/settings");
   // Protect dashboard pages - require authentication
-  if (!token && isDashboardPage) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (!legacyToken && !nextAuthToken && isDashboardPage) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();

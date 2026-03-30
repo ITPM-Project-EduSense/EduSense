@@ -1,5 +1,6 @@
 import AnimatedBlob from "@/components/AnimatedBlob";
 import FeatureCard from "@/components/FeatureCard";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 import Hero from "@/components/Hero";
 import Navbar from "@/components/Navbar";
 import Image from "next/image";
@@ -216,6 +217,9 @@ export default function LandingPage() {
               >
                 Log In
               </Link>
+            </div>
+            <div className="mt-4 flex justify-center">
+              <GoogleLoginButton />
             </div>
           </div>
         </div>
