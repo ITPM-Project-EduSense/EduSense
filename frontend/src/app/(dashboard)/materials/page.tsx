@@ -274,10 +274,20 @@ export default function PeerConnectHome() {
         groupSchedule.trim() !== "" &&
         groupLeader.trim() !== "";
 
-    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(
-        () => new Set<string>(JSON.parse(localStorage.getItem("joinedGroups") ?? "[]"))
-    );
-    useEffect(() => { localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups])); }, [joinedGroups]);
+    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(new Set());
+    
+    useEffect(() => {
+        // Load from localStorage only on client
+        const saved = localStorage.getItem("joinedGroups");
+        if (saved) {
+            setJoinedGroups(new Set<string>(JSON.parse(saved)));
+        }
+    }, []);
+    
+    useEffect(() => {
+        // Save to localStorage whenever joinedGroups changes
+        localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups]));
+    }, [joinedGroups]);
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 

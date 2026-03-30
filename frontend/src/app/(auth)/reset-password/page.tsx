@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2, ArrowRight, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addToast } = useToast();
@@ -240,5 +240,31 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ResetPasswordFallback() {
+  return (
+    <div className="min-h-screen flex bg-slate-50">
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600" />
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-8">
+        <div className="w-full max-w-md bg-white shadow-xl rounded-2xl p-8 animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-6 w-3/4" />
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-200 rounded" />
+            <div className="h-10 bg-gray-200 rounded" />
+            <div className="h-10 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
