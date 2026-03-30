@@ -24,8 +24,15 @@ import {
   Zap,
   Minus,
   ArrowLeft,
+  RotateCcw,
 } from "lucide-react";
-import { generateSmartSchedule } from "@/lib/scheduleApi";
+import {
+  attachTaskResource,
+  generateTaskPlan,
+  getTaskPlan,
+  regenerateTaskPlan,
+  type GeneratedPlanResponse,
+} from "@/lib/scheduleApi";
 import { validateFiles } from "@/lib/validation";
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
@@ -33,6 +40,8 @@ interface Task {
   id: string;
   title: string;
   subject: string;
+  task_type?: "reading" | "assignment" | "exam" | "coding";
+  estimated_hours?: number;
   deadline: string;
   difficulty: string;
   status: string;
@@ -85,6 +94,70 @@ interface SmartSchedule {
   original_filenames: string[];
   assignment_analysis?: AssignmentAnalysis;
   analysis_status?: "not_analyzed" | "analyzed" | "needs_review";
+}
+
+function mapSessionTypeToTip(sessionType: string) {
+  const tips: Record<string, string> = {
+    reading: "Use active recall after each section to retain key concepts.",
+    revision: "Summarize from memory first, then verify against notes.",
+    research: "Identify 2-3 authoritative sources before deep work.",
+    implementation: "Break work into small deliverables and test each step.",
+    review: "Use a checklist and evaluate quality against task criteria.",
+    practice: "Solve timed practice problems to improve speed and confidence.",
+  };
+  return tips[sessionType] || "Stay focused and review outcomes after this session.";
+}
+
+function mapSessionTypeToFocus(sessionType: string): "low" | "medium" | "high" {
+  if (sessionType === "implementation" || sessionType === "practice") return "high";
+  if (sessionType === "research" || sessionType === "review") return "medium";
+  return "low";
+}
+
+function toSmartSchedule(task: Task, plan: GeneratedPlanResponse): SmartSchedule {
+  const sortedSessions = [...plan.sessions].sort((a, b) =>
+    a.scheduled_day.localeCompare(b.scheduled_day)
+  );
+  const extractedTopics = Array.from(new Set(sortedSessions.map((s) => s.session_type)));
+
+  const sessions: Session[] = sortedSessions.map((s, idx) => {
+    const dateObj = new Date(`${s.scheduled_day}T00:00:00`);
+    return {
+      day: idx + 1,
+      date: s.scheduled_day,
+      day_name: dateObj.toLocaleDateString("en-US", { weekday: "long" }),
+      topics: [
+        s.session_type.charAt(0).toUpperCase() + s.session_type.slice(1),
+        `${task.subject} task`,
+      ],
+      duration_hours: Number((s.duration_minutes / 60).toFixed(1)),
+      focus_level: mapSessionTypeToFocus(s.session_type),
+      tips: mapSessionTypeToTip(s.session_type),
+    };
+  });
+
+  const startDate = sortedSessions[0]?.scheduled_day || new Date().toISOString().split("T")[0];
+  const endDate = sortedSessions[sortedSessions.length - 1]?.scheduled_day || startDate;
+
+  return {
+    schedule_id: plan.plan_id,
+    task_id: plan.task_id,
+    subject: task.subject,
+    title: task.title,
+    deadline: task.deadline,
+    start_date: startDate,
+    end_date: endDate,
+    extracted_topics: extractedTopics,
+    ai_summary: `This plan was generated from task context and attached materials using task-type strategy (${task.task_type || "reading"}).`,
+    ai_tips: [
+      "Follow the scheduled order to keep progress steady.",
+      "Use short recap notes after each session.",
+      "Regenerate with a lower daily cap if workload feels too heavy.",
+    ],
+    document_summaries: [],
+    sessions,
+    original_filenames: [],
+  };
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
@@ -192,6 +265,7 @@ function PlannerPageContent() {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
   const [showDocSummaries, setShowDocSummaries] = useState(false);
   const [expandedDocs, setExpandedDocs] = useState<Set<number>>(new Set());
+  const [maxMinutesPerDay, setMaxMinutesPerDay] = useState(240);
 
   /* ─── Load task + check for existing schedule ───────────────────────── */
   const loadInitialData = useCallback(async () => {
@@ -204,16 +278,14 @@ function PlannerPageContent() {
         fetch(`${API}/tasks/${taskId}`, { credentials: "include" }).then((r) =>
           r.ok ? r.json() : null
         ),
-        fetch(`${API}/schedule/by-task/${taskId}`, { credentials: "include" }).then(
-          (r) => (r.ok ? r.json() : null)
-        ),
+        getTaskPlan(taskId).catch(() => null),
       ]);
 
       if (taskRes.status === "fulfilled" && taskRes.value) {
         setTask(taskRes.value);
       }
-      if (schedRes.status === "fulfilled" && schedRes.value?.success) {
-        setSchedule(schedRes.value);
+      if (schedRes.status === "fulfilled" && schedRes.value && taskRes.status === "fulfilled" && taskRes.value) {
+        setSchedule(toSmartSchedule(taskRes.value, schedRes.value));
       }
     } catch (e) {
       console.error("loadInitialData error:", e);
@@ -291,19 +363,44 @@ function PlannerPageContent() {
     setGeneratingStep("Extracting text from documents...");
 
     try {
-      setGeneratingStep("Asking Groq AI to analyse your materials...");
+      setGeneratingStep("Attaching study materials to this task...");
+      const attachTargets = files.map((file) => {
+        const ext = file.name.includes(".") ? file.name.split(".").pop() || "file" : "file";
+        const estimatedPages = Math.max(1, Math.round(file.size / (1024 * 200)));
+        return attachTaskResource(taskId, {
+          file_name: file.name,
+          file_type: ext.toLowerCase(),
+          content_length: estimatedPages,
+        });
+      });
+      await Promise.all(attachTargets);
 
-      // Use the clean API function from scheduleApi.ts
-      const data = await generateSmartSchedule(taskId, files);
+      setGeneratingStep("Analyzing task + materials and generating sessions...");
+      const plan = await generateTaskPlan(taskId);
 
-      setGeneratingStep("Building your personalised schedule...");
-
-      if (!data.success) throw new Error("AI returned an empty schedule");
-
-      setSchedule(data);
+      if (!task) throw new Error("Task not loaded");
+      setSchedule(toSmartSchedule(task, plan));
       setExpandedDays(new Set([1]));
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Something went wrong. Please try again.";
+      setError(message);
+    } finally {
+      setGenerating(false);
+      setGeneratingStep("");
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!taskId || !task) return;
+    try {
+      setGenerating(true);
+      setGeneratingStep("Regenerating plan with constraints...");
+      const plan = await regenerateTaskPlan(taskId, maxMinutesPerDay);
+      setSchedule(toSmartSchedule(task, plan));
+      setExpandedDays(new Set([1]));
+      setError(null);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed to regenerate plan";
       setError(message);
     } finally {
       setGenerating(false);
@@ -392,7 +489,7 @@ function PlannerPageContent() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Smart Study Planner</h1>
-            <p className="text-sm text-slate-500">AI-powered by Groq · Llama 3.3</p>
+            <p className="text-sm text-slate-500">Task-context scheduling pipeline</p>
           </div>
         </div>
 
@@ -442,7 +539,7 @@ function PlannerPageContent() {
               </h3>
               <p className="text-sm text-slate-500">
                 Follow this flow: choose your task, upload material, then generate your study plan.
-                Uploading files gives a more personalized schedule.
+                Materials are required before generating a plan.
               </p>
             </div>
 
@@ -460,7 +557,7 @@ function PlannerPageContent() {
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs font-semibold text-slate-700">Step 3</p>
                 <p className="mt-1 text-sm font-medium text-slate-700">Create schedule</p>
-                <p className="mt-0.5 text-xs text-slate-500">AI builds a day-by-day plan.</p>
+                <p className="mt-0.5 text-xs text-slate-500">Scheduler uses task type + workload.</p>
               </div>
             </div>
 
@@ -534,12 +631,12 @@ function PlannerPageContent() {
             >
               <Brain size={18} />
               {files.length > 0
-                ? `Create Schedule from ${files.length} file${files.length > 1 ? "s" : ""}`
-                : "Skip Upload and Create Basic Study Plan"}
+                ? `Attach ${files.length} file${files.length > 1 ? "s" : ""} and Generate Plan`
+                : "Attach Materials to Generate Plan"}
             </button>
 
             <p className="text-xs text-slate-500">
-              Recommended: upload at least one PDF to improve topic extraction and schedule quality.
+              Required: upload at least one material to generate a task-aware study plan.
             </p>
           </div>
         )}
@@ -564,12 +661,26 @@ function PlannerPageContent() {
                   </p>
                 </div>
                 <button
-                  onClick={() => { setSchedule(null); setFiles([]); setError(null); }}
+                  onClick={handleRegenerate}
                   className="flex items-center gap-1.5 px-4 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-sm font-semibold transition-all"
                 >
-                  <Upload size={14} />
+                  <RotateCcw size={14} />
                   Regenerate
                 </button>
+              </div>
+
+              <div className="mb-4 flex items-end gap-3">
+                <label className="text-xs text-indigo-100 font-semibold uppercase tracking-wide">
+                  Max Minutes/Day
+                </label>
+                <input
+                  type="number"
+                  min={60}
+                  max={600}
+                  value={maxMinutesPerDay}
+                  onChange={(e) => setMaxMinutesPerDay(Number(e.target.value) || 240)}
+                  className="w-28 rounded-lg border border-white/30 bg-white/20 px-2.5 py-1.5 text-sm text-white placeholder:text-indigo-100 outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">

@@ -27,6 +27,7 @@ import {
 
 type TaskStatus = "pending" | "in_progress" | "completed";
 type TaskDifficulty = "easy" | "medium" | "hard";
+type TaskType = "reading" | "assignment" | "exam" | "coding";
 
 type Task = {
   id: string;
@@ -34,6 +35,8 @@ type Task = {
   description: string | null;
   subject: string;
   deadline: string;
+  task_type: TaskType;
+  estimated_hours: number;
   difficulty: TaskDifficulty;
   status: TaskStatus;
   priority_score: number | null;
@@ -46,6 +49,8 @@ type TaskForm = {
   description: string;
   subject: string;
   deadline: string;
+  task_type: TaskType;
+  estimated_hours: number;
   difficulty: TaskDifficulty;
   status: TaskStatus;
 };
@@ -55,6 +60,8 @@ const defaultForm: TaskForm = {
   description: "",
   subject: "",
   deadline: "",
+  task_type: "reading",
+  estimated_hours: 2,
   difficulty: "medium",
   status: "pending",
 };
@@ -168,6 +175,8 @@ export default function TasksPage() {
       description: task.description || "",
       subject: task.subject,
       deadline: task.deadline.slice(0, 16),
+      task_type: task.task_type,
+      estimated_hours: task.estimated_hours,
       difficulty: task.difficulty,
       status: task.status,
     });
@@ -185,6 +194,8 @@ export default function TasksPage() {
         description: form.description.trim(),
         subject: form.subject.trim(),
         deadline: new Date(form.deadline).toISOString(),
+        task_type: form.task_type,
+        estimated_hours: form.estimated_hours,
         difficulty: form.difficulty,
         status: form.status,
       };
