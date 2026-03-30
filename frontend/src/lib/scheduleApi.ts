@@ -277,3 +277,55 @@ export async function generateSmartSchedule(
 export async function getSmartScheduleByTask(taskId: string): Promise<SmartScheduleResponse> {
   return apiFetch(`/schedule/by-task/${taskId}`);
 }
+
+// ==============================================================================
+// TASK-CONTEXT SMART SCHEDULING FLOW (NEW)
+// ==============================================================================
+
+export interface TaskResourcePayload {
+  file_name: string;
+  file_type: string;
+  content_length: number;
+}
+
+export interface GeneratedPlanSession {
+  id: string;
+  session_type: "reading" | "revision" | "research" | "implementation" | "review" | "practice";
+  duration_minutes: number;
+  scheduled_day: string;
+}
+
+export interface GeneratedPlanResponse {
+  plan_id: string;
+  task_id: string;
+  total_hours: number;
+  created_at: string;
+  sessions: GeneratedPlanSession[];
+}
+
+export async function attachTaskResource(taskId: string, payload: TaskResourcePayload) {
+  return apiFetch(`/tasks/${taskId}/resources`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function generateTaskPlan(taskId: string): Promise<GeneratedPlanResponse> {
+  return apiFetch(`/tasks/${taskId}/generate-plan`, {
+    method: "POST",
+  });
+}
+
+export async function regenerateTaskPlan(
+  taskId: string,
+  maxMinutesPerDay: number = 240
+): Promise<GeneratedPlanResponse> {
+  return apiFetch(`/tasks/${taskId}/regenerate-plan`, {
+    method: "POST",
+    body: JSON.stringify({ max_minutes_per_day: maxMinutesPerDay }),
+  });
+}
+
+export async function getTaskPlan(taskId: string): Promise<GeneratedPlanResponse> {
+  return apiFetch(`/tasks/${taskId}/plan`);
+}
