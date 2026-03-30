@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import {
+  Calendar,
   CalendarClock,
   CheckCircle2,
   Circle,
@@ -20,6 +21,8 @@ import {
   BookOpen,
   Flame,
   TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
@@ -80,6 +83,21 @@ function statusClass(value: TaskStatus) {
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
+function priorityColor(score: number | null) {
+  if (!score) return "bg-slate-100";
+  if (score >= 7) return "bg-rose-300";
+  if (score >= 4) return "bg-amber-300";
+  return "bg-emerald-300";
+}
+
+function getDaysInMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+}
+
 export default function TasksPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -97,6 +115,9 @@ export default function TasksPage() {
   
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const loadTasks = async () => {
     try {
@@ -225,6 +246,18 @@ export default function TasksPage() {
     }
   };
 
+  const getTasksForDate = useMemo(() => {
+    return (date: Date) => {
+      const dateStr = date.toISOString().split("T")[0];
+      return tasks.filter(task => task.deadline.startsWith(dateStr) && task.status !== "completed");
+    };
+  }, [tasks]);
+
+  const navigateToAnalytics = (date: Date) => {
+    const dateStr = date.toISOString().split("T")[0];
+    router.push(`/analytics?date=${dateStr}`);
+  };
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
       {/* ── Page Header with Gradient ── */}
@@ -258,6 +291,17 @@ export default function TasksPage() {
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
               Live
             </span>
+            <button
+              onClick={() => setShowCalendarView(!showCalendarView)}
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                showCalendarView
+                  ? "bg-white/20 text-white ring-1 ring-white/40"
+                  : "bg-white text-blue-600 hover:bg-blue-50"
+              }`}
+            >
+              <Calendar size={18} />
+              {showCalendarView ? "List View" : "Calendar"}
+            </button>
             <button
               onClick={openCreate}
               className="inline-flex items-center gap-2 rounded-full bg-white text-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-all"
@@ -369,6 +413,128 @@ export default function TasksPage() {
           </article>
         </div>
       </section>
+
+      {/* ── Section: Calendar View ── */}
+      {showCalendarView && (
+        <section className="animate-in fade-in duration-300">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-5 w-1 rounded-full bg-gradient-to-b from-blue-400 to-teal-600" />
+            <Calendar size={14} className="text-blue-500" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              Task Calendar
+            </h2>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            {/* Month Navigation */}
+            <div className="mb-8 flex items-center justify-between">
+              <button
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                className="rounded-lg p-2 hover:bg-slate-100 transition-all"
+              >
+                <ChevronLeft size={20} className="text-slate-600" />
+              </button>
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-slate-900">
+                  {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </h3>
+              </div>
+              <button
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                className="rounded-lg p-2 hover:bg-slate-100 transition-all"
+              >
+                <ChevronRight size={20} className="text-slate-600" />
+              </button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="space-y-2">
+              {/* Days of Week Header */}
+              <div className="grid grid-cols-7 gap-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                  <div key={day} className="text-center">
+                    <p className="text-xs font-bold uppercase text-slate-500">{day}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7 gap-2">
+                {(() => {
+                  const daysInMonth = getDaysInMonth(currentMonth);
+                  const firstDay = getFirstDayOfMonth(currentMonth);
+                  const days = [];
+
+                  // Empty cells for days before month starts
+                  for (let i = 0; i < firstDay; i++) {
+                    days.push(
+                      <div key={`empty-${i}`} className="aspect-square rounded-lg bg-slate-50" />
+                    );
+                  }
+
+                  // Calendar days
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                    const tasksForDay = getTasksForDate(date);
+                    const isToday =
+                      date.toDateString() === new Date().toDateString();
+
+                    days.push(
+                      <button
+                        key={day}
+                        onClick={() => navigateToAnalytics(date)}
+                        className={`aspect-square rounded-lg border-2 transition-all duration-200 p-2 flex flex-col items-center justify-between hover:shadow-md ${
+                          isToday
+                            ? "border-blue-400 bg-blue-50"
+                            : "border-slate-200 bg-white hover:border-blue-300"
+                        }`}
+                      >
+                        <span className={`text-sm font-semibold ${isToday ? "text-blue-600" : "text-slate-700"}`}>
+                          {day}
+                        </span>
+                        {tasksForDay.length > 0 && (
+                          <div className="flex flex-wrap gap-0.5 justify-center">
+                            {tasksForDay.slice(0, 2).map((task) => (
+                              <div
+                                key={task.id}
+                                className={`h-2 w-2 rounded-full ${priorityColor(task.priority_score)}`}
+                                title={task.title}
+                              />
+                            ))}
+                            {tasksForDay.length > 2 && (
+                              <span className="text-xs font-bold text-slate-500">
+                                +{tasksForDay.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  }
+
+                  return days;
+                })()}
+              </div>
+
+              {/* Legend */}
+              <div className="mt-6 grid grid-cols-3 gap-4 border-t border-slate-200 pt-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-rose-300" />
+                  <span className="text-xs text-slate-600">High Priority</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-amber-300" />
+                  <span className="text-xs text-slate-600">Medium Priority</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-emerald-300" />
+                  <span className="text-xs text-slate-600">Low Priority</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Section: Filters ── */}
       <section>

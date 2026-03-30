@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { BarChart3, Sparkles, Brain, Activity } from "lucide-react";
 import KpiCards from "@/components/analytics/KpiCards";
 import SubjectPerformanceChart from "@/components/analytics/SubjectPerformanceChart";
@@ -9,7 +11,10 @@ import GpaSubjectPrediction from "@/components/analytics/GpaSubjectPrediction";
 import AiRecommendations from "@/components/analytics/AiRecommendations";
 import RealTimeAlerts from "@/components/analytics/RealTimeAlerts";
 
-export default function AnalyticsPage() {
+function AnalyticsContent() {
+    const searchParams = useSearchParams();
+    const dateParam = searchParams.get("date");
+    
     return (
         <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
 
@@ -30,7 +35,7 @@ export default function AnalyticsPage() {
                                 EduSense · Analytics
                             </p>
                             <h1 className="text-2xl font-bold text-white lg:text-3xl">
-                                AI Performance Dashboard
+                                {dateParam ? `Analytics for ${new Date(dateParam).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : "AI Performance Dashboard"}
                             </h1>
                         </div>
                     </div>
@@ -101,5 +106,15 @@ export default function AnalyticsPage() {
                 </div>
             </section>
         </div>
+    );
+}
+
+export default function AnalyticsPage() {
+    return (
+        <Suspense fallback={<div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
+            <div className="h-64 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 animate-pulse" />
+        </div>}>
+            <AnalyticsContent />
+        </Suspense>
     );
 }
