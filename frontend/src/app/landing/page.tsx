@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import GoogleLoginButton from "@/components/GoogleLoginButton";
+import Link from "next/link";
 import Image from "next/image";
 import {
   Brain,
@@ -431,7 +431,7 @@ export default function LandingPage() {
               height={36}
               className="h-9 w-9 rounded-xl border border-slate-200 object-cover shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
             />
-            <span className="text-xl font-semibold text-slate-800 tracking-tight">
+            <span className="text-xl font-bold text-slate-800 tracking-tight font-[family-name:var(--font-playfair)]">
               Edu<span className="text-indigo-500">Sense</span>
             </span>
           </div>
@@ -1047,7 +1047,7 @@ export default function LandingPage() {
                   height={36}
                   className="h-9 w-9 rounded-xl border border-slate-700 object-cover shadow-lg"
                 />
-                <span className="text-lg font-semibold text-white tracking-tight">
+                <span className="text-lg font-bold text-white tracking-tight font-[family-name:var(--font-playfair)]">
                   Edu<span className="text-indigo-400">Sense</span>
                 </span>
               </div>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search, Bell, Settings, LogOut } from "lucide-react";
+import { Menu, Search, Bell, Settings, UserCircle, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 type TopbarProps = {
@@ -30,6 +30,14 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const pageTitle = pageTitles[pathname] || "Overview";
+  const userInitials = user?.full_name
+    ? user.full_name
+        .split(" ")
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "U";
 
   const handleLogout = async () => {
     try {
@@ -88,6 +96,20 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
 
         <button className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-100" aria-label="Settings">
           <Settings size={18} />
+        </button>
+
+        <button
+          onClick={() => router.push("/users")}
+          className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 text-slate-600 hover:bg-slate-100"
+          aria-label="Profile"
+        >
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">
+            {userInitials}
+          </span>
+          <span className="hidden max-w-28 truncate text-xs font-medium text-slate-700 md:inline">
+            {user?.full_name || "Profile"}
+          </span>
+          <UserCircle size={16} />
         </button>
 
         <button

@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-import { ProgressRing, SimpleBarChart } from "@/components/VisualIndicators";
-import { SkeletonMetricCard, SkeletonActivityCard } from "@/components/Skeletons";
-import { useToast } from "@/components/Toast";
-import { useSearch } from "@/context/SearchContext";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
+  Flame,
+  ListTodo,
+  Plus,
+  TrendingUp,
+} from "lucide-react";
 
 type Task = {
   id: string;
@@ -13,7 +22,34 @@ type Task = {
   subject: string;
   description?: string;
   deadline: string;
+  difficulty: "easy" | "medium" | "hard";
   status: "pending" | "in_progress" | "completed";
+  priority_score: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type OverloadWarning = {
+  type: string;
+  severity: string;
+  message: string;
+  tasks?: string[];
+};
+
+type OverloadBreakdownItem = {
+  score: number;
+  weight: number;
+  weighted_score: number;
+  reason: string;
+};
+
+type OverloadRisk = {
+  risk_score: number;
+  risk_level: string;
+  active_tasks: number;
+  warnings: OverloadWarning[];
+  suggestion: string;
+  breakdown: Record<string, OverloadBreakdownItem>;
 };
 
 function daysUntil(deadline: string) {
@@ -21,319 +57,318 @@ function daysUntil(deadline: string) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function formatDue(deadline: string) {
-  const days = daysUntil(deadline);
-  if (days < 0) return `Overdue ${Math.abs(days)} day${Math.abs(days) > 1 ? "s" : ""}`;
-  if (days === 0) return "Due today";
-  if (days === 1) return "Due tomorrow";
-  return `Due in ${days} days`;
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function difficultyClass(level: Task["difficulty"]) {
+  if (level === "easy") return "bg-emerald-50 text-emerald-700 border-emerald-100";
+  if (level === "medium") return "bg-amber-50 text-amber-700 border-amber-100";
+  return "bg-rose-50 text-rose-700 border-rose-100";
+}
+
+function urgencyClass(days: number) {
+  if (days <= 1) return "bg-rose-50 text-rose-700 border-rose-100";
+  if (days <= 4) return "bg-amber-50 text-amber-700 border-amber-100";
+  return "bg-blue-50 text-blue-700 border-blue-100";
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [risk, setRisk] = useState<OverloadRisk | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState("");
-  const { addToast } = useToast();
-  const { searchQuery } = useSearch();
 
   useEffect(() => {
-    const loadUserAndTasks = async () => {
+    const load = async () => {
       try {
-        // Fetch user info
-        const userData = await apiFetch("/users/me");
-        setUserName(userData.full_name || "");
-      } catch (error) {
-        console.error("Failed to load user:", error);
-        addToast("Failed to load profile", "error");
-      }
+        const [taskData, riskData] = await Promise.all([
+          apiFetch("/tasks"),
+          apiFetch("/tasks/overload-risk").catch(() => null),
+        ]);
 
-      try {
-        // Fetch tasks
-        const taskData = await apiFetch("/tasks");
-        setTasks(Array.isArray(taskData) ? (taskData as Task[]) : []);
+        setTasks(Array.isArray(taskData) ? taskData : []);
+        setRisk(riskData && typeof riskData === "object" ? (riskData as OverloadRisk) : null);
       } catch (error) {
-        console.error("Failed to load dashboard tasks:", error);
+        console.error("Dashboard load failed:", error);
         setTasks([]);
-        addToast("Failed to load tasks", "error");
       } finally {
         setLoading(false);
       }
     };
 
-    loadUserAndTasks();
-  }, [addToast]);
+    load();
+  }, []);
 
-  const metrics = useMemo(() => {
+  const stats = useMemo(() => {
     const total = tasks.length;
-    const completed = tasks.filter((task) => task.status === "completed").length;
-    const pendingOrProgress = tasks.filter((task) => task.status !== "completed");
-    const nearDeadlines = pendingOrProgress.filter(
-      (task) => daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 2
-    ).length;
+    const completed = tasks.filter((t) => t.status === "completed").length;
+    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
+    const pending = tasks.filter((t) => t.status === "pending").length;
+    const overdue = tasks.filter((t) => t.status !== "completed" && daysUntil(t.deadline) < 0).length;
+    const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
 
-    const studyHours = Math.max(6, Math.round((total * 1.25 + completed * 0.5) * 10) / 10);
-    const focusScore = Math.min(100, Math.max(65, 72 + completed * 2 - nearDeadlines * 3));
-    const productivityIndex = Math.min(
-      100,
-      total === 0 ? 70 : Math.round((completed / total) * 100 + Math.max(0, 20 - nearDeadlines * 2))
-    );
-
-    return {
-      total,
-      active: pendingOrProgress.length,
-      studyHours,
-      completed,
-      focusScore,
-      productivityIndex,
-    };
+    return { total, completed, inProgress, pending, overdue, completionRate };
   }, [tasks]);
 
-  const timeline = useMemo(() => {
-    let prioritized = tasks
-      .filter((task) => task.status !== "completed")
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+  const upcoming = useMemo(
+    () =>
+      [...tasks]
+        .filter((t) => t.status !== "completed")
+        .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+        .slice(0, 6),
+    [tasks]
+  );
 
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      prioritized = prioritized.filter((task) =>
-        task.title.toLowerCase().includes(query) ||
-        task.subject.toLowerCase().includes(query) ||
-        (task.description?.toLowerCase().includes(query) ?? false)
-      );
+  const priorityQueue = useMemo(
+    () =>
+      [...tasks]
+        .filter((t) => t.status !== "completed")
+        .sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0))
+        .slice(0, 6),
+    [tasks]
+  );
+
+  const subjectDistribution = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const task of tasks) {
+      map.set(task.subject, (map.get(task.subject) || 0) + 1);
     }
 
-    prioritized = prioritized.slice(0, 5);
-
-    if (prioritized.length === 0) {
-      return [
-        {
-          title: "Database Lab Report",
-          subject: "Database Systems",
-          due: "Due tomorrow",
-        },
-        {
-          title: "ITPM Sprint Checkpoint",
-          subject: "ITPM",
-          due: "Due in 3 days",
-        },
-        {
-          title: "Parallel Computing Quiz",
-          subject: "Parallel Computing",
-          due: "Due in 5 days",
-        },
-      ];
-    }
-
-    return prioritized.map((item) => {
-      return {
-        title: item.title,
-        subject: item.subject,
-        due: formatDue(item.deadline),
-      };
-    });
-  }, [tasks, searchQuery]);
-
-  const subjectMix = useMemo(() => {
-    const entries = new Map<string, number>();
-    tasks.forEach((task) => {
-      entries.set(task.subject, (entries.get(task.subject) || 0) + 1);
-    });
-
-    const sorted = [...entries.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-    if (sorted.length === 0) {
-      return [
-        { subject: "Data Structures", value: 5 },
-        { subject: "Database", value: 4 },
-        { subject: "Cloud Computing", value: 3 },
-      ];
-    }
-
-    return sorted.map(([subject, value]) => ({ subject, value }));
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [tasks]);
 
-  const completionRate = useMemo(() => {
-    if (metrics.total === 0) return 0;
-    return Math.round((metrics.completed / metrics.total) * 100);
-  }, [metrics]);
-
-  const suggestionText = useMemo(() => {
-    const next = tasks
-      .filter((task) => task.status !== "completed")
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())[0];
-
-    if (!next) {
-      return "Start Database Systems now (1.5h)";
-    }
-
-    return `Start ${next.subject} now (1.5h)`;
-  }, [tasks]);
+  const openPlannerForTask = (taskId: string) => {
+    router.push(`/planner?task_id=${taskId}`);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-900">
-            Welcome back, {userName || "Learner"}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">Your AI-powered learning command center</p>
-        </div>
+    <div className="mx-auto w-full max-w-7xl p-4 lg:p-6">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 lg:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500">Overview</p>
+            <h1 className="mt-1 text-2xl font-semibold text-slate-900">Study Command Center</h1>
+            <p className="mt-1 text-sm text-slate-600">Track tasks, manage workload risk, and stay ahead of deadlines.</p>
+          </div>
 
-        {/* Quick Action Card */}
-        <div className="mb-8 rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <p className="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Next Priority</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{suggestionText}</p>
-            </div>
-            <button className="whitespace-nowrap rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 shadow-sm hover:shadow-md">
-              Start Focus
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() =>
+                priorityQueue[0]
+                  ? openPlannerForTask(priorityQueue[0].id)
+                  : router.push("/planner")
+              }
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Plan Top Task
+            </button>
+            <button
+              onClick={() => router.push("/planner")}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plus size={16} />
+              Generate Plan
             </button>
           </div>
         </div>
+      </section>
 
-        {/* Key Metrics */}
-        <div className="mb-8 grid gap-6 lg:grid-cols-3">
-          {loading ? (
+      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            label: "Total Tasks",
+            value: stats.total,
+            icon: ListTodo,
+            tone: "text-blue-600 bg-blue-50 border-blue-100",
+          },
+          {
+            label: "Completed",
+            value: stats.completed,
+            icon: CheckCircle2,
+            tone: "text-emerald-600 bg-emerald-50 border-emerald-100",
+          },
+          {
+            label: "In Progress",
+            value: stats.inProgress,
+            icon: Clock3,
+            tone: "text-amber-600 bg-amber-50 border-amber-100",
+          },
+          {
+            label: "Overdue",
+            value: stats.overdue,
+            icon: Flame,
+            tone: "text-rose-600 bg-rose-50 border-rose-100",
+          },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">{card.label}</p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900">{loading ? "--" : card.value}</p>
+                </div>
+                <div className={`rounded-xl border p-2 ${card.tone}`}>
+                  <Icon size={18} />
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-8">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Priority Queue</h2>
+              <p className="text-sm text-slate-500">Highest urgency tasks ranked by AI priority score.</p>
+            </div>
+            <p className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+              Click a task to plan
+              <ArrowRight size={14} />
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {priorityQueue.length === 0 && !loading && (
+              <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                No tasks yet. Create your first task to start planning.
+              </div>
+            )}
+
+            {priorityQueue.map((task) => {
+              const remaining = daysUntil(task.deadline);
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => openPlannerForTask(task.id)}
+                  className="flex w-full flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{task.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{task.subject}</p>
+                  </div>
+
+                  <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${difficultyClass(task.difficulty)}`}>
+                    {task.difficulty}
+                  </span>
+
+                  <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${urgencyClass(remaining)}`}>
+                    {remaining < 0 ? `${Math.abs(remaining)}d overdue` : `${remaining}d left`}
+                  </span>
+
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    Score {(task.priority_score || 0).toFixed(1)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
+          <div className="mb-4 flex items-center gap-2">
+            <CalendarClock size={18} className="text-slate-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Upcoming Deadlines</h2>
+          </div>
+
+          <div className="space-y-3">
+            {upcoming.length === 0 && !loading && (
+              <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">No upcoming items.</p>
+            )}
+
+            {upcoming.map((task) => {
+              const remaining = daysUntil(task.deadline);
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => openPlannerForTask(task.id)}
+                  className="w-full rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                >
+                  <p className="text-sm font-medium text-slate-900">{task.title}</p>
+                  <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                    <span>{formatDate(task.deadline)}</span>
+                    <span className={remaining <= 1 ? "text-rose-600" : "text-slate-600"}>
+                      {remaining < 0 ? "Overdue" : `${remaining} day(s)`}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertTriangle size={18} className="text-slate-700" />
+            <h2 className="text-lg font-semibold text-slate-900">Overload Risk</h2>
+          </div>
+
+          {risk ? (
             <>
-              <SkeletonMetricCard />
-              <SkeletonMetricCard />
-              <SkeletonMetricCard />
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-700">Risk Score</p>
+                  <p className="text-lg font-semibold text-slate-900">{risk.risk_score}/10</p>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-slate-200">
+                  <div className="h-2 rounded-full bg-blue-600" style={{ width: `${Math.min(risk.risk_score * 10, 100)}%` }} />
+                </div>
+                <p className="mt-2 text-xs uppercase tracking-wide text-slate-500">{risk.risk_level} risk</p>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {(risk.warnings || []).slice(0, 3).map((warning, idx) => (
+                  <div key={`${warning.type}-${idx}`} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    {warning.message}
+                  </div>
+                ))}
+                <p className="text-sm text-slate-600">{risk.suggestion}</p>
+              </div>
             </>
           ) : (
-            <>
-              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Study Hours</p>
-                  <p className="mt-1 text-sm text-slate-500">This period</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-bold text-slate-900">{metrics.studyHours}h</p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow flex items-center justify-center">
-                <div className="text-center">
-                  <ProgressRing value={metrics.focusScore} color="indigo" size={100} />
-                  <p className="mt-2 text-xs font-medium text-slate-600">Peak performance</p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow flex items-center justify-center">
-                <div className="text-center">
-                  <ProgressRing value={completionRate} color="emerald" size={100} />
-                  <p className="mt-2 text-xs font-medium text-slate-600">{metrics.completed} of {metrics.total} tasks</p>
-                </div>
-              </div>
-            </>
+            <p className="text-sm text-slate-500">Risk analysis will appear once task data is available.</p>
           )}
-        </div>
+        </article>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Active Tasks */}
-          <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden lg:col-span-1">
-            <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Active Tasks</h2>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <TrendingUp size={18} className="text-slate-700" />
+            <h2 className="text-lg font-semibold text-slate-900">Progress Snapshot</h2>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Completion Rate</p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-3xl font-semibold text-slate-900">{stats.completionRate}%</p>
+              <BookOpen size={20} className="text-slate-500" />
             </div>
-            <div className="divide-y divide-slate-200/50 p-6">
-              {loading ? (
-                <div className="space-y-3">
-                  <SkeletonActivityCard />
-                </div>
-              ) : timeline.length > 0 ? (
-                <ul className="space-y-3">
-                  {timeline.map((item) => (
-                    <li key={item.title} className="flex items-start gap-3 py-1">
-                      <input
-                        type="checkbox"
-                        checked={item.due === "Done"}
-                        readOnly
-                        className="mt-1 h-4 w-4 rounded border border-indigo-300 bg-indigo-50 accent-indigo-600"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">{item.subject}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-center text-sm text-slate-500">No active tasks</p>
-              )}
+            <div className="mt-3 h-2 rounded-full bg-slate-200">
+              <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${stats.completionRate}%` }} />
             </div>
           </div>
 
-          {/* Timeline & Insights */}
-          <div className="space-y-8 lg:col-span-2">
-            {/* Timeline */}
-            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
-              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Upcoming Deadlines</h2>
+          <div className="mt-4 space-y-3">
+            <p className="text-sm font-medium text-slate-700">Top Subjects</p>
+            {subjectDistribution.length === 0 && (
+              <p className="text-sm text-slate-500">No subject distribution available yet.</p>
+            )}
+            {subjectDistribution.map(([subject, count]) => (
+              <div key={subject} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <span className="text-slate-700">{subject}</span>
+                <span className="font-medium text-slate-900">{count} task(s)</span>
               </div>
-              <div className="p-6">
-                {loading ? (
-                  <SkeletonActivityCard />
-                ) : (
-                  <ul className="space-y-6">
-                    {timeline.map((item, index) => (
-                      <li key={`${item.title}-${index}`} className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white shadow-sm">
-                            {index + 1}
-                          </div>
-                          {index < timeline.length - 1 && <div className="mt-3 w-px flex-grow bg-slate-200/50" style={{ height: "36px" }} />}
-                        </div>
-                        <div className="flex-1 pt-0.5">
-                          <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{item.subject}</p>
-                          <p className="mt-2 text-xs font-medium text-indigo-600">{item.due}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            {/* Subject Load Distribution */}
-            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
-              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Subject Load</h2>
-              </div>
-              <div className="p-6">
-                {loading ? (
-                  <SkeletonActivityCard />
-                ) : subjectMix.length > 0 ? (
-                  <SimpleBarChart
-                    data={subjectMix.map((subject, idx) => ({
-                      label: subject.subject.substring(0, 12),
-                      value: subject.value,
-                      color: ["indigo", "blue", "emerald", "amber", "rose"][idx % 5] as any,
-                    }))}
-                    height={220}
-                  />
-                ) : (
-                  <p className="text-center text-sm text-slate-500">No subject data</p>
-                )}
-              </div>
-            </div>
-
-            {/* AI Insights */}
-            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
-              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">AI Insights</h2>
-              </div>
-              <div className="p-6">
-                <p className="text-sm leading-relaxed text-slate-700">
-                  Focus on tasks with the nearest deadlines first to maximize your completion rate. Schedule high-complexity subjects during peak mental hours (8-11 AM) for optimal retention.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-      </div>
+        </article>
+      </section>
     </div>
   );
 }

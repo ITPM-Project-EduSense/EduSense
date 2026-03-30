@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -44,31 +44,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [isPublicRoute, pathname]);
 
-  const handleLogout = async () => {
-    try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-      await fetch(`${apiBase}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      router.push("/login");
-    }
-  };
-
   if (isPublicRoute) {
     return <>{children}</>;
   }
 
   return (
-    <div className="relative min-h-screen bg-[#F9FAFB]">
+    <div className="min-h-screen bg-slate-50">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} />
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} onLogout={handleLogout} />
-
-      <main className="min-h-screen lg:ml-[272px]">
-        <Header onMenuClick={() => setSidebarOpen(true)} user={user} />
+      <main className="min-h-screen lg:ml-[260px]">
+        <Topbar onMenuClick={() => setSidebarOpen(true)} user={user} />
         {children}
       </main>
     </div>

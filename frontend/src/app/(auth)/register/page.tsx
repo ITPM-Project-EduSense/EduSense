@@ -36,9 +36,9 @@ export default function RegisterPage() {
       await apiFetch("/auth/register", {
         method: "POST",
         body: JSON.stringify({
-          full_name: fullName.trim(),
-          email: email.trim().toLowerCase(),
-          password: password.trim(),
+          full_name: fullName,
+          email,
+          password,
         }),
       });
 
@@ -131,7 +131,7 @@ export default function RegisterPage() {
                     setFieldErrors((prev) => ({ ...prev, password: "" }));
                   }}
                   className="w-full outline-none bg-transparent"
-                  placeholder="••••••••"
+                  placeholder="********"
                 />
                 <button
                   type="button"

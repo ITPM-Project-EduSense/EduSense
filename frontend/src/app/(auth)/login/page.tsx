@@ -147,7 +147,7 @@ export default function LoginPage() {
                     setFieldErrors((prev) => ({ ...prev, password: "" }));
                   }}
                   className="w-full outline-none bg-transparent"
-                  placeholder="••••••••"
+                  placeholder="********"
                 />
                 <button
                   type="button"
@@ -206,74 +206,6 @@ export default function LoginPage() {
               Create one
             </Link>
           </p>
-
-          {/* Forgot Password Modal */}
-          {showForgotPassword && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-xl border border-slate-200/60 bg-white/95 backdrop-blur-md p-6 shadow-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-slate-900">Reset Password</h3>
-                  <button
-                    onClick={() => {
-                      setShowForgotPassword(false);
-                      setForgotEmail("");
-                    }}
-                    className="text-slate-400 hover:text-slate-600 transition"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <p className="text-sm text-slate-600 mb-4">
-                  Enter your email address and we&apos;ll send you a link to reset your password.
-                </p>
-
-                <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <div>
-                    <label className="text-sm text-slate-600">Email Address</label>
-                    <div className="mt-1 flex items-center border border-slate-200 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
-                      <Mail size={18} className="text-slate-400 mr-2" />
-                      <input
-                        type="email"
-                        required
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="student@example.com"
-                        className="w-full outline-none bg-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-200/50">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgotPassword(false);
-                        setForgotEmail("");
-                      }}
-                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={forgotLoading}
-                      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
-                    >
-                      {forgotLoading ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        "Send Reset Link"
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
