@@ -12,8 +12,14 @@ from app.core.config import settings
 from app.services.concept_rule_engine import generate_embedding_simple
 
 
-# Configure Gemini client
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# Initialize client lazily to ensure environment variables are loaded
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _client
 
 
 async def generate_embedding(text: str) -> List[float]:
@@ -47,7 +53,7 @@ async def generate_embedding(text: str) -> List[float]:
     
     try:
         # Try Gemini API embeddings first
-        result = client.models.embed_content(
+        result = get_client().models.embed_content(
             model="text-embedding-004",
             contents=text
         )

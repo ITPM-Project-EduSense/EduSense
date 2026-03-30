@@ -15,8 +15,14 @@ import google.genai as genai
 from app.core.config import settings
 
 
-# Configure Gemini client
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# Lazy-initialize Gemini client
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _client
 
 
 def create_fallback_summary(text: str) -> Dict:
@@ -134,7 +140,7 @@ RULES:
 
     try:
         # Call Gemini API
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash-lite",
             contents=prompt
         )
@@ -204,7 +210,7 @@ CONTENT: {concept_text[:500]}
 
 Respond with ONLY the summary text, no extra formatting."""
 
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash-lite",
             contents=prompt
         )

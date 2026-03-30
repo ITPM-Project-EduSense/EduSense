@@ -9,6 +9,8 @@ client: AsyncIOMotorClient = None
 async def connect_db():
     """Initialize MongoDB connection and Beanie ODM."""
     global client
+    # debug the URL to ensure it's loaded
+    print(f"🔧 Using DATABASE_URL={settings.DATABASE_URL}")
     client = AsyncIOMotorClient(settings.DATABASE_URL)
     db = client[settings.DATABASE_NAME]
 
@@ -17,10 +19,11 @@ async def connect_db():
     from app.models.user_model import User
     from app.models.study_material import StudyMaterial, Concept
     from app.models.study_schedule import StudySchedule, SmartSchedule
+    from app.models.study_group import StudyGroup
 
     await init_beanie(
         database=db,
-        document_models=[Task, User, StudyMaterial, Concept, StudySchedule, SmartSchedule]
+        document_models=[Task, User, StudyMaterial, Concept, StudySchedule, SmartSchedule, StudyGroup]
     )
 
     print(f"✅ Connected to MongoDB: {settings.DATABASE_NAME}")
