@@ -16,6 +16,9 @@ import {
   ListTodo,
   Sparkles,
   Activity,
+  AlertTriangle,
+  BookOpen,
+  Flame,
 } from "lucide-react";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
@@ -260,32 +263,99 @@ export default function TasksPage() {
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1 rounded-full bg-gradient-to-b from-blue-400 to-teal-600" />
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            Task Summary
+            Performance & Insights
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {[
-            { label: "All Tasks", value: stats.total, icon: Circle, tone: "text-blue-600 bg-blue-50 border-blue-100" },
-            { label: "Pending", value: stats.pending, icon: Clock3, tone: "text-amber-600 bg-amber-50 border-amber-100" },
-            { label: "In Progress", value: stats.inProgress, icon: CalendarClock, tone: "text-cyan-600 bg-cyan-50 border-cyan-100" },
-            { label: "Completed", value: stats.completed, icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <article key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">{item.label}</p>
-                    <p className="mt-2 text-3xl font-bold text-slate-900">{loading ? "--" : item.value}</p>
-                  </div>
-                  <div className={`rounded-xl border p-2.5 ${item.tone} transition-all duration-300`}>
-                    <Icon size={18} />
-                  </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Overdue Tasks Alert */}
+          <article className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-red-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-rose-700">Overdue Tasks</p>
+                <p className="mt-2 text-3xl font-bold text-rose-900">
+                  {loading ? "--" : tasks.filter(t => t.status !== "completed" && daysLeft(t.deadline) < 0).length}
+                </p>
+                <p className="mt-1 text-xs text-rose-600">Need immediate attention</p>
+              </div>
+              <div className="rounded-xl bg-rose-200/50 p-2.5">
+                <AlertTriangle size={18} className="text-rose-700" />
+              </div>
+            </div>
+          </article>
+
+          {/* Completion Rate */}
+          <article className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-emerald-700">Completion Rate</p>
+                <p className="mt-2 text-3xl font-bold text-emerald-900">
+                  {loading ? "--" : `${Math.round((stats.completed / (stats.total || 1)) * 100)}%`}
+                </p>
+                <div className="mt-2 h-1.5 w-16 rounded-full bg-emerald-200">
+                  <div 
+                    className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600" 
+                    style={{ width: `${Math.round((stats.completed / (stats.total || 1)) * 100)}%` }}
+                  />
                 </div>
-              </article>
-            );
-          })}
+              </div>
+              <div className="rounded-xl bg-emerald-200/50 p-2.5">
+                <CheckCircle2 size={18} className="text-emerald-700" />
+              </div>
+            </div>
+          </article>
+
+          {/* Avg Task Complexity */}
+          <article className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-amber-700">Avg. Difficulty</p>
+                <p className="mt-2 text-3xl font-bold text-amber-900">
+                  {loading ? "--" : (
+                    tasks.length > 0
+                      ? tasks.reduce((sum, t) => sum + (t.difficulty === "hard" ? 3 : t.difficulty === "medium" ? 2 : 1), 0) / tasks.length
+                      : 0
+                  ).toFixed(1)}
+                </p>
+                <p className="mt-1 text-xs text-amber-600">
+                  {tasks.length > 0 
+                    ? tasks.filter(t => t.difficulty === "hard").length > tasks.length / 2
+                      ? "Challenging workload"
+                      : "Balanced workload"
+                    : "No tasks yet"
+                  }
+                </p>
+              </div>
+              <div className="rounded-xl bg-amber-200/50 p-2.5">
+                <Flame size={18} className="text-amber-700" />
+              </div>
+            </div>
+          </article>
+
+          {/* Most Active Subject */}
+          <article className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-700">Top Subject</p>
+                <p className="mt-2 truncate text-2xl font-bold text-blue-900">
+                  {loading ? "--" : (
+                    tasks.length > 0
+                      ? Object.entries(
+                          tasks.reduce((acc, t) => ({
+                            ...acc,
+                            [t.subject]: (acc[t.subject as keyof typeof acc] || 0) + 1
+                          }), {} as Record<string, number>)
+                        ).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
+                      : "N/A"
+                  )}
+                </p>
+                <p className="mt-1 text-xs text-blue-600">Most tasks assigned</p>
+              </div>
+              <div className="rounded-xl bg-blue-200/50 p-2.5">
+                <BookOpen size={18} className="text-blue-700" />
+              </div>
+            </div>
+          </article>
         </div>
       </section>
 
