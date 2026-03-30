@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Response, Depends
+from fastapi import APIRouter, Response, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.models.user_model import UserCreate, UserLogin, User
 from app.core.security import get_current_user
@@ -8,6 +9,15 @@ from app.core.config import settings
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 COOKIE_NAME = "edusense_token"
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 @router.post("/register")
@@ -38,6 +48,18 @@ async def login(payload: UserLogin, response: Response):
 
     # Do not return token to frontend (cookie handles it)
     return {"message": result["message"], "user": result["user"]}
+
+
+@router.post("/forgot-password")
+async def forgot_password(payload: ForgotPasswordRequest):
+    """Request password reset link - sends email with reset token"""
+    return await AuthService.forgot_password(payload.email)
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPasswordRequest):
+    """Reset password using token from email"""
+    return await AuthService.reset_password(payload.token, payload.new_password)
 
 
 @router.post("/logout")

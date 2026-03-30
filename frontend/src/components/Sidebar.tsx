@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   BarChart3,
   BrainCircuit,
@@ -14,6 +13,7 @@ import {
   Sparkles,
   Users,
   X,
+  LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -32,6 +32,7 @@ type SidebarProps = {
   open: boolean;
   onClose: () => void;
   user: CurrentUser;
+  onLogout?: () => void;
 };
 
 const items: SidebarItem[] = [
@@ -45,8 +46,12 @@ const items: SidebarItem[] = [
   { label: "Settings", href: "/users", icon: Settings },
 ];
 
-export default function Sidebar({ open, onClose, user }: SidebarProps) {
+export default function Sidebar({ open, onClose, user, onLogout }: SidebarProps) {
   const pathname = usePathname();
+
+  const handleLogout = () => {
+    onLogout?.();
+  };
 
   return (
     <>
@@ -58,7 +63,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 bg-white transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[248px] border-r border-slate-200 bg-white transition-transform duration-300 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -74,16 +79,18 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
               />
               <div>
                 <p className="text-base font-semibold text-slate-900">EduSense</p>
-                <p className="text-xs text-slate-500">AI Study OS</p>
+                <p className="text-xs text-slate-500">Workspace</p>
               </div>
             </Link>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
-              aria-label="Close sidebar"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
+                aria-label="Close sidebar"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           <nav className="flex-1 space-y-1 p-3">
@@ -91,37 +98,42 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
               const Icon = item.icon;
               const active = pathname === item.href;
               return (
-                <motion.div
+                <Link
                   key={item.label}
-                  whileHover={{ x: 3 }}
-                  transition={{ duration: 0.15 }}
+                  href={item.href}
+                  onClick={onClose}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    active
+                      ? "bg-slate-100 text-slate-900"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
                 >
-                  <Link
-                    href={item.href}
-                    onClick={onClose}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-indigo-50 text-indigo-600"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }`}
-                  >
-                    <Icon size={18} />
-                    <span>{item.label}</span>
-                  </Link>
-                </motion.div>
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </Link>
               );
             })}
           </nav>
 
-          <div className="border-t border-slate-200 p-3">
-            <div className="rounded-xl bg-slate-50 p-3">
+          <div className="border-t border-slate-200 p-3 space-y-3">
+            <Link href="/profile" onClick={onClose} className="block rounded-lg bg-slate-50 p-3 transition-colors hover:bg-slate-100">
+              <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-500">Account</p>
               <p className="truncate text-sm font-medium text-slate-800">
                 {user?.full_name || "Student"}
               </p>
               <p className="truncate text-xs text-slate-500">
                 {user?.email || "student@edusense.app"}
               </p>
-            </div>
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              aria-label="Logout"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
           </div>
         </div>
       </aside>

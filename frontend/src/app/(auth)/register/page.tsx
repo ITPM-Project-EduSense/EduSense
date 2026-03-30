@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { type FieldErrors, validateRegisterInput } from "@/lib/validation";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,22 +14,31 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const validationErrors = validateRegisterInput(fullName, email, password);
+    setFieldErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       await apiFetch("/auth/register", {
         method: "POST",
         body: JSON.stringify({
-          full_name: fullName,
-          email,
-          password,
+          full_name: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
         }),
       });
 
@@ -78,11 +88,15 @@ export default function RegisterPage() {
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, fullName: "" }));
+                  }}
                   className="w-full outline-none bg-transparent"
                   placeholder="Your Name"
                 />
               </div>
+              {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>}
             </div>
 
             <div>
@@ -93,11 +107,15 @@ export default function RegisterPage() {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, email: "" }));
+                  }}
                   className="w-full outline-none bg-transparent"
                   placeholder="student@example.com"
                 />
               </div>
+              {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
             </div>
 
             <div>
@@ -105,14 +123,27 @@ export default function RegisterPage() {
               <div className="mt-1 flex items-center border rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
                 <Lock size={18} className="text-slate-400 mr-2" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, password: "" }));
+                  }}
                   className="w-full outline-none bg-transparent"
-                  placeholder="********"
+                  placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+              <p className="mt-1 text-xs text-slate-500">Password must be at least 6 characters.</p>
+              {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
             </div>
 
             <button

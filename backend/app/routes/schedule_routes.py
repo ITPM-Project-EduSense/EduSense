@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends, status, Query
 from beanie import PydanticObjectId
 from pydantic import BaseModel
@@ -767,6 +768,7 @@ async def get_study_recommendations(
 async def generate_smart_schedule_endpoint(
     task_id: str = Form(..., description="Task ID to generate schedule for"),
     files: List[UploadFile] = File(default=[], description="Optional study material files (PDF/DOCX/PPTX)"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate an AI-powered study schedule from a task and optional uploaded files.
@@ -796,8 +798,17 @@ async def generate_smart_schedule_endpoint(
         if not task:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
 
+        if task.user_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="You do not have access to this task")
+
+        if task.deadline <= datetime.utcnow():
+            raise HTTPException(status_code=400, detail="Task deadline must be in the future")
+
         # Delete existing schedule if regenerating
-        existing = await SmartSchedule.find_one(SmartSchedule.task_id == task_id)
+        existing = await SmartSchedule.find_one(
+            SmartSchedule.task_id == task_id,
+            SmartSchedule.user_id == str(current_user.id),
+        )
         if existing:
             await existing.delete()
 
@@ -810,10 +821,23 @@ async def generate_smart_schedule_endpoint(
         for upload_file in files:
             if not upload_file or not upload_file.filename:
                 continue
+
+            extension = Path(upload_file.filename).suffix.lower()
+            if extension not in ALLOWED_EXTENSIONS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported file type for '{upload_file.filename}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+                )
+
             try:
                 file_bytes = await upload_file.read()
                 if len(file_bytes) == 0:
                     continue
+                if len(file_bytes) > MAX_FILE_SIZE:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{upload_file.filename}' exceeds 10MB limit",
+                    )
                 text = extract_text(file_bytes, upload_file.filename)
                 documents_data.append({
                     "filename": upload_file.filename,
@@ -895,13 +919,16 @@ async def generate_smart_schedule_endpoint(
     summary="Get the smart schedule for a specific task",
     response_model=Dict[str, Any],
 )
-async def get_schedule_by_task(task_id: str):
+async def get_schedule_by_task(task_id: str, current_user: User = Depends(get_current_user)):
     """
     Retrieve the SmartSchedule generated for a given task_id.
     Returns 404 if no smart schedule has been generated for this task yet.
     """
     try:
-        schedule = await SmartSchedule.find_one(SmartSchedule.task_id == task_id)
+        schedule = await SmartSchedule.find_one(
+            SmartSchedule.task_id == task_id,
+            SmartSchedule.user_id == str(current_user.id),
+        )
         if not schedule:
             raise HTTPException(
                 status_code=404,
