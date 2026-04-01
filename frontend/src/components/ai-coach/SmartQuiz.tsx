@@ -36,7 +36,7 @@ export default function SmartQuiz({ uploadedPdfs }: Props) {
     setSelectedAnswers({});
 
     try {
-      const res = await fetch(`${API_BASE}/chat/quiz`, {
+      const res = await fetch(`${API_BASE}/pdf/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -127,19 +127,26 @@ export default function SmartQuiz({ uploadedPdfs }: Props) {
                   <label
                     key={optIdx}
                     className={`block p-5 rounded-2xl border cursor-pointer transition-all ${
-                      selectedAnswers[index] === optIdx
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-gray-200 hover:border-gray-300"
+                      showResults
+                        ? optIdx === q.correct_index
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700" // Always show green for the right answer
+                          : selectedAnswers[index] === optIdx
+                            ? "border-red-500 bg-red-50 text-red-700" // Show red only if the user picked the wrong one
+                            : "border-gray-100 opacity-50" // Neutral for unselected wrong answers
+                        : selectedAnswers[index] === optIdx
+                          ? "border-indigo-500 bg-indigo-50" // Normal selection mode
+                          : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <input
-                      type="radio"
-                      name={`q${index}`}
-                      checked={selectedAnswers[index] === optIdx}
-                      onChange={() => handleAnswer(index, optIdx)}
-                      className="mr-4 accent-indigo-600"
-                    />
-                    {option}
+                        type="radio"
+                        name={`q${index}`}
+                        disabled={showResults} // Disable changing answers after submission
+                        checked={selectedAnswers[index] === optIdx}
+                        onChange={() => handleAnswer(index, optIdx)}
+                        className="mr-4 accent-indigo-600"
+                      />
+                      {option}
                   </label>
                 ))}
               </div>

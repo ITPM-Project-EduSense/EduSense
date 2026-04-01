@@ -7,7 +7,7 @@ from app.models.user_model import User
 from app.core.security import get_current_user
 from app.services.chat_service import chat_with_coach, get_recent_chat_history
 from app.models.chat_history import ChatHistory
-from app.models.study_material import StudyMaterial, Concept
+from app.models.pdf_model import PdfConcept, PdfMaterial
 from app.services.ai_summary_service import summarize_material
 from beanie import PydanticObjectId
 from groq import Groq
@@ -120,13 +120,13 @@ async def generate_quiz(
 
     # Gather concepts for context
     if request.pdf_id:
-        concepts = await Concept.find(
-            Concept.user_id == str(current_user.id),
-            Concept.material_id == request.pdf_id,
+        concepts = await PdfConcept.find(
+            PdfConcept.user_id == str(current_user.id),
+            PdfConcept.material_id == request.pdf_id,
         ).limit(20).to_list()
     else:
-        concepts = await Concept.find(
-            Concept.user_id == str(current_user.id),
+        concepts = await PdfConcept.find(
+            PdfConcept.user_id == str(current_user.id),
         ).limit(20).to_list()
 
     if not concepts:
@@ -187,15 +187,16 @@ async def get_material_summary(
     """
     Return the stored summary, key points, and concepts for a given study material.
     """
+
     try:
-        material = await StudyMaterial.get(PydanticObjectId(material_id))
+        material = await PdfMaterial.get(PydanticObjectId(material_id))
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid material ID.")
 
     if not material or material.user_id != str(current_user.id):
         raise HTTPException(status_code=404, detail="Material not found or unauthorized.")
 
-    concepts = await Concept.find(Concept.material_id == material_id).to_list()
+    concepts = await PdfConcept.find(PdfConcept.material_id == material_id).to_list()
 
     summary_lines = [s.strip() for s in material.summary.split(".") if s.strip()] if material.summary else []
 

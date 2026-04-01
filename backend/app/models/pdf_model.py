@@ -17,6 +17,7 @@ class PdfMaterial(Document):
     extracted_text: str = Field(..., description="Text content extracted from the document")
     file_hash: str = Field(..., description="Hash of the uploaded file to prevent duplicates")
     summary: str = Field(default="", description="AI-generated summary of the material")
+    detailed_summary: str = Field(default="", description="Long-form AI-generated summary of the material")
     key_points: List[str] = Field(default_factory=list, description="Key points extracted from the material")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp when the material was uploaded")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp when the material was last updated")

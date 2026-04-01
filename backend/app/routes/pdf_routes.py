@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Form
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pathlib import Path
 from app.models.user_model import User
 from app.core.security import get_current_user
@@ -10,8 +10,18 @@ from app.services.embedding_service import generate_embedding
 from app.models.pdf_model import PdfMaterial, PdfConcept
 from beanie import PydanticObjectId
 import hashlib
+import json
+import re
+from pydantic import BaseModel
+from groq import Groq
+from app.core.config import settings
 
 router = APIRouter(prefix="/pdf", tags=["Documents"])
+
+class PdfQuizRequest(BaseModel):
+    num_questions: int = 8
+    difficulty: str = "medium"
+    pdf_id: Optional[str] = None
 
 @router.get(
     "/materials",
@@ -48,6 +58,234 @@ async def get_pdf_materials(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve PDF materials: {str(e)}",
         )
+
+@router.get(
+    "/materials/{material_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Get a specific PDF material (content)",
+    response_model=Dict[str, Any],
+)
+async def get_pdf_material(
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        material = await PdfMaterial.get(PydanticObjectId(material_id))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid material ID.")
+
+    if not material or material.user_id != str(current_user.id):
+        raise HTTPException(status_code=404, detail="Material not found or unauthorized.")
+
+    return {
+        "success": True,
+        "material": {
+            "id": str(material.id),
+            "filename": material.filename,
+            "subject": material.subject,
+            "created_at": material.created_at.isoformat(),
+            "summary": material.summary,
+            "key_points": material.key_points,
+            "extracted_text": material.extracted_text,
+        },
+    }
+
+@router.post(
+    "/quiz",
+    status_code=status.HTTP_200_OK,
+    summary="Generate a quiz from uploaded PDF materials",
+    response_model=Dict[str, Any],
+)
+async def generate_pdf_quiz(
+    request: PdfQuizRequest,
+    current_user: User = Depends(get_current_user),
+):
+    groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+    if not groq_client:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured.")
+
+    if request.pdf_id:
+        concepts = await PdfConcept.find(
+            PdfConcept.user_id == str(current_user.id),
+            PdfConcept.material_id == request.pdf_id,
+        ).limit(25).to_list()
+    else:
+        concepts = await PdfConcept.find(
+            PdfConcept.user_id == str(current_user.id),
+        ).limit(25).to_list()
+
+    if not concepts:
+        raise HTTPException(
+            status_code=404,
+            detail="No PDF concepts found. Please upload and process a PDF first.",
+        )
+
+    context = "\n\n".join(
+        f"- {c.title}: {c.summary}"
+        for c in concepts
+        if (c.title and c.summary)
+    )
+
+    system_prompt = (
+        "You are an educational quiz generator. "
+        "Based on the provided study material, generate multiple-choice questions. "
+        "Return ONLY valid JSON: a list of objects, each with: "
+        "'question' (string), 'options' (list of 4 strings), "
+        "'correct_index' (0-3), 'explanation' (string)."
+    )
+    user_prompt = (
+        f"Generate {request.num_questions} {request.difficulty}-difficulty "
+        f"multiple-choice questions from this content:\n\n{context}"
+    )
+
+    try:
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.4,
+            max_tokens=2048,
+        )
+        raw = (response.choices[0].message.content or "").strip()
+
+        match = re.search(r"\[.*\]", raw, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON array found in response")
+        quiz = json.loads(match.group())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Quiz generation failed: {e}")
+
+    return {"success": True, "quiz": quiz}
+
+@router.get(
+    "/summary/{material_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Get AI-generated summary and concepts for a PDF material",
+    response_model=Dict[str, Any],
+)
+async def get_pdf_material_summary(
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        material = await PdfMaterial.get(PydanticObjectId(material_id))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid material ID.")
+
+    if not material or material.user_id != str(current_user.id):
+        raise HTTPException(status_code=404, detail="Material not found or unauthorized.")
+
+    concepts = await PdfConcept.find(PdfConcept.material_id == material_id).to_list()
+
+    summary_lines = (
+        [s.strip() for s in (material.summary or "").split(".") if s.strip()]
+        if material.summary
+        else []
+    )
+
+    return {
+        "success": True,
+        "filename": material.filename,
+        "summary": summary_lines,
+        "detailed_summary": material.detailed_summary,
+        "key_points": material.key_points,
+        "concepts": [
+            {"title": c.title, "difficulty": c.difficulty, "summary": c.summary}
+            for c in concepts
+        ],
+    }
+
+
+@router.post(
+    "/summary-full/{material_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Generate a full summary from entire PDF content",
+    response_model=Dict[str, Any],
+)
+async def generate_full_pdf_summary(
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generates a longer, full-content summary by chunking extracted_text and using Groq.
+    Saves the result into PdfMaterial.detailed_summary.
+    """
+    groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+    if not groq_client:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured.")
+
+    try:
+        material = await PdfMaterial.get(PydanticObjectId(material_id))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid material ID.")
+
+    if not material or material.user_id != str(current_user.id):
+        raise HTTPException(status_code=404, detail="Material not found or unauthorized.")
+
+    text = (material.extracted_text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="No extracted text found for this material.")
+
+    # Split into chunks (character-based to keep it simple/reliable)
+    chunk_size = 4500
+    chunks = [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+    chunks = chunks[:10]  # safety cap
+
+    chunk_summaries: list[str] = []
+    for idx, chunk in enumerate(chunks, start=1):
+        prompt = (
+            "Summarize this part of the study material clearly for a student.\n"
+            "Return Markdown only.\n"
+            "Use:\n"
+            "- A short heading for the part\n"
+            "- 6-10 bullet points\n"
+            "- Include key formulas/definitions if present\n\n"
+            f"PART {idx}/{len(chunks)}:\n{chunk}"
+        )
+        resp = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You summarize academic text accurately and clearly."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=900,
+        )
+        chunk_summaries.append((resp.choices[0].message.content or "").strip())
+
+    combine_prompt = (
+        "Combine these part-summaries into a single cohesive full summary.\n"
+        "Return Markdown only.\n"
+        "Output format:\n"
+        "# <Title>\n"
+        "## Overview (1 short paragraph)\n"
+        "## Sectioned Summary (use multiple ### headings)\n"
+        "## Key Takeaways (10-15 bullets)\n"
+        "## Glossary (optional table)\n\n"
+        "PART SUMMARIES:\n\n" + "\n\n---\n\n".join(chunk_summaries)
+    )
+    resp2 = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "You produce structured study summaries."},
+            {"role": "user", "content": combine_prompt},
+        ],
+        temperature=0.2,
+        max_tokens=1800,
+    )
+
+    detailed = (resp2.choices[0].message.content or "").strip()
+    material.detailed_summary = detailed
+    await material.save()
+
+    return {
+        "success": True,
+        "material_id": str(material.id),
+        "filename": material.filename,
+        "detailed_summary": detailed,
+    }
 
 @router.post(
     "/upload",
