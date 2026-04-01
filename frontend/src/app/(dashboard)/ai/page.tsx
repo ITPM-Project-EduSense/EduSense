@@ -20,7 +20,7 @@ export default function AiPage() {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const res = await fetch(`${API_BASE}/documents/materials`, {
+        const res = await fetch(`${API_BASE}/pdf/materials`, {
           credentials: "include",
         });
         if (!res.ok) return;

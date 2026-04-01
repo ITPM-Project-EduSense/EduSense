@@ -41,3 +41,19 @@ class Concept(Document):
 
     class Settings:
         name = "concepts"  # MongoDB collection name
+
+class PdfVector(Document):
+    """
+    MongoDB document model for raw PDF chunks and vector embeddings.
+    Allows for strict context matching for the AI Coach.
+    """
+    user_id: str = Field(..., index=True)
+    pdf_id: str = Field(..., description="Reference to the StudyMaterial document")
+    chunk_text: str = Field(..., description="Raw text chunk extracted from the PDF")
+    embedding: List[float] = Field(default_factory=list, description="Vector embedding of the chunk")
+    metadata: dict = Field(default_factory=dict, description="Additional context info like page numbers")
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow, description="When this vector was stored")
+
+    class Settings:
+        name = "pdf_vectors"
+        

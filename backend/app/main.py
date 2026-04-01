@@ -12,7 +12,8 @@ from app.routes.auth_routes import router as auth_router
 from app.routes.users_routes import router as users_router
 from app.routes.document_route import router as document_router
 from app.routes.group_routes import router as group_router
-
+from app.routes.chat_route import router as chat_router
+from app.routes.pdf_routes import router as pdf_router
 
 # -------------------------------
 # Lifespan (Startup / Shutdown)
@@ -123,7 +124,8 @@ app.include_router(auth_router, prefix="/api", tags=["Auth"])
 app.include_router(users_router, prefix="/api", tags=["Users"])
 app.include_router(document_router, prefix="/api", tags=["Documents"])
 app.include_router(group_router, prefix="/api", tags=["Groups"])
-
+app.include_router(chat_router, prefix="/api", tags=["Chat"])
+app.include_router(pdf_router, prefix="/api", tags=["Pdf"])
 
 # -------------------------------
 # Health Check Endpoint
