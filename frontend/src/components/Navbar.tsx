@@ -24,7 +24,7 @@ export default function Navbar() {
       try {
         const apiBase =
           process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        const response = await fetch(`${apiBase}/auth/me`, {
+        const response = await fetch(`${apiBase}/auth/status`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -36,8 +36,13 @@ export default function Navbar() {
 
         if (response.ok) {
           const data = await response.json();
-          setUser(data.user ?? null);
-          setIsLoggedIn(true);
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+            setIsLoggedIn(true);
+          } else {
+            setUser(null);
+            setIsLoggedIn(false);
+          }
         } else {
           setUser(null);
           setIsLoggedIn(false);

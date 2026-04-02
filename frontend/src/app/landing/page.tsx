@@ -47,21 +47,38 @@ function useInView(threshold = 0.15) {
 }
 
 /* ─── Floating Particles Component ─── */
+const PARTICLES = Array.from({ length: 20 }, (_, i) => {
+  const seeded = (n: number) => {
+    const value = Math.sin(i * 97.13 + n * 13.37) * 10000;
+    return value - Math.floor(value);
+  };
+
+  return {
+    width: `${2 + seeded(1) * 6}px`,
+    height: `${2 + seeded(2) * 6}px`,
+    background: `hsl(${230 + seeded(3) * 30}, 80%, ${60 + seeded(4) * 20}%)`,
+    left: `${seeded(5) * 100}%`,
+    top: `${seeded(6) * 100}%`,
+    animationDuration: `${8 + seeded(7) * 12}s`,
+    animationDelay: `${seeded(8) * 5}s`,
+  };
+});
+
 function FloatingParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(20)].map((_, i) => (
+      {PARTICLES.map((particle, i) => (
         <div
           key={i}
           className="absolute rounded-full opacity-20"
           style={{
-            width: `${Math.random() * 6 + 2}px`,
-            height: `${Math.random() * 6 + 2}px`,
-            background: `hsl(${230 + Math.random() * 30}, 80%, ${60 + Math.random() * 20}%)`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `floatParticle ${8 + Math.random() * 12}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 5}s`,
+            width: particle.width,
+            height: particle.height,
+            background: particle.background,
+            left: particle.left,
+            top: particle.top,
+            animation: `floatParticle ${particle.animationDuration} ease-in-out infinite`,
+            animationDelay: particle.animationDelay,
           }}
         />
       ))}
@@ -245,8 +262,8 @@ export default function LandingPage() {
     const checkAuthStatus = async () => {
       try {
         const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        
-        const response = await fetch(`${apiBase}/auth/me`, {
+
+        const response = await fetch(`${apiBase}/auth/status`, {
           method: "GET",
           credentials: "include", // Send cookies with request
           headers: {
@@ -255,26 +272,19 @@ export default function LandingPage() {
         });
 
         if (response.ok) {
-          // User is authenticated
           const data = await response.json();
-          const userData = data.user;
-          setUser(userData);
-          setIsLoggedIn(true);
-          console.log("User authenticated:", userData);
-        } else if (response.status === 401) {
-          // User is not authenticated
-          setIsLoggedIn(false);
-          setUser(null);
-          console.log("User not authenticated (401)");
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+            setIsLoggedIn(true);
+          } else {
+            setIsLoggedIn(false);
+            setUser(null);
+          }
         } else {
-          // Unexpected error
           setIsLoggedIn(false);
           setUser(null);
-          console.log("Auth check failed:", response.status);
         }
       } catch (error) {
-        // API endpoint doesn't exist or network error
-        console.log("Auth API call failed:", error);
         setIsLoggedIn(false);
         setUser(null);
       } finally {

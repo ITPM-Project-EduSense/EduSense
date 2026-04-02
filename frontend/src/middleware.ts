@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 export function middleware(request: NextRequest) {
-  // Check for edusense_token (set by backend after login)
-  const token = request.cookies.get("edusense_token");
+  // Support both Firebase-backed session cookie and legacy JWT cookie.
+  const sessionCookie = request.cookies.get("session");
+  const legacyCookie = request.cookies.get("edusense_token");
 
   const isDashboardPage =
     request.nextUrl.pathname.startsWith("/dashboard") ||
@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/notifications") ||
     request.nextUrl.pathname.startsWith("/settings");
   // Protect dashboard pages - require authentication
-  if (!token && isDashboardPage) {
+  if (!sessionCookie && !legacyCookie && isDashboardPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

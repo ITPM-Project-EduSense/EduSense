@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import GoogleLoginButton from "@/components/GoogleLoginButton";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { useToast } from "@/components/Toast";
 import { type FieldErrors, validateLoginInput } from "@/lib/validation";
 
@@ -48,7 +48,7 @@ export default function LoginPage() {
         }),
       });
 
-      router.push("/landing");
+      router.push("/dashboard");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Login failed";
       setError(message);
@@ -197,7 +197,11 @@ export default function LoginPage() {
           </div>
 
           <div className="flex justify-center">
-            <GoogleLoginButton />
+            <GoogleSignInButton
+              onSuccess={() => router.push("/dashboard")}
+              onError={(message) => setError(message)}
+              className="max-w-xs"
+            />
           </div>
 
           <p className="text-sm text-slate-600 mt-6 text-center">

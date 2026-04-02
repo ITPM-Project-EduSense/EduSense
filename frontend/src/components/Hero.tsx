@@ -23,7 +23,7 @@ export default function Hero() {
       try {
         const apiBase =
           process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        const response = await fetch(`${apiBase}/auth/me`, {
+        const response = await fetch(`${apiBase}/auth/status`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -32,7 +32,12 @@ export default function Hero() {
         });
 
         if (mounted) {
-          setIsLoggedIn(response.ok);
+          if (response.ok) {
+            const data = await response.json();
+            setIsLoggedIn(Boolean(data.authenticated));
+          } else {
+            setIsLoggedIn(false);
+          }
         }
       } catch {
         if (mounted) {
