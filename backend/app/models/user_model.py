@@ -2,6 +2,7 @@ from beanie import Document
 from pydantic import EmailStr, Field, BaseModel, field_validator
 from datetime import datetime
 from typing import Optional
+from pymongo import IndexModel
 
 
 class User(Document):
@@ -9,13 +10,17 @@ class User(Document):
     MongoDB User collection using Beanie ODM.
     """
 
-    full_name: str = Field(min_length=2, max_length=60)
+    full_name: Optional[str] = Field(default=None, min_length=2, max_length=60)
     email: EmailStr
-    password_hash: str
+    firebase_uid: Optional[str] = Field(default=None, max_length=256)
+    name: Optional[str] = Field(default=None, max_length=120)
+    profile_image: Optional[str] = None
+    password_hash: Optional[str] = None
     bio: Optional[str] = None
     program_name: Optional[str] = Field(default=None, max_length=120)
     year_of_study: Optional[int] = Field(default=None, ge=1, le=8)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Password reset fields
     reset_token_hash: Optional[str] = None
@@ -23,6 +28,10 @@ class User(Document):
 
     class Settings:
         name = "users"  # Mongo collection name
+        indexes = [
+            IndexModel("email", unique=True),
+            IndexModel("firebase_uid", unique=True, sparse=True),
+        ]
 
 
 class UserCreate(BaseModel):

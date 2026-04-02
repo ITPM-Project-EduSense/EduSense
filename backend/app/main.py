@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.database import connect_db, close_db
+from app.core.firebase_admin import initialize_firebase_admin
 from app.routes.task_routes import router as task_router
 from app.routes.schedule_routes import router as schedule_router
 from app.routes.auth_routes import router as auth_router
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
     - Closes MongoDB connection on shutdown
     """
     print("🚀 Starting EduSense Backend...")
+    initialize_firebase_admin()
     await connect_db()
 
     yield  # Application runs here

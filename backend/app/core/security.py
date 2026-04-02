@@ -1,8 +1,11 @@
 import hashlib
+import asyncio
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException, Request
+from firebase_admin import auth as firebase_auth
 from app.core.config import settings
+from app.core.firebase_admin import ensure_firebase_initialized
 from app.models.user_model import User
 
 COOKIE_NAME = "edusense_token"
@@ -36,6 +39,30 @@ def create_access_token(payload: dict, expires_minutes: int | None = None) -> st
 
 
 async def get_current_user(request: Request) -> User:
+    session_cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if session_cookie:
+        ensure_firebase_initialized()
+        try:
+            decoded = await asyncio.to_thread(
+                firebase_auth.verify_session_cookie,
+                session_cookie,
+                True,
+            )
+            uid = decoded.get("uid")
+            if not uid:
+                raise HTTPException(status_code=401, detail="Invalid session payload")
+
+            user = await User.find_one({"firebase_uid": uid})
+            if not user:
+                raise HTTPException(status_code=404, detail="User profile not found")
+            return user
+        except (firebase_auth.InvalidSessionCookieError, firebase_auth.ExpiredSessionCookieError):
+            raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
+        except firebase_auth.RevokedSessionCookieError:
+            raise HTTPException(status_code=401, detail="Session revoked. Please log in again.")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid session")
+
     token = request.cookies.get(COOKIE_NAME)
 
     if not token:

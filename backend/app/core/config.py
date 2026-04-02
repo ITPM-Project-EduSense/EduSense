@@ -23,6 +23,10 @@ class Settings:
 
     # Cookies
     COOKIE_SECURE = os.getenv("COOKIE_SECURE", "False") == "True"
+    COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN")
+    COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax")
+    SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "session")
+    SESSION_EXPIRE_DAYS = int(os.getenv("SESSION_EXPIRE_DAYS", 5))
 
     # Email Configuration
     SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
@@ -38,6 +42,11 @@ class Settings:
     # External APIs
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+
+    # Firebase
+    FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "")
+    FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "")
+    FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY", "")
 
 
 settings = Settings()

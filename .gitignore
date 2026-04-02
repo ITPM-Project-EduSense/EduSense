@@ -5,3 +5,4 @@ backend/.env
 .env.*
 replace*.txt
 replacements*.txt
+edusense-8137a-firebase-adminsdk-fbsvc-d90e6eb322.json
