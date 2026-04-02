@@ -11,9 +11,6 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Sparkles,
-  ShieldCheck,
-  Clock3,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
@@ -88,17 +85,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f7f9fc]">
+    <div className="relative min-h-svh overflow-hidden bg-[#f7f9fc]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-teal-300/35 blur-3xl" />
         <div className="absolute -right-24 top-0 h-80 w-80 rounded-full bg-cyan-300/30 blur-3xl" />
         <div className="absolute bottom-0 left-1/2 h-64 w-176 -translate-x-1/2 rounded-full bg-slate-300/35 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-4 py-6 md:px-8 md:py-10">
-        <div className="grid w-full overflow-hidden rounded-4xl border border-slate-200/80 bg-white/60 shadow-2xl backdrop-blur-xl lg:grid-cols-[1.06fr_0.94fr]">
-          <section className="hidden min-h-190 border-r border-white/10 bg-[#0f172a] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-            <div className="space-y-8">
+      <div className="relative mx-auto flex h-svh w-full max-w-7xl items-center px-3 py-3 md:px-6 md:py-4">
+        <div className="grid h-full w-full overflow-hidden rounded-4xl border border-slate-200/80 bg-white/60 shadow-2xl backdrop-blur-xl lg:grid-cols-[1.06fr_0.94fr]">
+          <section className="hidden h-full border-r border-white/10 bg-[#0f172a] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-8">
+            <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <Image
                   src="/logo.png"
@@ -107,17 +104,17 @@ export default function LoginPage() {
                   height={40}
                   className="h-10 w-10 rounded-xl border border-white/20 object-cover"
                 />
-                <h1 className="text-3xl font-semibold tracking-tight">EduSense</h1>
+                <h1 className="text-2xl font-semibold tracking-tight xl:text-3xl">EduSense</h1>
               </div>
 
-              <div className="space-y-4">
-                <h2 className="text-5xl font-semibold leading-[1.08] tracking-tight">
+              <div className="space-y-3">
+                <h2 className="text-4xl font-semibold leading-[1.08] tracking-tight xl:text-5xl">
                   Study with
                   <span className="block bg-linear-to-r from-cyan-300 to-teal-300 bg-clip-text text-transparent">
                     calm precision
                   </span>
                 </h2>
-                <p className="max-w-md text-sm leading-7 text-slate-300">
+                <p className="max-w-md text-sm leading-6 text-slate-300">
                   Plan your priorities, protect deep work hours, and stay ahead of deadlines with AI support built for academic flow.
                 </p>
               </div>
@@ -125,36 +122,23 @@ export default function LoginPage() {
               <Auth3DVisualization theme="cyan" />
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-[11px] text-slate-200">
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-3">
-                <ShieldCheck size={15} className="mb-2 text-cyan-300" />
-                Secure session cookies
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-3">
-                <Clock3 size={15} className="mb-2 text-cyan-300" />
-                Smart timing insights
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-3">
-                <Sparkles size={15} className="mb-2 text-cyan-300" />
-                AI-first workflow
-              </div>
-            </div>
+            <div className="h-1" />
           </section>
 
-          <section className="flex min-h-190 items-center justify-center bg-white/72 p-6 md:p-10">
-            <div className="w-full max-w-lg rounded-3xl border border-slate-200/80 bg-white/92 p-8 shadow-xl md:p-10">
-            <div className="mb-8">
+          <section className="flex h-full items-center justify-center bg-white/72 p-4 md:p-6">
+            <div className="w-full max-w-xl rounded-3xl border border-slate-200/80 bg-white/92 p-6 shadow-xl md:p-7">
+            <div className="mb-6">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Welcome back</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Continue your momentum</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem]">Continue your momentum</h2>
             </div>
 
-            <div className="mb-7 lg:hidden">
+            <div className="mb-5 lg:hidden">
               <Auth3DVisualization theme="cyan" compact />
             </div>
 
-            {error && <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+            {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Email</label>
                 <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-100">
@@ -231,7 +215,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="my-6 flex items-center gap-3">
+            <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-200" />
               <span className="text-xs uppercase tracking-[0.16em] text-slate-400">or continue</span>
               <div className="h-px flex-1 bg-slate-200" />
@@ -242,7 +226,7 @@ export default function LoginPage() {
               onError={(message) => setError(message)}
             />
 
-            <p className="mt-7 text-center text-sm text-slate-600">
+            <p className="mt-5 text-center text-sm text-slate-600">
               New here?{" "}
               <Link href="/register" className="font-semibold text-teal-700 hover:text-teal-900">
                 Create account

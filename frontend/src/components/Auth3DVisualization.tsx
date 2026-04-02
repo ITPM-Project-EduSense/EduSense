@@ -8,17 +8,17 @@ interface Auth3DVisualizationProps {
 }
 
 const ORBS = [
-  { size: 132, x: 6, y: 10, z: 40, d: "0s" },
-  { size: 94, x: 52, y: 18, z: 90, d: "0.7s" },
-  { size: 74, x: 72, y: 62, z: 20, d: "1.2s" },
-  { size: 64, x: 18, y: 70, z: 70, d: "1.7s" },
-  { size: 46, x: 44, y: 52, z: 120, d: "2.1s" },
+  { size: 118, x: 18, y: 24, z: 35, d: "0s" },
+  { size: 88, x: 66, y: 28, z: 85, d: "0.7s" },
+  { size: 72, x: 74, y: 62, z: 20, d: "1.2s" },
+  { size: 62, x: 20, y: 66, z: 70, d: "1.7s" },
+  { size: 48, x: 46, y: 48, z: 120, d: "2.1s" },
 ];
 
 const RINGS = [
-  { size: 220, x: 14, y: 16, d: "0s" },
-  { size: 180, x: 46, y: 28, d: "0.8s" },
-  { size: 140, x: 36, y: 52, d: "1.4s" },
+  { size: 230, d: "0s" },
+  { size: 182, d: "0.8s" },
+  { size: 136, d: "1.4s" },
 ];
 
 export default function Auth3DVisualization({ theme = "cyan", compact = false }: Auth3DVisualizationProps) {
@@ -45,13 +45,13 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-3xl border border-white/10 bg-slate-950/35 ${compact ? "h-60" : "mt-8 h-90"}`}
+      className={`relative w-full overflow-hidden rounded-3xl border border-white/10 bg-slate-950/35 ${compact ? "h-44" : "mt-5 h-72"}`}
       style={{ perspective: "1100px" }}
     >
       <div className={`absolute inset-0 bg-linear-to-br ${palette.glow}`} />
 
       <div
-        className="absolute inset-6 rounded-2xl border border-white/10"
+        className="absolute inset-5 rounded-2xl border border-white/10"
         style={{
           transform: "rotateX(14deg) rotateY(-12deg)",
           transformStyle: "preserve-3d",
@@ -65,8 +65,9 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
             style={{
               width: ring.size,
               height: ring.size,
-              left: `${ring.x}%`,
-              top: `${ring.y}%`,
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
               animation: `authOrbit ${10 + ring.size / 40}s linear infinite`,
               animationDelay: ring.d,
             }}
@@ -96,11 +97,11 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
           </div>
         ))}
 
-        <div className="absolute left-[12%] top-[38%] w-[76%]">
+        <div className="absolute left-1/2 top-[46%] w-[70%] -translate-x-1/2">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className={`mb-4 h-2 rounded-full border ${palette.line} bg-white/10`}
+              className={`mb-3 h-2 rounded-full border ${palette.line} bg-white/10`}
               style={{
                 width: `${78 - i * 18}%`,
                 animation: `authPulse ${3 + i * 0.8}s ease-in-out infinite`,

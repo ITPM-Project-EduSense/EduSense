@@ -12,7 +12,6 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  CheckCircle2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import Auth3DVisualization from "@/components/Auth3DVisualization";
@@ -60,17 +59,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6faf8]">
+    <div className="relative min-h-svh overflow-hidden bg-[#f6faf8]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-0 top-0 h-80 w-80 rounded-full bg-emerald-300/30 blur-3xl" />
         <div className="absolute right-0 top-20 h-72 w-72 rounded-full bg-teal-300/30 blur-3xl" />
         <div className="absolute bottom-0 left-1/2 h-72 w-176 -translate-x-1/2 rounded-full bg-lime-200/30 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-4 py-6 md:px-8 md:py-10">
-        <div className="grid w-full overflow-hidden rounded-4xl border border-emerald-200/80 bg-white/60 shadow-2xl backdrop-blur-xl lg:grid-cols-[1.06fr_0.94fr]">
-          <section className="hidden min-h-190 border-r border-white/10 bg-[#052e2b] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-            <div className="space-y-8">
+      <div className="relative mx-auto flex h-svh w-full max-w-7xl items-center px-3 py-3 md:px-6 md:py-4">
+        <div className="grid h-full w-full overflow-hidden rounded-4xl border border-emerald-200/80 bg-white/60 shadow-2xl backdrop-blur-xl lg:grid-cols-[1.06fr_0.94fr]">
+          <section className="hidden h-full border-r border-white/10 bg-[#052e2b] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-8">
+            <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <Image
                   src="/logo.png"
@@ -79,17 +78,17 @@ export default function RegisterPage() {
                   height={40}
                   className="h-10 w-10 rounded-xl border border-white/20 object-cover"
                 />
-                <h1 className="text-3xl font-semibold tracking-tight">EduSense</h1>
+                <h1 className="text-2xl font-semibold tracking-tight xl:text-3xl">EduSense</h1>
               </div>
 
-              <div className="space-y-4">
-                <h2 className="text-5xl font-semibold leading-[1.08] tracking-tight">
+              <div className="space-y-3">
+                <h2 className="text-4xl font-semibold leading-[1.08] tracking-tight xl:text-5xl">
                   Build your
                   <span className="block bg-linear-to-r from-lime-300 to-emerald-300 bg-clip-text text-transparent">
                     learning rhythm
                   </span>
                 </h2>
-                <p className="max-w-md text-sm leading-7 text-emerald-100/85">
+                <p className="max-w-md text-sm leading-6 text-emerald-100/85">
                   Create your workspace and get a personalized system for planning, task focus, and smarter daily study decisions.
                 </p>
               </div>
@@ -97,27 +96,23 @@ export default function RegisterPage() {
               <Auth3DVisualization theme="emerald" />
             </div>
 
-            <div className="space-y-3 text-[12px]">
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-3">AI priority recommendations</div>
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-3">Progress and deadline visibility</div>
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-3">Fast setup with secure sessions</div>
-            </div>
+            <div className="h-1" />
           </section>
 
-          <section className="flex min-h-190 items-center justify-center bg-white/76 p-6 md:p-10">
-            <div className="w-full max-w-lg rounded-3xl border border-emerald-200/70 bg-white/92 p-8 shadow-xl md:p-10">
-            <div className="mb-8">
+          <section className="flex h-full items-center justify-center bg-white/76 p-4 md:p-6">
+            <div className="w-full max-w-xl rounded-3xl border border-emerald-200/70 bg-white/92 p-6 shadow-xl md:p-7">
+            <div className="mb-6">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-600">Create account</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Start your EduSense journey</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem]">Start your EduSense journey</h2>
             </div>
 
-            <div className="mb-7 lg:hidden">
+            <div className="mb-5 lg:hidden">
               <Auth3DVisualization theme="emerald" compact />
             </div>
 
-            {error && <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+            {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Full Name</label>
                 <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
@@ -203,14 +198,7 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
-              <p className="inline-flex items-center gap-2 font-medium">
-                <CheckCircle2 size={14} />
-                Account creation takes less than one minute.
-              </p>
-            </div>
-
-            <p className="mt-7 text-center text-sm text-slate-600">
+            <p className="mt-4 text-center text-sm text-slate-600">
               Already have an account?{" "}
               <Link href="/login" className="font-semibold text-emerald-700 hover:text-emerald-900">
                 Sign in
