@@ -11,9 +11,9 @@ class StudyGroup(Document):
     module: str                     # e.g. "CS2040"
     schedule: str
     max_members: int = Field(ge=2, le=20, default=6)
-    tags: List[str] = []
+    tags: List[str] = Field(default_factory=list)
     created_by: str                 # user_id of creator
-    member_ids: List[str] = []      # user_ids of all members
+    member_ids: List[str] = Field(default_factory=list)      # user_ids of all members
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Settings:
@@ -26,7 +26,7 @@ class StudyGroupCreate(BaseModel):
     module: str
     schedule: str
     max_members: int = Field(ge=2, le=20, default=6)
-    tags: List[str] = []
+    tags: List[str] = Field(default_factory=list)
 
 
 class StudyGroupResponse(BaseModel):
@@ -39,4 +39,5 @@ class StudyGroupResponse(BaseModel):
     tags: List[str]
     created_by: str
     members: int        # derived from len(member_ids)
+    is_joined: bool = False
     created_at: datetime

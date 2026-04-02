@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 
 const MOCK_SESSIONS: Record<string, { label: string; url: string; platform: string }[]> = {
@@ -106,6 +106,7 @@ interface Group {
     max: number;
     schedule: string;
     tags: string[];
+    isJoined: boolean;
 }
 
 function apiGroupToGroup(g: {
@@ -116,6 +117,7 @@ function apiGroupToGroup(g: {
     max_members: number;
     schedule: string;
     tags: string[];
+    is_joined?: boolean;
 }): Group {
     return {
         id: g.id,
@@ -126,6 +128,7 @@ function apiGroupToGroup(g: {
         max: g.max_members,
         schedule: g.schedule,
         tags: g.tags,
+        isJoined: Boolean(g.is_joined),
     };
 }
 
@@ -422,10 +425,6 @@ export default function PeerConnectHome() {
         groupSchedule.trim() !== "" &&
         groupLeader.trim() !== "";
 
-    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(
-        () => new Set<string>(JSON.parse(localStorage.getItem("joinedGroups") ?? "[]"))
-    );
-    useEffect(() => { localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups])); }, [joinedGroups]);
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
@@ -474,7 +473,7 @@ export default function PeerConnectHome() {
             });
             const newGroup = apiGroupToGroup(data);
             setGroups((prev) => [newGroup, ...prev]);
-            setJoinedGroups((prev) => new Set(prev).add(newGroup.id));
+            setSelectedGroup(newGroup);
             setShowCreateModal(false);
             setGroupName(""); setGroupModule(""); setGroupSchedule(""); setGroupMax("6"); setGroupTags("");
             // ── NEW: reset leader field on success ──
@@ -487,8 +486,10 @@ export default function PeerConnectHome() {
     };
 
     const handleJoin = async (groupId: string) => {
-        const isJoined = joinedGroups.has(groupId);
-        setJoinedGroups((prev) => { const n = new Set(prev); isJoined ? n.delete(groupId) : n.add(groupId); return n; });
+        const currentGroup = groups.find((g) => g.id === groupId) ?? (selectedGroup?.id === groupId ? selectedGroup : null);
+        if (!currentGroup) return;
+
+        const isJoined = currentGroup.isJoined;
         setJoiningId(groupId);
         try {
             const data = await apiFetch(`/groups/${groupId}/${isJoined ? "leave" : "join"}`, { method: "POST" });
@@ -496,7 +497,7 @@ export default function PeerConnectHome() {
             setGroups((prev) => prev.map((g) => (g.id === groupId ? updated : g)));
             setSelectedGroup((prev) => prev?.id === groupId ? updated : prev);
         } catch {
-            // keep optimistic UI
+            // keep previous UI state on failure
         } finally {
             setJoiningId(null);
         }
@@ -879,7 +880,7 @@ export default function PeerConnectHome() {
             {selectedGroup ? (() => {
                 const sessions = MOCK_SESSIONS[selectedGroup.module] ?? MOCK_SESSIONS.default;
                 const materials = MOCK_MATERIALS[selectedGroup.module] ?? MOCK_MATERIALS.default;
-                const isJoined = joinedGroups.has(selectedGroup.id);
+                const isJoined = selectedGroup.isJoined;
                 const isFull = selectedGroup.members >= selectedGroup.max && !isJoined;
                 const isLoading = joiningId === selectedGroup.id;
                 return (
@@ -1037,7 +1038,7 @@ export default function PeerConnectHome() {
                                     ))
                                 ) : filteredGroups.length > 0 ? (
                                     filteredGroups.map((g) => {
-                                        const isJoined = joinedGroups.has(g.id);
+                                        const isJoined = g.isJoined;
                                         const isFull = g.members >= g.max && !isJoined;
                                         const isLoading = joiningId === g.id;
                                         return (

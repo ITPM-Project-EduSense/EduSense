@@ -10,7 +10,8 @@ from app.core.security import get_current_user
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
 
-def group_to_response(group: StudyGroup) -> StudyGroupResponse:
+def group_to_response(group: StudyGroup, current_user: Optional[User] = None) -> StudyGroupResponse:
+    current_user_id = str(current_user.id) if current_user else None
     return StudyGroupResponse(
         id=str(group.id),
         name=group.name,
@@ -20,6 +21,7 @@ def group_to_response(group: StudyGroup) -> StudyGroupResponse:
         tags=group.tags,
         created_by=group.created_by,
         members=len(group.member_ids),
+        is_joined=current_user_id in group.member_ids if current_user_id else False,
         created_at=group.created_at,
     )
 
@@ -46,7 +48,7 @@ async def create_group(
         member_ids=[str(current_user.id)],
     )
     await group.insert()
-    return group_to_response(group)
+    return group_to_response(group, current_user)
 
 
 # ─── GET /groups/ ─── List all study groups ───
@@ -55,11 +57,13 @@ async def create_group(
     response_model=List[StudyGroupResponse],
     summary="List all study groups",
 )
-async def list_groups():
+async def list_groups(
+    current_user: User = Depends(get_current_user),
+):
     """Return all study groups sorted newest-first."""
     groups = await StudyGroup.find_all().to_list()
     groups.sort(key=lambda g: g.created_at, reverse=True)
-    return [group_to_response(g) for g in groups]
+    return [group_to_response(g, current_user) for g in groups]
 
 
 # ─── GET /groups/search?q= ─── Search groups by name / module / tag ───
@@ -68,12 +72,15 @@ async def list_groups():
     response_model=List[StudyGroupResponse],
     summary="Search study groups",
 )
-async def search_groups(q: Optional[str] = Query(default="", max_length=100)):
+async def search_groups(
+    q: Optional[str] = Query(default="", max_length=100),
+    current_user: User = Depends(get_current_user),
+):
     """Case-insensitive search across group name, module code, and tags."""
     if not q or not q.strip():
         groups = await StudyGroup.find_all().to_list()
         groups.sort(key=lambda g: g.created_at, reverse=True)
-        return [group_to_response(g) for g in groups]
+        return [group_to_response(g, current_user) for g in groups]
 
     pattern = re.compile(re.escape(q.strip()), re.IGNORECASE)
     groups = await StudyGroup.find_all().to_list()
@@ -82,7 +89,7 @@ async def search_groups(q: Optional[str] = Query(default="", max_length=100)):
         if pattern.search(g.name) or pattern.search(g.module) or any(pattern.search(t) for t in g.tags)
     ]
     results.sort(key=lambda g: g.created_at, reverse=True)
-    return [group_to_response(g) for g in results]
+    return [group_to_response(g, current_user) for g in results]
 
 
 # ─── POST /groups/{group_id}/join ─── Join a group ───
@@ -108,7 +115,7 @@ async def join_group(
 
     group.member_ids.append(uid)
     await group.set({"member_ids": group.member_ids})
-    return group_to_response(group)
+    return group_to_response(group, current_user)
 
 
 # ─── POST /groups/{group_id}/leave ─── Leave a group ───
@@ -131,4 +138,4 @@ async def leave_group(
 
     group.member_ids = [m for m in group.member_ids if m != uid]
     await group.set({"member_ids": group.member_ids})
-    return group_to_response(group)
+    return group_to_response(group, current_user)
