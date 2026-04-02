@@ -85,7 +85,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-svh overflow-hidden bg-[#f7f9fc]">
+    <div className="relative min-h-svh overflow-hidden bg-[#eef5f9]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-teal-300/35 blur-3xl" />
         <div className="absolute -right-24 top-0 h-80 w-80 rounded-full bg-cyan-300/30 blur-3xl" />
@@ -93,8 +93,8 @@ export default function LoginPage() {
       </div>
 
       <div className="relative mx-auto flex h-svh w-full max-w-7xl items-center px-3 py-3 md:px-6 md:py-4">
-        <div className="grid h-full w-full overflow-hidden rounded-4xl border border-slate-200/80 bg-white/60 shadow-2xl backdrop-blur-xl lg:grid-cols-[1.06fr_0.94fr]">
-          <section className="hidden h-full border-r border-white/10 bg-[#0f172a] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-8">
+        <div className="grid h-full w-full overflow-hidden rounded-4xl border border-white/70 bg-white/45 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-2xl lg:grid-cols-[1.06fr_0.94fr]">
+          <section className="hidden h-full border-r border-white/10 bg-linear-to-br from-[#081326] via-[#0b1a34] to-[#102647] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-8">
             <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <Image
@@ -104,7 +104,7 @@ export default function LoginPage() {
                   height={40}
                   className="h-10 w-10 rounded-xl border border-white/20 object-cover"
                 />
-                <h1 className="text-2xl font-semibold tracking-tight xl:text-3xl">EduSense</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-100 xl:text-3xl">EduSense</h1>
               </div>
 
               <div className="space-y-3">
@@ -114,7 +114,7 @@ export default function LoginPage() {
                     calm precision
                   </span>
                 </h2>
-                <p className="max-w-md text-sm leading-6 text-slate-300">
+                <p className="max-w-md text-sm leading-6 text-slate-300/95">
                   Plan your priorities, protect deep work hours, and stay ahead of deadlines with AI support built for academic flow.
                 </p>
               </div>
@@ -125,8 +125,8 @@ export default function LoginPage() {
             <div className="h-1" />
           </section>
 
-          <section className="flex h-full items-center justify-center bg-white/72 p-4 md:p-6">
-            <div className="w-full max-w-xl rounded-3xl border border-slate-200/80 bg-white/92 p-6 shadow-xl md:p-7">
+          <section className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_18%_14%,rgba(14,165,233,0.15),transparent_36%),radial-gradient(circle_at_84%_88%,rgba(45,212,191,0.16),transparent_40%)] p-4 md:p-6">
+            <div className="w-full max-w-xl rounded-3xl border border-white/90 bg-white/88 p-6 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl md:p-7">
             <div className="mb-6">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Welcome back</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem]">Continue your momentum</h2>
@@ -141,7 +141,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Email</label>
-                <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-100">
+                <div className="mt-2 flex items-center rounded-xl border border-slate-300/85 bg-white/85 px-3 py-3 transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-100">
                   <Mail size={18} className="mr-2 text-slate-400" />
                   <input
                     type="email"
@@ -160,7 +160,7 @@ export default function LoginPage() {
 
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Password</label>
-                <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-100">
+                <div className="mt-2 flex items-center rounded-xl border border-slate-300/85 bg-white/85 px-3 py-3 transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-100">
                   <Lock size={18} className="mr-2 text-slate-400" />
                   <input
                     type={showPassword ? "text" : "password"}
@@ -199,7 +199,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-teal-600 to-cyan-600 py-3 font-semibold text-white transition duration-300 hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-60"
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-teal-600 via-cyan-600 to-sky-600 py-3 font-semibold text-white transition duration-300 hover:shadow-xl hover:shadow-cyan-500/35 disabled:opacity-60"
               >
                 {loading ? (
                   <>

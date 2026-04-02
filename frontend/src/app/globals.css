@@ -201,3 +201,18 @@ body {
     transform: translate(-50%, -50%) translateZ(160px) rotateX(-8deg) rotateY(10deg);
   }
 }
+
+@keyframes authSheen {
+  0%,
+  100% {
+    transform: translateX(-130%) skewX(-12deg);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.65;
+  }
+  55% {
+    transform: translateX(520%) skewX(-12deg);
+    opacity: 0;
+  }
+}

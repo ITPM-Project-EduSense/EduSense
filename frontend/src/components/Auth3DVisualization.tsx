@@ -32,6 +32,7 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
           glow: "from-emerald-300/35 to-teal-300/20",
           logoGlow: "shadow-emerald-300/40",
           badge: "border-emerald-200/40 bg-emerald-100/15 text-emerald-100",
+          glassEdge: "border-emerald-200/35",
         }
       : {
           orbA: "from-cyan-300 via-sky-300 to-indigo-400",
@@ -41,6 +42,7 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
           glow: "from-cyan-300/35 to-indigo-300/20",
           logoGlow: "shadow-cyan-300/40",
           badge: "border-cyan-200/40 bg-sky-100/15 text-cyan-100",
+          glassEdge: "border-cyan-200/35",
         };
 
   return (
@@ -49,9 +51,10 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
       style={{ perspective: "1100px" }}
     >
       <div className={`absolute inset-0 bg-linear-to-br ${palette.glow}`} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(255,255,255,0.23),transparent_44%),radial-gradient(circle_at_78%_88%,rgba(255,255,255,0.12),transparent_40%)]" />
 
       <div
-        className="absolute inset-5 rounded-2xl border border-white/10"
+        className={`absolute inset-5 rounded-2xl border ${palette.glassEdge}`}
         style={{
           transform: "rotateX(14deg) rotateY(-12deg)",
           transformStyle: "preserve-3d",
@@ -121,15 +124,17 @@ export default function Auth3DVisualization({ theme = "cyan", compact = false }:
           <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" style={{ animation: "authOrbit 14s linear infinite" }} />
           <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15" style={{ animation: "authOrbit 9s linear infinite reverse" }} />
 
-          <div className={`relative flex min-w-44 items-center gap-3 rounded-2xl border border-white/25 bg-slate-900/60 px-4 py-3 shadow-2xl backdrop-blur-md ${palette.logoGlow}`}>
+          <div className={`relative flex min-w-44 items-center gap-3 overflow-hidden rounded-2xl border border-white/30 bg-slate-900/62 px-4 py-3 shadow-2xl backdrop-blur-xl ${palette.logoGlow}`}>
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-white/20 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute -left-10 top-0 h-full w-16 -skew-x-12 bg-white/12" style={{ animation: "authSheen 6.5s ease-in-out infinite" }} />
             <Image
               src="/logo.png"
               alt="EduSense logo"
               width={34}
               height={34}
-              className="h-8 w-8 rounded-lg border border-white/20 object-cover"
+              className="relative z-10 h-8 w-8 rounded-lg border border-white/25 object-cover"
             />
-            <div>
+            <div className="relative z-10">
               <p className="text-sm font-semibold tracking-wide text-white">EduSense</p>
               <p className={`mt-0.5 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${palette.badge}`}>
                 Focus OS

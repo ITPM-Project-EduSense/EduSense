@@ -59,7 +59,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-svh overflow-hidden bg-[#f6faf8]">
+    <div className="relative min-h-svh overflow-hidden bg-[#eff8f3]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-0 top-0 h-80 w-80 rounded-full bg-emerald-300/30 blur-3xl" />
         <div className="absolute right-0 top-20 h-72 w-72 rounded-full bg-teal-300/30 blur-3xl" />
@@ -67,8 +67,8 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative mx-auto flex h-svh w-full max-w-7xl items-center px-3 py-3 md:px-6 md:py-4">
-        <div className="grid h-full w-full overflow-hidden rounded-4xl border border-emerald-200/80 bg-white/60 shadow-2xl backdrop-blur-xl lg:grid-cols-[1.06fr_0.94fr]">
-          <section className="hidden h-full border-r border-white/10 bg-[#052e2b] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-8">
+        <div className="grid h-full w-full overflow-hidden rounded-4xl border border-white/75 bg-white/48 shadow-[0_30px_90px_rgba(6,95,70,0.2)] backdrop-blur-2xl lg:grid-cols-[1.06fr_0.94fr]">
+          <section className="hidden h-full border-r border-white/10 bg-linear-to-br from-[#01332f] via-[#044b42] to-[#0d5f52] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-8">
             <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <Image
@@ -78,7 +78,7 @@ export default function RegisterPage() {
                   height={40}
                   className="h-10 w-10 rounded-xl border border-white/20 object-cover"
                 />
-                <h1 className="text-2xl font-semibold tracking-tight xl:text-3xl">EduSense</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-emerald-50 xl:text-3xl">EduSense</h1>
               </div>
 
               <div className="space-y-3">
@@ -88,7 +88,7 @@ export default function RegisterPage() {
                     learning rhythm
                   </span>
                 </h2>
-                <p className="max-w-md text-sm leading-6 text-emerald-100/85">
+                <p className="max-w-md text-sm leading-6 text-emerald-100/95">
                   Create your workspace and get a personalized system for planning, task focus, and smarter daily study decisions.
                 </p>
               </div>
@@ -99,8 +99,8 @@ export default function RegisterPage() {
             <div className="h-1" />
           </section>
 
-          <section className="flex h-full items-center justify-center bg-white/76 p-4 md:p-6">
-            <div className="w-full max-w-xl rounded-3xl border border-emerald-200/70 bg-white/92 p-6 shadow-xl md:p-7">
+          <section className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_16%_10%,rgba(16,185,129,0.14),transparent_34%),radial-gradient(circle_at_86%_88%,rgba(45,212,191,0.12),transparent_40%)] p-4 md:p-6">
+            <div className="w-full max-w-xl rounded-3xl border border-white/90 bg-white/88 p-6 shadow-[0_24px_70px_rgba(5,150,105,0.15)] backdrop-blur-xl md:p-7">
             <div className="mb-6">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-600">Create account</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem]">Start your EduSense journey</h2>
@@ -115,7 +115,7 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Full Name</label>
-                <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
+                <div className="mt-2 flex items-center rounded-xl border border-slate-300/85 bg-white/85 px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
                   <User size={18} className="mr-2 text-slate-400" />
                   <input
                     type="text"
@@ -134,7 +134,7 @@ export default function RegisterPage() {
 
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Email</label>
-                <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
+                <div className="mt-2 flex items-center rounded-xl border border-slate-300/85 bg-white/85 px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
                   <Mail size={18} className="mr-2 text-slate-400" />
                   <input
                     type="email"
@@ -153,7 +153,7 @@ export default function RegisterPage() {
 
               <div>
                 <label className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Password</label>
-                <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
+                <div className="mt-2 flex items-center rounded-xl border border-slate-300/85 bg-white/85 px-3 py-3 transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
                   <Lock size={18} className="mr-2 text-slate-400" />
                   <input
                     type={showPassword ? "text" : "password"}
@@ -182,7 +182,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 py-3 font-semibold text-white transition duration-300 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60"
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600 py-3 font-semibold text-white transition duration-300 hover:shadow-xl hover:shadow-emerald-500/35 disabled:opacity-60"
               >
                 {loading ? (
                   <>
