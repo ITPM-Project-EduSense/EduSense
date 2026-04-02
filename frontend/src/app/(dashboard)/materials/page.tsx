@@ -2,581 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
-
-const MOCK_SESSIONS: Record<string, { label: string; url: string; platform: string }[]> = {
-    default: [
-        { label: "Weekly Zoom Call", url: "#", platform: "Zoom" },
-        { label: "Discord Study Voice", url: "#", platform: "Discord" },
-    ],
-    CS2040: [
-        { label: "Monday Review — Zoom", url: "#", platform: "Zoom" },
-        { label: "Problem-Set Discord VC", url: "#", platform: "Discord" },
-        { label: "Friday Deep Dive — Google Meet", url: "#", platform: "Meet" },
-    ],
-    MA1101: [
-        { label: "Tuesday Matrix Session — Zoom", url: "#", platform: "Zoom" },
-        { label: "Office Hours — Google Meet", url: "#", platform: "Meet" },
-    ],
-    CS3230: [
-        { label: "Algo Sprint — Discord", url: "#", platform: "Discord" },
-        { label: "Mock Contest — Zoom", url: "#", platform: "Zoom" },
-    ],
-    ST2334: [
-        { label: "Sunday Probability Clinic — Zoom", url: "#", platform: "Zoom" },
-    ],
-    CS2103: [
-        { label: "Sprint Planning — Teams", url: "#", platform: "Teams" },
-        { label: "Code Review VC — Discord", url: "#", platform: "Discord" },
-    ],
-    IS3103: [
-        { label: "Case Study Session — Google Meet", url: "#", platform: "Meet" },
-    ],
-};
-
-const MOCK_MATERIALS: Record<string, { title: string; type: string; size: string }[]> = {
-    default: [
-        { title: "Group Notes.pdf", type: "PDF", size: "1.2 MB" },
-        { title: "Practice Problems.docx", type: "DOCX", size: "340 KB" },
-    ],
-    CS2040: [
-        { title: "Week 3 — Trees & Heaps.pdf", type: "PDF", size: "2.1 MB" },
-        { title: "Cheat Sheet — Sorting.pdf", type: "PDF", size: "480 KB" },
-        { title: "LeetCode List.docx", type: "DOCX", size: "120 KB" },
-    ],
-    MA1101: [
-        { title: "Linear Algebra Summary.pdf", type: "PDF", size: "1.8 MB" },
-        { title: "Eigenvectors Practice.pdf", type: "PDF", size: "560 KB" },
-    ],
-    CS3230: [
-        { title: "DP Patterns.pdf", type: "PDF", size: "900 KB" },
-        { title: "Graph Algorithms Notes.pdf", type: "PDF", size: "1.4 MB" },
-        { title: "Past Year Solutions.pptx", type: "PPTX", size: "3.2 MB" },
-    ],
-    ST2334: [
-        { title: "Probability Formula.pdf", type: "PDF", size: "640 KB" },
-        { title: "Tutorial Solutions Week 5.pdf", type: "PDF", size: "770 KB" },
-    ],
-    CS2103: [
-        { title: "AB3 UML Diagrams.pptx", type: "PPTX", size: "2.6 MB" },
-        { title: "Git Workflow Guide.pdf", type: "PDF", size: "310 KB" },
-    ],
-    IS3103: [
-        { title: "IS Strategy Framework.pdf", type: "PDF", size: "1.1 MB" },
-        { title: "Case Study — DBS Bank.docx", type: "DOCX", size: "450 KB" },
-    ],
-};
-
-const PLATFORM_COLORS: Record<string, string> = {
-    Zoom: "#2D8CFF",
-    Discord: "#5865F2",
-    Meet: "#34A853",
-    Teams: "#464EB8",
-};
-
-const FILE_TYPE_COLORS: Record<string, string> = {
-    PDF: "#EF4444",
-    DOCX: "#3B82F6",
-    PPTX: "#F59E0B",
-};
-
-const MODULE_COLORS: Record<string, string> = {
-    CS2040: "#FF6B35",
-    MA1101: "#4ECDC4",
-    CS3230: "#A78BFA",
-    ST2334: "#F59E0B",
-    CS2103: "#34D399",
-    IS3103: "#F472B6",
-};
-
-const modules = [
-    { code: "CS2040", name: "Data Structures", color: "#FF6B35", members: 24 },
-    { code: "MA1101", name: "Linear Algebra", color: "#4ECDC4", members: 18 },
-    { code: "CS3230", name: "Algorithms", color: "#A78BFA", members: 31 },
-    { code: "ST2334", name: "Probability", color: "#F59E0B", members: 15 },
-    { code: "CS2103", name: "Software Eng.", color: "#34D399", members: 42 },
-    { code: "IS3103", name: "Info Systems", color: "#F472B6", members: 11 },
-];
-
-interface Group {
-    id: string;
-    name: string;
-    module: string;
-    moduleColor: string;
-    members: number;
-    max: number;
-    schedule: string;
-    tags: string[];
-    leaderName: string;
-    leaderEmail: string;
-    isJoined: boolean;
-    canEdit: boolean;
-}
-
-interface GroupInvite {
-    id: string;
-    groupId: string;
-    groupName: string;
-    groupModule: string;
-    invitedEmail: string;
-    invitedByName: string;
-    status: "pending" | "accepted" | "declined";
-    emailSent: boolean;
-    createdAt: string;
-    respondedAt?: string | null;
-}
-
-function apiGroupToGroup(g: {
-    id: string;
-    name: string;
-    module: string;
-    members: number;
-    max_members: number;
-    schedule: string;
-    tags: string[];
-    leader_name?: string;
-    leader_email?: string;
-    is_joined?: boolean;
-    can_edit?: boolean;
-}): Group {
-    return {
-        id: g.id,
-        name: g.name,
-        module: g.module,
-        moduleColor: MODULE_COLORS[g.module] ?? "#8A8AAA",
-        members: g.members,
-        max: g.max_members,
-        schedule: g.schedule,
-        tags: g.tags,
-        leaderName: g.leader_name ?? "",
-        leaderEmail: g.leader_email ?? "",
-        isJoined: Boolean(g.is_joined),
-        canEdit: Boolean(g.can_edit),
-    };
-}
-
-function apiInviteToInvite(invite: {
-    id: string;
-    group_id: string;
-    group_name: string;
-    group_module: string;
-    invited_email: string;
-    invited_by_name: string;
-    status: "pending" | "accepted" | "declined";
-    email_sent?: boolean;
-    created_at: string;
-    responded_at?: string | null;
-}): GroupInvite {
-    return {
-        id: invite.id,
-        groupId: invite.group_id,
-        groupName: invite.group_name,
-        groupModule: invite.group_module,
-        invitedEmail: invite.invited_email,
-        invitedByName: invite.invited_by_name,
-        status: invite.status,
-        emailSent: Boolean(invite.email_sent),
-        createdAt: invite.created_at,
-        respondedAt: invite.responded_at,
-    };
-}
-
-// --- NEW COMPONENT FOR ACTIVE STATUS GRAPH ---
-function ActivityGraph() {
-    const data = [10, 25, 15, 45, 30, 60, 40, 85, 55, 70, 90, 80]; // Mock points
-    const points = data.map((val, i) => `${(i * 40)},${100 - val}`).join(" ");
-
-    return (
-        <div className="pc-activity-card">
-            <div className="pc-activity-header">
-                <div className="pc-section-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                    Live Peer Activity
-                </div>
-                <div className="pc-live-indicator">
-                    <span className="pc-live-dot"></span> 12 Groups Active Now
-                </div>
-            </div>
-            <div className="pc-graph-container">
-                <svg viewBox="0 0 440 100" className="pc-graph-svg">
-                    <defs>
-                        <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.2" />
-                            <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
-                        </linearGradient>
-                    </defs>
-                    <polyline fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={points} />
-                    <polygon fill="url(#lineGradient)" points={`0,100 ${points} 440,100`} />
-                </svg>
-                <div className="pc-graph-labels">
-                    <span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>Now</span>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ── NEW: Invite Member Component ──
-function InviteMemberCard({
-    group,
-    moduleColor,
-}: {
-    group: Group;
-    moduleColor: string;
-}) {
-    const [email, setEmail] = useState("");
-    const [touched, setTouched] = useState(false);
-    const [invites, setInvites] = useState<GroupInvite[]>([]);
-    const [successMsg, setSuccessMsg] = useState("");
-    const [errorMsg, setErrorMsg] = useState("");
-    const [submitting, setSubmitting] = useState(false);
-    const [loadingInvites, setLoadingInvites] = useState(true);
-
-    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const normalizedEmail = email.trim().toLowerCase();
-    const isValidEmail = EMAIL_REGEX.test(normalizedEmail);
-    const showError = touched && email.trim() !== "" && !isValidEmail;
-    const alreadyInvited = invites.some(
-        (invite) => invite.invitedEmail === normalizedEmail && invite.status === "pending"
-    );
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const loadInvites = async () => {
-            setLoadingInvites(true);
-            try {
-                const data = await apiFetch(`/groups/${group.id}/invites`);
-                if (!cancelled) {
-                    setInvites(Array.isArray(data) ? data.map(apiInviteToInvite) : []);
-                }
-            } catch {
-                if (!cancelled) {
-                    setInvites([]);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoadingInvites(false);
-                }
-            }
-        };
-
-        void loadInvites();
-        return () => {
-            cancelled = true;
-        };
-    }, [group.id]);
-
-    const handleInvite = async () => {
-        if (!isValidEmail || alreadyInvited) return;
-
-        setSubmitting(true);
-        setSuccessMsg("");
-        setErrorMsg("");
-        try {
-            const data = await apiFetch(`/groups/${group.id}/invites`, {
-                method: "POST",
-                body: JSON.stringify({ invited_email: normalizedEmail }),
-            });
-            const createdInvite = apiInviteToInvite(data);
-            setInvites((prev) => [createdInvite, ...prev]);
-            setSuccessMsg(
-                createdInvite.emailSent
-                    ? `Invite sent to ${createdInvite.invitedEmail}`
-                    : `Invite saved for ${createdInvite.invitedEmail}. Email delivery is not available right now.`
-            );
-            setEmail("");
-            setTouched(false);
-            setTimeout(() => setSuccessMsg(""), 3500);
-        } catch (err: unknown) {
-            setErrorMsg(err instanceof Error ? err.message : "Failed to send invite");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <div className="pc-invite-card">
-            <div className="pc-mat-card-title" style={{ background: moduleColor }}>
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M9.5 6A2.5 2.5 0 1 0 7 3.5 2.5 2.5 0 0 0 9.5 6zM2 11.5a5.5 5.5 0 0 1 7.45-5.14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M11 9.5v3M9.5 11h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-                Invite a Member
-            </div>
-
-            <div className="pc-invite-input-row">
-                <div style={{ flex: 1, position: "relative" }}>
-                    <input
-                        className="pc-form-input"
-                        type="email"
-                        placeholder="Enter email address..."
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); setTouched(true); setSuccessMsg(""); setErrorMsg(""); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") void handleInvite(); }}
-                        style={{
-                            background: "#F7F7FA",
-                            borderColor: showError ? "rgba(239,68,68,0.6)" : alreadyInvited && touched ? "rgba(239,68,68,0.6)" : undefined,
-                            paddingRight: "2.4rem",
-                        }}
-                    />
-                    {isValidEmail && !alreadyInvited && (
-                        <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#34D399", fontSize: "1rem" }}>✓</span>
-                    )}
-                </div>
-                <button
-                    className="pc-invite-btn"
-                    style={{ background: moduleColor }}
-                    disabled={!isValidEmail || alreadyInvited || submitting}
-                    onClick={() => void handleInvite()}
-                >
-                    {submitting ? "Sending..." : "Send Invite"}
-                </button>
-            </div>
-
-            {showError && (
-                <p className="pc-invite-hint pc-invite-error">Please enter a valid email address (e.g. name@domain.com)</p>
-            )}
-            {alreadyInvited && touched && (
-                <p className="pc-invite-hint pc-invite-error">This email already has a pending invite for this group.</p>
-            )}
-            {errorMsg && (
-                <p className="pc-invite-hint pc-invite-error">{errorMsg}</p>
-            )}
-            {successMsg && (
-                <p className="pc-invite-hint pc-invite-success">{successMsg}</p>
-            )}
-
-            <div className="pc-invited-list">
-                <p className="pc-invited-list-label">Invite status</p>
-                {loadingInvites ? (
-                    <div className="pc-invite-empty">Loading invites...</div>
-                ) : invites.length === 0 ? (
-                    <div className="pc-invite-empty">No invites have been sent for this group yet.</div>
-                ) : (
-                    invites.map((invite) => (
-                        <div key={invite.id} className="pc-invite-row">
-                            <div className="pc-invite-row-main">
-                                <div className="pc-invite-row-email">{invite.invitedEmail}</div>
-                                <div className="pc-invite-row-meta">
-                                    {invite.emailSent ? "Email sent" : "In-app invite saved"} · {invite.groupModule}
-                                </div>
-                            </div>
-                            <span className={`pc-invite-status pc-status-${invite.status}`}>{invite.status}</span>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
-    );
-}
-
-// ── NEW: Upload Study Material Component ──
-function IncomingInvitesCard({
-    invites,
-    acceptingInviteId,
-    decliningInviteId,
-    onAccept,
-    onDecline,
-}: {
-    invites: GroupInvite[];
-    acceptingInviteId: string | null;
-    decliningInviteId: string | null;
-    onAccept: (invite: GroupInvite) => void;
-    onDecline: (invite: GroupInvite) => void;
-}) {
-    if (invites.length === 0) return null;
-
-    return (
-        <section className="pc-incoming-card">
-            <div className="pc-section-title" style={{ marginBottom: "1rem" }}>
-                Invitations Waiting for You
-                <span className="pc-count">{invites.length}</span>
-            </div>
-            <div className="pc-incoming-list">
-                {invites.map((invite) => {
-                    const accepting = acceptingInviteId === invite.id;
-                    const declining = decliningInviteId === invite.id;
-                    return (
-                        <div key={invite.id} className="pc-incoming-item">
-                            <div className="pc-incoming-copy">
-                                <div className="pc-incoming-title">
-                                    Join {invite.groupName}
-                                    <span className="pc-incoming-module">{invite.groupModule}</span>
-                                </div>
-                                <div className="pc-incoming-subtitle">
-                                    {invite.invitedByName} invited you to this study group.
-                                </div>
-                            </div>
-                            <div className="pc-incoming-actions">
-                                <button
-                                    className="pc-incoming-btn pc-accept"
-                                    disabled={accepting || declining}
-                                    onClick={() => onAccept(invite)}
-                                >
-                                    {accepting ? "Joining..." : "Join"}
-                                </button>
-                                <button
-                                    className="pc-incoming-btn pc-decline"
-                                    disabled={accepting || declining}
-                                    onClick={() => onDecline(invite)}
-                                >
-                                    {declining ? "Declining..." : "Decline"}
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </section>
-    );
-}
-
-interface UploadedFile {
-    name: string;
-    size: string;
-    type: string;
-}
-
-function UploadMaterialCard({ moduleColor }: { moduleColor: string }) {
-    const [dragOver, setDragOver] = useState(false);
-    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-    const [errorMsg, setErrorMsg] = useState("");
-    const [successMsg, setSuccessMsg] = useState("");
-
-    const ACCEPTED_TYPES: Record<string, string> = {
-        "application/pdf": "PDF",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
-    };
-
-    const MAX_SIZE_MB = 20;
-
-    const formatSize = (bytes: number): string => {
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    };
-
-    const processFiles = (files: FileList | null) => {
-        if (!files || files.length === 0) return;
-        setErrorMsg("");
-        setSuccessMsg("");
-        const newFiles: UploadedFile[] = [];
-        const errors: string[] = [];
-
-        Array.from(files).forEach((file) => {
-            const fileType = ACCEPTED_TYPES[file.type];
-            if (!fileType) {
-                errors.push(`"${file.name}" is not a supported file type. Please upload PDF, DOCX, or PPTX files.`);
-                return;
-            }
-            const sizeMB = file.size / (1024 * 1024);
-            if (sizeMB > MAX_SIZE_MB) {
-                errors.push(`"${file.name}" exceeds the ${MAX_SIZE_MB} MB limit.`);
-                return;
-            }
-            const alreadyExists = uploadedFiles.some((f) => f.name === file.name);
-            if (alreadyExists) {
-                errors.push(`"${file.name}" has already been uploaded.`);
-                return;
-            }
-            newFiles.push({ name: file.name, size: formatSize(file.size), type: fileType });
-        });
-
-        if (errors.length > 0) {
-            setErrorMsg(errors[0]);
-            return;
-        }
-        if (newFiles.length > 0) {
-            setUploadedFiles((prev) => [...prev, ...newFiles]);
-            setSuccessMsg(`${newFiles.length === 1 ? `"${newFiles[0].name}" uploaded` : `${newFiles.length} files uploaded`} successfully.`);
-            setTimeout(() => setSuccessMsg(""), 3500);
-        }
-    };
-
-    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => processFiles(e.target.files);
-
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setDragOver(false);
-        processFiles(e.dataTransfer.files);
-    };
-
-    const handleRemove = (fileName: string) => {
-        setUploadedFiles((prev) => prev.filter((f) => f.name !== fileName));
-    };
-
-    const FILE_BADGE_COLORS: Record<string, string> = { PDF: "#EF4444", DOCX: "#3B82F6", PPTX: "#F59E0B" };
-
-    return (
-        <div className="pc-upload-card">
-            <div className="pc-mat-card-title" style={{ background: moduleColor }}>
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 9.5V2M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 10.5v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-                Upload Study Material
-            </div>
-
-            {/* Drop zone */}
-            <div
-                className={`pc-upload-dropzone ${dragOver ? "pc-upload-dropzone-active" : ""}`}
-                style={{ borderColor: dragOver ? moduleColor : undefined, background: dragOver ? `${moduleColor}08` : undefined }}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => document.getElementById("pc-file-input")?.click()}
-            >
-                <div className="pc-upload-dropzone-icon" style={{ color: moduleColor }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                </div>
-                <p className="pc-upload-dropzone-text">
-                    <span style={{ fontWeight: 700, color: moduleColor }}>Click to upload</span> or drag & drop
-                </p>
-                <p className="pc-upload-dropzone-hint">PDF, DOCX, PPTX · max {MAX_SIZE_MB} MB per file</p>
-                <input
-                    id="pc-file-input"
-                    type="file"
-                    accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                    multiple
-                    style={{ display: "none" }}
-                    onChange={handleFileInput}
-                    onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
-                />
-            </div>
-
-            {/* Feedback messages */}
-            {errorMsg && <p className="pc-invite-hint pc-invite-error" style={{ marginTop: "0.55rem" }}>{errorMsg}</p>}
-            {successMsg && <p className="pc-invite-hint pc-invite-success" style={{ marginTop: "0.55rem" }}>{successMsg}</p>}
-
-            {/* Uploaded files list */}
-            {uploadedFiles.length > 0 && (
-                <div className="pc-upload-file-list">
-                    <p className="pc-invited-list-label">Uploaded files</p>
-                    {uploadedFiles.map((f) => (
-                        <div key={f.name} className="pc-upload-file-row">
-                            <div className="pc-material-type-badge" style={{ background: FILE_BADGE_COLORS[f.type] ?? "#8A8AAA", width: 32, height: 32, fontSize: "0.52rem" }}>{f.type}</div>
-                            <div className="pc-material-info">
-                                <div className="pc-material-title">{f.name}</div>
-                                <div className="pc-material-size">{f.size}</div>
-                            </div>
-                            <button
-                                className="pc-upload-remove-btn"
-                                onClick={() => handleRemove(f.name)}
-                                title="Remove file"
-                            >
-                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
+import { ActivityGraph, IncomingInvitesCard, InviteMemberCard, UploadMaterialCard } from "./components";
+import { API_BASE, FILE_TYPE_COLORS, MOCK_SESSIONS, PLATFORM_COLORS, modules } from "./constants";
+import type { Group, GroupInvite, GroupMaterial } from "./types";
+import { apiGroupToGroup, apiInviteToInvite, apiMaterialToMaterial, formatFileSize } from "./utils";
 
 export default function PeerConnectHome() {
     const [groups, setGroups] = useState<Group[]>([]);
@@ -613,6 +42,11 @@ export default function PeerConnectHome() {
     const [inviteActionError, setInviteActionError] = useState("");
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+    const [groupMaterials, setGroupMaterials] = useState<Record<string, GroupMaterial[]>>({});
+    const [loadingGroupMaterialsId, setLoadingGroupMaterialsId] = useState<string | null>(null);
+    const [groupMaterialsCanUpload, setGroupMaterialsCanUpload] = useState<Record<string, boolean>>({});
+    const [materialActionError, setMaterialActionError] = useState("");
+    const [deletingMaterialId, setDeletingMaterialId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
     const loadGroups = async () => {
@@ -623,6 +57,71 @@ export default function PeerConnectHome() {
     const loadIncomingInvites = async () => {
         const data = await apiFetch("/groups/invites/me");
         setIncomingInvites(Array.isArray(data) ? data.map(apiInviteToInvite) : []);
+    };
+
+    const loadGroupMaterials = async (groupId: string) => {
+        setLoadingGroupMaterialsId(groupId);
+        try {
+            setMaterialActionError("");
+            const data = await apiFetch(`/groups/${groupId}/materials`);
+            setGroupMaterials((prev) => ({
+                ...prev,
+                [groupId]: Array.isArray(data.materials) ? data.materials.map(apiMaterialToMaterial) : [],
+            }));
+            setGroupMaterialsCanUpload((prev) => ({
+                ...prev,
+                [groupId]: Boolean(data.can_upload),
+            }));
+        } finally {
+            setLoadingGroupMaterialsId((prev) => (prev === groupId ? null : prev));
+        }
+    };
+
+    const openGroupMaterial = (groupId: string, materialId: string) => {
+        setMaterialActionError("");
+        window.open(`${API_BASE}/groups/${groupId}/materials/${materialId}/view`, "_blank", "noopener,noreferrer");
+    };
+
+    const downloadGroupMaterial = async (groupId: string, material: GroupMaterial) => {
+        setMaterialActionError("");
+        try {
+            const response = await fetch(`${API_BASE}/groups/${groupId}/materials/${material.id}/download`, {
+                credentials: "include",
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data?.detail || "Failed to download file");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = material.filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error: unknown) {
+            setMaterialActionError(error instanceof Error ? error.message : "Failed to download file");
+        }
+    };
+
+    const deleteGroupMaterial = async (groupId: string, material: GroupMaterial) => {
+        if (!window.confirm(`Remove "${material.filename}"?`)) return;
+        setMaterialActionError("");
+        setDeletingMaterialId(material.id);
+        try {
+            await apiFetch(`/groups/${groupId}/materials/${material.id}`, { method: "DELETE" });
+            setGroupMaterials((prev) => ({
+                ...prev,
+                [groupId]: (prev[groupId] ?? []).filter((item) => item.id !== material.id),
+            }));
+        } catch (error: unknown) {
+            setMaterialActionError(error instanceof Error ? error.message : "Failed to remove file");
+        } finally {
+            setDeletingMaterialId((prev) => (prev === material.id ? null : prev));
+        }
     };
 
     const resetGroupForm = () => {
@@ -666,6 +165,11 @@ export default function PeerConnectHome() {
             }
         })();
     }, []);
+
+    useEffect(() => {
+        if (!selectedGroup) return;
+        void loadGroupMaterials(selectedGroup.id);
+    }, [selectedGroup?.id]);
 
     const filteredGroups = groups.filter((g) => {
         const q = searchQuery.toLowerCase();
@@ -776,6 +280,11 @@ export default function PeerConnectHome() {
             if (selectedGroup?.id === group.id) {
                 setSelectedGroup(null);
             }
+            setGroupMaterials((prev) => {
+                const next = { ...prev };
+                delete next[group.id];
+                return next;
+            });
         } catch (err: unknown) {
             setCreateError(err instanceof Error ? err.message : "Failed to delete group");
         } finally {
@@ -1124,13 +633,16 @@ export default function PeerConnectHome() {
         .pc-session-label { flex: 1; font-size: 0.82rem; font-weight: 500; color: #1E293B; font-family: 'DM Sans', sans-serif; }
         .pc-session-arrow { color: #475569; font-size: 0.95rem; }
         .pc-material-list { display: flex; flex-direction: column; gap: 0.55rem; }
+        .pc-material-list-scroll { max-height: 320px; overflow-y: auto; padding-right: 0.2rem; }
         .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.20); border-radius: 11px; cursor: pointer; transition: all 0.15s ease; }
         .pc-material-item:hover { background: rgba(255,255,255,0.72); border-color: rgba(96, 125, 173, 0.30); transform: translateX(2px); }
         .pc-material-type-badge { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.56rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #fff; }
         .pc-material-info { flex: 1; min-width: 0; }
         .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
         .pc-material-size { font-size: 0.7rem; color: #475569; margin-top: 0.12rem; font-family: 'DM Sans', sans-serif; }
-        .pc-material-dl { color: #475569; font-size: 0.95rem; }
+        .pc-material-actions { display: flex; gap: 0.45rem; flex-shrink: 0; }
+        .pc-material-action { border: 1px solid rgba(96, 125, 173, 0.22); background: rgba(255,255,255,0.9); color: #334155; border-radius: 9px; padding: 0.42rem 0.7rem; font-size: 0.72rem; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+        .pc-material-action:hover { background: #ffffff; border-color: rgba(96, 125, 173, 0.35); }
 
         /* ── NEW: Invite card styles ── */
         .pc-invite-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); margin-top: 1.35rem; }
@@ -1190,7 +702,8 @@ export default function PeerConnectHome() {
             {/* ── DETAIL VIEW ── */}
             {selectedGroup ? (() => {
                 const sessions = MOCK_SESSIONS[selectedGroup.module] ?? MOCK_SESSIONS.default;
-                const materials = MOCK_MATERIALS[selectedGroup.module] ?? MOCK_MATERIALS.default;
+                const materials = groupMaterials[selectedGroup.id] ?? [];
+                const canUploadMaterials = groupMaterialsCanUpload[selectedGroup.id] ?? selectedGroup.isJoined;
                 const isJoined = selectedGroup.isJoined;
                 const isFull = selectedGroup.members >= selectedGroup.max && !isJoined;
                 const isLoading = joiningId === selectedGroup.id;
@@ -1258,21 +771,43 @@ export default function PeerConnectHome() {
                                             </a>
                                         ))}
                                     </div>
+                                    {materialActionError && <div className="pc-form-error" style={{ marginTop: "0.85rem" }}>{materialActionError}</div>}
                                 </div>
                                 <div className="pc-mat-card">
                                     <div className="pc-mat-card-title">
                                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
                                         Study Materials
                                     </div>
-                                    <div className="pc-material-list">
-                                        {materials.map((m, i) => (
-                                            <div key={i} className="pc-material-item">
-                                                <div className="pc-material-type-badge" style={{ background: FILE_TYPE_COLORS[m.type] ?? "#8A8AAA" }}>{m.type}</div>
+                                    <div className="pc-material-list pc-material-list-scroll">
+                                        {loadingGroupMaterialsId === selectedGroup.id ? (
+                                            <div className="pc-invite-empty">Loading group materials...</div>
+                                        ) : materials.length === 0 ? (
+                                            <div className="pc-invite-empty">No study materials uploaded for this group yet.</div>
+                                        ) : materials.map((m) => (
+                                            <div key={m.id} className="pc-material-item">
+                                                <div className="pc-material-type-badge" style={{ background: FILE_TYPE_COLORS[m.fileType] ?? "#8A8AAA" }}>{m.fileType}</div>
                                                 <div className="pc-material-info">
-                                                    <div className="pc-material-title">{m.title}</div>
-                                                    <div className="pc-material-size">{m.size}</div>
+                                                    <div className="pc-material-title">{m.filename}</div>
+                                                    <div className="pc-material-size">{formatFileSize(m.fileSizeBytes)} · by {m.uploadedByName}</div>
                                                 </div>
-                                                <span className="pc-material-dl">↓</span>
+                                                <div className="pc-material-actions">
+                                                    <button className="pc-material-action" type="button" onClick={() => openGroupMaterial(selectedGroup.id, m.id)}>
+                                                        Open
+                                                    </button>
+                                                    <button className="pc-material-action" type="button" onClick={() => void downloadGroupMaterial(selectedGroup.id, m)}>
+                                                        Download
+                                                    </button>
+                                                    {m.canDelete && (
+                                                        <button
+                                                            className="pc-material-action"
+                                                            type="button"
+                                                            disabled={deletingMaterialId === m.id}
+                                                            onClick={() => void deleteGroupMaterial(selectedGroup.id, m)}
+                                                        >
+                                                            {deletingMaterialId === m.id ? "Removing..." : "Remove"}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -1281,7 +816,17 @@ export default function PeerConnectHome() {
                             {/* ── NEW: Invite Member card, below the two existing cards ── */}
                             <InviteMemberCard group={selectedGroup} moduleColor={selectedGroup.moduleColor} />
                             {/* ── NEW: Upload Study Material card, below the invite card ── */}
-                            <UploadMaterialCard moduleColor={selectedGroup.moduleColor} />
+                            <UploadMaterialCard
+                                group={selectedGroup}
+                                moduleColor={selectedGroup.moduleColor}
+                                canUpload={canUploadMaterials}
+                                onUploaded={(material) => {
+                                    setGroupMaterials((prev) => ({
+                                        ...prev,
+                                        [selectedGroup.id]: [material, ...(prev[selectedGroup.id] ?? [])],
+                                    }));
+                                }}
+                            />
                         </div>
                     </div>
                 );

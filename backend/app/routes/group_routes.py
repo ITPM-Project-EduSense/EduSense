@@ -1,7 +1,9 @@
 import re
+from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status, Depends
+from fastapi import APIRouter, HTTPException, Query, status, Depends, UploadFile, File
+from fastapi.responses import FileResponse
 from beanie import PydanticObjectId
 
 from app.models.study_group import StudyGroup, StudyGroupCreate, StudyGroupResponse, StudyGroupUpdate
@@ -14,6 +16,8 @@ from app.models.user_model import User
 from app.core.security import get_current_user
 from app.core.config import settings
 from app.services.email_service import EmailService
+from app.services.document_service import process_uploaded_document, get_group_materials
+from app.models.study_material import StudyMaterial
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
@@ -54,6 +58,26 @@ def invite_to_response(invite: StudyGroupInvite) -> StudyGroupInviteResponse:
         created_at=invite.created_at,
         responded_at=invite.responded_at,
     )
+
+
+def material_to_response(material: StudyMaterial, current_user: Optional[User] = None) -> dict:
+    current_user_id = str(current_user.id) if current_user else None
+    return {
+        "id": str(material.id),
+        "filename": material.filename,
+        "file_type": material.file_type or "",
+        "file_size_bytes": material.file_size_bytes,
+        "uploaded_by_name": material.uploaded_by_name or "Group Member",
+        "can_delete": current_user_id == material.user_id if current_user_id else False,
+        "created_at": material.created_at.isoformat(),
+    }
+
+
+async def get_group_material_or_404(group_id: str, material_id: str) -> StudyMaterial:
+    material = await StudyMaterial.get(PydanticObjectId(material_id))
+    if not material or material.group_id != group_id:
+        raise HTTPException(status_code=404, detail="Material not found")
+    return material
 
 
 # ─── POST /groups/ ─── Create a new study group ───
@@ -375,3 +399,143 @@ async def decline_group_invite(
     invite.responded_at = datetime.utcnow()
     await invite.save()
     return invite_to_response(invite)
+
+
+@router.get(
+    "/{group_id}/materials",
+    summary="List materials for a study group",
+)
+async def list_group_materials(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    materials = await get_group_materials(group_id=group_id)
+    return {
+        "success": True,
+        "can_upload": str(current_user.id) in group.member_ids,
+        "materials": [material_to_response(material, current_user) for material in materials],
+    }
+
+
+@router.post(
+    "/{group_id}/materials",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload study material to a study group",
+)
+async def upload_group_material(
+    group_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    if str(current_user.id) not in group.member_ids:
+        raise HTTPException(status_code=403, detail="Only group members can upload study materials")
+
+    file_ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else ""
+    if file_ext not in {"pdf", "docx", "pptx"}:
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and PPTX files are allowed")
+
+    material_id = await process_uploaded_document(
+        file=file,
+        user_id=str(current_user.id),
+        subject=group.module,
+        group_id=group_id,
+        uploaded_by_name=current_user.full_name,
+    )
+    material = await StudyMaterial.get(PydanticObjectId(material_id))
+    if not material:
+        raise HTTPException(status_code=404, detail="Uploaded material not found")
+
+    return {
+        "success": True,
+        "material": material_to_response(material, current_user),
+    }
+
+
+@router.delete(
+    "/{group_id}/materials/{material_id}",
+    summary="Delete a study material from a study group",
+)
+async def delete_group_material(
+    group_id: str,
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    material = await get_group_material_or_404(group_id, material_id)
+    if material.user_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the uploader can remove this material")
+
+    if material.file_path:
+        file_path = Path(material.file_path)
+        if file_path.is_file():
+            file_path.unlink()
+
+    await material.delete()
+    return {"success": True, "material_id": material_id}
+
+
+@router.get(
+    "/{group_id}/materials/{material_id}/view",
+    summary="Open a study material from a study group",
+)
+async def view_group_material(
+    group_id: str,
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    if str(current_user.id) not in group.member_ids:
+        raise HTTPException(status_code=403, detail="Only group members can view study materials")
+
+    material = await get_group_material_or_404(group_id, material_id)
+    if not material.file_path or not Path(material.file_path).is_file():
+        raise HTTPException(status_code=404, detail="Original file is not available for this material")
+
+    return FileResponse(
+        path=material.file_path,
+        filename=material.filename,
+        media_type=material.content_type or "application/octet-stream",
+        content_disposition_type="inline",
+    )
+
+
+@router.get(
+    "/{group_id}/materials/{material_id}/download",
+    summary="Download a study material from a study group",
+)
+async def download_group_material(
+    group_id: str,
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    if str(current_user.id) not in group.member_ids:
+        raise HTTPException(status_code=403, detail="Only group members can download study materials")
+
+    material = await get_group_material_or_404(group_id, material_id)
+    if not material.file_path or not Path(material.file_path).is_file():
+        raise HTTPException(status_code=404, detail="Original file is not available for this material")
+
+    return FileResponse(
+        path=material.file_path,
+        filename=material.filename,
+        media_type=material.content_type or "application/octet-stream",
+        content_disposition_type="attachment",
+    )
