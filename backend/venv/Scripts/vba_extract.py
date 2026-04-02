@@ -1,4 +1,4 @@
-#!C:\Users\Sadumina.Rathnayaka\Desktop\ITPM 2\EduSense\backend\venv\Scripts\python.exe
+#!c:\Users\palih\Desktop\New folder\EduSense\backend\venv\Scripts\python.exe
 
 ##############################################################################
 #

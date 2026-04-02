@@ -249,6 +249,154 @@ function InviteMemberCard({ moduleColor }: { moduleColor: string }) {
     );
 }
 
+// ── NEW: Upload Study Material Component ──
+interface UploadedFile {
+    name: string;
+    size: string;
+    type: string;
+}
+
+function UploadMaterialCard({ moduleColor }: { moduleColor: string }) {
+    const [dragOver, setDragOver] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+    const [errorMsg, setErrorMsg] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
+
+    const ACCEPTED_TYPES: Record<string, string> = {
+        "application/pdf": "PDF",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+    };
+
+    const MAX_SIZE_MB = 20;
+
+    const formatSize = (bytes: number): string => {
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const processFiles = (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        setErrorMsg("");
+        setSuccessMsg("");
+        const newFiles: UploadedFile[] = [];
+        const errors: string[] = [];
+
+        Array.from(files).forEach((file) => {
+            const fileType = ACCEPTED_TYPES[file.type];
+            if (!fileType) {
+                errors.push(`"${file.name}" is not a supported file type. Please upload PDF, DOCX, or PPTX files.`);
+                return;
+            }
+            const sizeMB = file.size / (1024 * 1024);
+            if (sizeMB > MAX_SIZE_MB) {
+                errors.push(`"${file.name}" exceeds the ${MAX_SIZE_MB} MB limit.`);
+                return;
+            }
+            const alreadyExists = uploadedFiles.some((f) => f.name === file.name);
+            if (alreadyExists) {
+                errors.push(`"${file.name}" has already been uploaded.`);
+                return;
+            }
+            newFiles.push({ name: file.name, size: formatSize(file.size), type: fileType });
+        });
+
+        if (errors.length > 0) {
+            setErrorMsg(errors[0]);
+            return;
+        }
+        if (newFiles.length > 0) {
+            setUploadedFiles((prev) => [...prev, ...newFiles]);
+            setSuccessMsg(`${newFiles.length === 1 ? `"${newFiles[0].name}" uploaded` : `${newFiles.length} files uploaded`} successfully.`);
+            setTimeout(() => setSuccessMsg(""), 3500);
+        }
+    };
+
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => processFiles(e.target.files);
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setDragOver(false);
+        processFiles(e.dataTransfer.files);
+    };
+
+    const handleRemove = (fileName: string) => {
+        setUploadedFiles((prev) => prev.filter((f) => f.name !== fileName));
+    };
+
+    const FILE_BADGE_COLORS: Record<string, string> = { PDF: "#EF4444", DOCX: "#3B82F6", PPTX: "#F59E0B" };
+
+    return (
+        <div className="pc-upload-card">
+            <div className="pc-mat-card-title" style={{ background: moduleColor }}>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 9.5V2M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 10.5v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                Upload Study Material
+            </div>
+
+            {/* Drop zone */}
+            <div
+                className={`pc-upload-dropzone ${dragOver ? "pc-upload-dropzone-active" : ""}`}
+                style={{ borderColor: dragOver ? moduleColor : undefined, background: dragOver ? `${moduleColor}08` : undefined }}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById("pc-file-input")?.click()}
+            >
+                <div className="pc-upload-dropzone-icon" style={{ color: moduleColor }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <p className="pc-upload-dropzone-text">
+                    <span style={{ fontWeight: 700, color: moduleColor }}>Click to upload</span> or drag & drop
+                </p>
+                <p className="pc-upload-dropzone-hint">PDF, DOCX, PPTX · max {MAX_SIZE_MB} MB per file</p>
+                <input
+                    id="pc-file-input"
+                    type="file"
+                    accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={handleFileInput}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
+                />
+            </div>
+
+            {/* Feedback messages */}
+            {errorMsg && <p className="pc-invite-hint pc-invite-error" style={{ marginTop: "0.55rem" }}>{errorMsg}</p>}
+            {successMsg && <p className="pc-invite-hint pc-invite-success" style={{ marginTop: "0.55rem" }}>{successMsg}</p>}
+
+            {/* Uploaded files list */}
+            {uploadedFiles.length > 0 && (
+                <div className="pc-upload-file-list">
+                    <p className="pc-invited-list-label">Uploaded files</p>
+                    {uploadedFiles.map((f) => (
+                        <div key={f.name} className="pc-upload-file-row">
+                            <div className="pc-material-type-badge" style={{ background: FILE_BADGE_COLORS[f.type] ?? "#8A8AAA", width: 32, height: 32, fontSize: "0.52rem" }}>{f.type}</div>
+                            <div className="pc-material-info">
+                                <div className="pc-material-title">{f.name}</div>
+                                <div className="pc-material-size">{f.size}</div>
+                            </div>
+                            <button
+                                className="pc-upload-remove-btn"
+                                onClick={() => handleRemove(f.name)}
+                                title="Remove file"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function PeerConnectHome() {
     const [groups, setGroups] = useState<Group[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
@@ -274,20 +422,10 @@ export default function PeerConnectHome() {
         groupSchedule.trim() !== "" &&
         groupLeader.trim() !== "";
 
-    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(new Set());
-    
-    useEffect(() => {
-        // Load from localStorage only on client
-        const saved = localStorage.getItem("joinedGroups");
-        if (saved) {
-            setJoinedGroups(new Set<string>(JSON.parse(saved)));
-        }
-    }, []);
-    
-    useEffect(() => {
-        // Save to localStorage whenever joinedGroups changes
-        localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups]));
-    }, [joinedGroups]);
+    const [joinedGroups, setJoinedGroups] = useState<Set<string>>(
+        () => new Set<string>(JSON.parse(localStorage.getItem("joinedGroups") ?? "[]"))
+    );
+    useEffect(() => { localStorage.setItem("joinedGroups", JSON.stringify([...joinedGroups])); }, [joinedGroups]);
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
@@ -371,7 +509,7 @@ export default function PeerConnectHome() {
 
         .pc-wrap {
           width: 100%;
-          background: #D4D7DE;
+          background: #FFFFFF;
         }
 
         .pc-main {
@@ -457,12 +595,12 @@ export default function PeerConnectHome() {
 
         /* --- GRAPH STYLES --- */
         .pc-activity-card {
-            background: #FFFFFF;
+            background: #d2dff7;
             border-radius: 18px;
             padding: 1.5rem;
             margin-bottom: 3rem;
-            border: 1px solid rgba(0,0,0,0.08);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid rgba(96, 125, 173, 0.28);
+            box-shadow: 0 6px 22px rgba(15,23,42,0.08);
         }
         .pc-activity-header {
             display: flex;
@@ -474,11 +612,12 @@ export default function PeerConnectHome() {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.75rem;
             font-weight: 700;
-            color: #34A853;
+            color: #166534;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: rgba(52, 168, 83, 0.1);
+            background: rgba(255,255,255,0.45);
+            border: 1px solid rgba(22,101,52,0.12);
             padding: 0.4rem 0.8rem;
             border-radius: 100px;
         }
@@ -495,7 +634,7 @@ export default function PeerConnectHome() {
             justify-content: space-between;
             margin-top: 0.75rem;
             font-size: 0.65rem;
-            color: #8A8AAA;
+            color: #475569;
             font-family: 'DM Sans', sans-serif;
             padding: 0 5px;
         }
@@ -509,16 +648,17 @@ export default function PeerConnectHome() {
           display: flex;
           align-items: center;
           gap: 0.65rem;
-          color: #1E40AF;
+          color: #1E3A8A;
         }
         /* (Remaining styles unchanged below) */
         .pc-count {
-          background: rgba(0,0,0,0.07);
+          background: rgba(255,255,255,0.42);
+          border: 1px solid rgba(96, 125, 173, 0.18);
           border-radius: 100px;
           padding: 0.12rem 0.55rem;
           font-size: 0.7rem;
           font-weight: 600;
-          color: #6B6B8A;
+          color: #334155;
           font-family: 'DM Sans', sans-serif;
         }
 
@@ -586,17 +726,17 @@ export default function PeerConnectHome() {
         .pc-filter-chip {
           padding: 0.35rem 0.9rem;
           border-radius: 100px;
-          border: 1px solid rgba(0,0,0,0.12);
+          border: 1px solid rgba(148,163,184,0.24);
           background: #FFFFFF;
-          color: #6B6B8A;
+          color: #475569;
           font-size: 0.75rem;
           font-family: 'DM Sans', sans-serif;
-          font-weight: 500;
+          font-weight: 600;
           cursor: pointer;
           transition: all 0.15s ease;
         }
-        .pc-filter-chip:hover { border-color: rgba(0,0,0,0.22); color: #1A1A2E; }
-        .pc-filter-chip.pc-active { background: #2563EB; border-color: #2563EB; color: #FFFFFF; }
+        .pc-filter-chip:hover { border-color: rgba(59,130,246,0.28); background: #F8FAFC; color: #1E293B; }
+        .pc-filter-chip.pc-active { background: #EFF6FF; border-color: rgba(59,130,246,0.30); color: #2563EB; }
 
         .pc-groups-grid {
           display: grid;
@@ -604,15 +744,15 @@ export default function PeerConnectHome() {
           gap: 0.9rem;
         }
         .pc-group-card {
-          background: #FFFFFF;
-          border: 1px solid rgba(0,0,0,0.07);
+          background: #d2dff7;
+          border: 1px solid rgba(96, 125, 173, 0.28);
           border-radius: 15px;
           padding: 1.25rem;
           transition: all 0.2s ease;
           cursor: pointer;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          box-shadow: 0 4px 14px rgba(15,23,42,0.07);
         }
-        .pc-group-card:hover { border-color: rgba(0,0,0,0.15); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.09); }
+        .pc-group-card:hover { border-color: rgba(96, 125, 173, 0.42); transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15,23,42,0.10); }
         .pc-group-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.85rem; }
         .pc-group-module-badge {
           display: inline-flex; align-items: center; gap: 0.4rem;
@@ -620,22 +760,22 @@ export default function PeerConnectHome() {
           font-size: 0.68rem; font-weight: 600;
           font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0.03em;
         }
-        .pc-group-name { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.92rem; margin-bottom: 0.4rem; letter-spacing: -0.01em; color: #1E40AF; }
-        .pc-group-schedule { font-size: 0.76rem; color: #7A7A96; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
+        .pc-group-name { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.92rem; margin-bottom: 0.4rem; letter-spacing: -0.01em; color: #1E3A8A; }
+        .pc-group-schedule { font-size: 0.76rem; color: #334155; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
         .pc-group-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
-        .pc-tag { padding: 0.18rem 0.6rem; background: rgba(0,0,0,0.06); border-radius: 100px; font-size: 0.68rem; color: #5A5A72; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+        .pc-tag { padding: 0.18rem 0.6rem; background: rgba(255,255,255,0.52); border: 1px solid rgba(96, 125, 173, 0.18); border-radius: 100px; font-size: 0.68rem; color: #334155; font-weight: 500; font-family: 'DM Sans', sans-serif; }
         .pc-group-footer { display: flex; align-items: center; justify-content: space-between; }
         .pc-member-bar-wrap { flex: 1; margin-right: 1rem; }
-        .pc-member-bar-label { font-size: 0.68rem; color: #8A8AAA; margin-bottom: 0.3rem; font-family: 'DM Sans', sans-serif; }
-        .pc-member-bar { height: 3px; background: rgba(0,0,0,0.1); border-radius: 100px; overflow: hidden; }
+        .pc-member-bar-label { font-size: 0.68rem; color: #475569; margin-bottom: 0.3rem; font-family: 'DM Sans', sans-serif; }
+        .pc-member-bar { height: 3px; background: rgba(255,255,255,0.65); border-radius: 100px; overflow: hidden; }
         .pc-member-bar-fill { height: 100%; border-radius: 100px; transition: width 0.4s ease; }
         .pc-join-btn { padding: 0.45rem 1.1rem; border-radius: 8px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
         .pc-join-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .pc-join-btn.pc-default { background: rgba(0,0,0,0.06); color: #1A1A2E; border: 1px solid rgba(0,0,0,0.1); }
-        .pc-join-btn.pc-default:hover:not(:disabled) { background: rgba(0,0,0,0.11); }
-        .pc-join-btn.pc-joined { background: rgba(52,211,153,0.15); color: #34D399; border: 1px solid rgba(52,211,153,0.3); }
+        .pc-join-btn.pc-default { background: #FFFFFF; color: #334155; border: 1px solid rgba(148,163,184,0.24); }
+        .pc-join-btn.pc-default:hover:not(:disabled) { background: #F8FAFC; border-color: rgba(59,130,246,0.22); color: #1E293B; }
+        .pc-join-btn.pc-joined { background: #ECFDF5; color: #059669; border: 1px solid rgba(16,185,129,0.24); }
 
-        .pc-empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; color: #8A8AAA; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
+        .pc-empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; color: #334155; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
 
         .pc-modal-overlay {
           position: fixed;
@@ -649,7 +789,7 @@ export default function PeerConnectHome() {
         }
         @keyframes pc-fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .pc-modal {
-          background: #FFFFFF; border: 1px solid rgba(0,0,0,0.1); border-radius: 18px;
+          background: #FFFFFF; border: 1px solid rgba(148,163,184,0.22); border-radius: 18px;
           padding: 1.75rem; width: 100%; max-width: 420px;
           animation: pc-slideUp 0.25s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
@@ -660,66 +800,79 @@ export default function PeerConnectHome() {
         .pc-modal-close:hover { background: rgba(0,0,0,0.11); color: #1A1A2E; }
         .pc-form-group { margin-bottom: 1.1rem; }
         .pc-form-label { display: block; font-size: 0.72rem; font-weight: 600; color: #6B6B8A; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .pc-form-input, .pc-form-select { width: 100%; background: #F5F5F8; border: 1px solid rgba(0,0,0,0.12); border-radius: 9px; padding: 0.65rem 0.9rem; color: #1A1A2E; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s; }
-        .pc-form-input:focus, .pc-form-select:focus { border-color: rgba(37,99,235,0.55); }
+        .pc-form-input, .pc-form-select { width: 100%; background: #F8FAFC; border: 1px solid rgba(148,163,184,0.24); border-radius: 9px; padding: 0.65rem 0.9rem; color: #1A1A2E; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; }
+        .pc-form-input:focus, .pc-form-select:focus { border-color: rgba(59,130,246,0.45); background: #FFFFFF; box-shadow: 0 0 0 3px rgba(59,130,246,0.10); }
         .pc-form-select option { background: #FFFFFF; color: #1A1A2E; }
         .pc-form-hint { margin-top: 0.3rem; font-size: 0.72rem; color: #9A9AB0; font-family: 'DM Sans', sans-serif; }
         .pc-form-error { margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 7px; color: #EF4444; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; }
-        .pc-modal-submit { width: 100%; padding: 0.78rem; background: #2563EB; color: #ffffff; border: none; border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: all 0.2s ease; margin-top: 0.4rem; }
-        .pc-modal-submit:hover:not(:disabled) { background: #1D4ED8; box-shadow: 0 8px 30px rgba(37,99,235,0.28); }
+        .pc-modal-submit { width: 100%; padding: 0.78rem; background: #2563EB; color: #ffffff; border: none; border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: all 0.2s ease; margin-top: 0.4rem; box-shadow: 0 8px 20px rgba(37,99,235,0.18); }
+        .pc-modal-submit:hover:not(:disabled) { background: #1D4ED8; box-shadow: 0 10px 24px rgba(37,99,235,0.22); }
         .pc-modal-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* DETAIL VIEW */
-        .pc-back-btn { display: inline-flex; align-items: center; gap: 0.45rem; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.1); border-radius: 9px; padding: 0.48rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.8rem; color: #5A5A72; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-        .pc-back-btn:hover { background: #F5F5F8; color: #1A1A2E; border-color: rgba(0,0,0,0.18); }
+        .pc-back-btn { display: inline-flex; align-items: center; gap: 0.45rem; background: rgba(255,255,255,0.48); border: 1px solid rgba(96, 125, 173, 0.24); border-radius: 9px; padding: 0.48rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.8rem; color: #334155; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(15,23,42,0.06); }
+        .pc-back-btn:hover { background: rgba(255,255,255,0.72); color: #1E293B; border-color: rgba(96, 125, 173, 0.32); }
 
-        .pc-mat-group-hero { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+        .pc-mat-group-hero { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 18px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 6px 22px rgba(15,23,42,0.08); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
         .pc-mat-group-hero-left { flex: 1; min-width: 0; }
-        .pc-mat-group-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.025em; color: #1E40AF; margin-bottom: 0.65rem; }
+        .pc-mat-group-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.025em; color: #1E3A8A; margin-bottom: 0.65rem; }
         .pc-mat-group-meta { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
         .pc-mat-module-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.7rem; border-radius: 100px; font-size: 0.7rem; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0.03em; }
-        .pc-mat-schedule { font-size: 0.8rem; color: #7A7A96; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
-        .pc-mat-members-text { font-size: 0.77rem; color: #9A9AB0; font-family: 'DM Sans', sans-serif; }
+        .pc-mat-schedule { font-size: 0.8rem; color: #334155; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
+        .pc-mat-members-text { font-size: 0.77rem; color: #475569; font-family: 'DM Sans', sans-serif; }
         .pc-mat-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
         .pc-mat-join-btn { padding: 0.65rem 1.5rem; border-radius: 10px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; align-self: flex-start; }
-        .pc-mat-join-btn.pc-not-joined { background: #2563EB; color: #ffffff; }
-        .pc-mat-join-btn.pc-not-joined:hover:not(:disabled) { background: #1D4ED8; box-shadow: 0 8px 30px rgba(37,99,235,0.28); }
-        .pc-mat-join-btn.pc-is-joined { background: rgba(52,211,153,0.12); color: #34D399; border: 1px solid rgba(52,211,153,0.3); }
-        .pc-mat-join-btn.pc-is-joined:hover:not(:disabled) { background: rgba(52,211,153,0.2); }
-        .pc-mat-join-btn.pc-is-full { background: rgba(0,0,0,0.06); color: #9A9AB0; cursor: not-allowed; }
+        .pc-mat-join-btn.pc-not-joined { background: #2563EB; color: #ffffff; box-shadow: 0 8px 20px rgba(37,99,235,0.18); }
+        .pc-mat-join-btn.pc-not-joined:hover:not(:disabled) { background: #1D4ED8; box-shadow: 0 10px 24px rgba(37,99,235,0.22); }
+        .pc-mat-join-btn.pc-is-joined { background: #ECFDF5; color: #059669; border: 1px solid rgba(16,185,129,0.24); }
+        .pc-mat-join-btn.pc-is-joined:hover:not(:disabled) { background: #D1FAE5; }
+        .pc-mat-join-btn.pc-is-full { background: #F8FAFC; color: #94A3B8; border: 1px solid rgba(148,163,184,0.18); cursor: not-allowed; }
         .pc-mat-join-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
         .pc-mat-content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.35rem; }
         @media (max-width: 640px) { .pc-mat-content-grid { grid-template-columns: 1fr; } }
-        .pc-mat-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 1.35rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .pc-mat-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background: #2563EB; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.28rem 0.75rem; border-radius: 100px; margin-bottom: 1rem; }
+        .pc-mat-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
+        .pc-mat-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background: #2563EB; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.28rem 0.75rem; border-radius: 100px; margin-bottom: 1rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
         .pc-session-list { display: flex; flex-direction: column; gap: 0.55rem; }
-        .pc-session-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: #F7F7FA; border: 1px solid rgba(0,0,0,0.07); border-radius: 11px; text-decoration: none; transition: all 0.15s ease; cursor: pointer; }
-        .pc-session-item:hover { background: #F0F0F5; border-color: rgba(0,0,0,0.13); transform: translateX(2px); }
+        .pc-session-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.20); border-radius: 11px; text-decoration: none; transition: all 0.15s ease; cursor: pointer; }
+        .pc-session-item:hover { background: rgba(255,255,255,0.72); border-color: rgba(96, 125, 173, 0.30); transform: translateX(2px); }
         .pc-session-platform-dot { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.6rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #fff; }
-        .pc-session-label { flex: 1; font-size: 0.82rem; font-weight: 500; color: #1A1A2E; font-family: 'DM Sans', sans-serif; }
-        .pc-session-arrow { color: #B0B0C8; font-size: 0.95rem; }
+        .pc-session-label { flex: 1; font-size: 0.82rem; font-weight: 500; color: #1E293B; font-family: 'DM Sans', sans-serif; }
+        .pc-session-arrow { color: #475569; font-size: 0.95rem; }
         .pc-material-list { display: flex; flex-direction: column; gap: 0.55rem; }
-        .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: #F7F7FA; border: 1px solid rgba(0,0,0,0.07); border-radius: 11px; cursor: pointer; transition: all 0.15s ease; }
-        .pc-material-item:hover { background: #F0F0F5; border-color: rgba(0,0,0,0.13); transform: translateX(2px); }
+        .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.20); border-radius: 11px; cursor: pointer; transition: all 0.15s ease; }
+        .pc-material-item:hover { background: rgba(255,255,255,0.72); border-color: rgba(96, 125, 173, 0.30); transform: translateX(2px); }
         .pc-material-type-badge { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.56rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #fff; }
         .pc-material-info { flex: 1; min-width: 0; }
-        .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #1A1A2E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
-        .pc-material-size { font-size: 0.7rem; color: #9A9AB0; margin-top: 0.12rem; font-family: 'DM Sans', sans-serif; }
-        .pc-material-dl { color: #B0B0C8; font-size: 0.95rem; }
+        .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
+        .pc-material-size { font-size: 0.7rem; color: #475569; margin-top: 0.12rem; font-family: 'DM Sans', sans-serif; }
+        .pc-material-dl { color: #475569; font-size: 0.95rem; }
 
         /* ── NEW: Invite card styles ── */
-        .pc-invite-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 1.35rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-top: 1.35rem; }
+        .pc-invite-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); margin-top: 1.35rem; }
         .pc-invite-input-row { display: flex; gap: 0.65rem; align-items: flex-start; }
-        .pc-invite-btn { padding: 0.65rem 1.15rem; border-radius: 9px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; opacity: 1; flex-shrink: 0; }
+        .pc-invite-btn { padding: 0.65rem 1.15rem; border-radius: 9px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; opacity: 1; flex-shrink: 0; box-shadow: 0 8px 20px rgba(15,23,42,0.10); }
         .pc-invite-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-        .pc-invite-btn:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .pc-invite-btn:not(:disabled):hover { filter: brightness(1.04); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15,23,42,0.14); }
         .pc-invite-hint { font-size: 0.72rem; font-family: 'DM Sans', sans-serif; margin-top: 0.45rem; }
         .pc-invite-error { color: #EF4444; }
         .pc-invite-success { color: #34A853; }
-        .pc-invited-list { margin-top: 1rem; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
-        .pc-invited-list-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #9A9AB0; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 0.35rem; }
-        .pc-invited-chip { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; color: #34A853; background: rgba(52,168,83,0.08); border: 1px solid rgba(52,168,83,0.2); border-radius: 100px; padding: 0.28rem 0.75rem; width: fit-content; }
+        .pc-invited-list { margin-top: 1rem; border-top: 1px solid rgba(96, 125, 173, 0.20); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        .pc-invited-list-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #475569; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 0.35rem; }
+        .pc-invited-chip { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; color: #059669; background: #ECFDF5; border: 1px solid rgba(16,185,129,0.20); border-radius: 100px; padding: 0.28rem 0.75rem; width: fit-content; }
+
+        /* ── NEW: Upload card styles ── */
+        .pc-upload-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); margin-top: 1.35rem; }
+        .pc-upload-dropzone { border: 2px dashed rgba(96, 125, 173, 0.28); border-radius: 12px; padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; user-select: none; background: rgba(255,255,255,0.5); }
+        .pc-upload-dropzone:hover { border-color: rgba(96, 125, 173, 0.40); background: rgba(255,255,255,0.72); }
+        .pc-upload-dropzone-active { border-style: solid !important; }
+        .pc-upload-dropzone-icon { margin-bottom: 0.25rem; opacity: 0.85; }
+        .pc-upload-dropzone-text { font-size: 0.85rem; font-family: 'DM Sans', sans-serif; color: #334155; margin: 0; text-align: center; }
+        .pc-upload-dropzone-hint { font-size: 0.72rem; color: #475569; font-family: 'DM Sans', sans-serif; margin: 0; text-align: center; }
+        .pc-upload-file-list { margin-top: 1rem; border-top: 1px solid rgba(96, 125, 173, 0.20); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .pc-upload-file-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.20); border-radius: 11px; }
+        .pc-upload-remove-btn { width: 26px; height: 26px; border-radius: 7px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.18); color: #EF4444; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s ease; }
+        .pc-upload-remove-btn:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.35); }
       `}</style>
 
             {/* ── DETAIL VIEW ── */}
@@ -801,6 +954,8 @@ export default function PeerConnectHome() {
                             </div>
                             {/* ── NEW: Invite Member card, below the two existing cards ── */}
                             <InviteMemberCard moduleColor={selectedGroup.moduleColor} />
+                            {/* ── NEW: Upload Study Material card, below the invite card ── */}
+                            <UploadMaterialCard moduleColor={selectedGroup.moduleColor} />
                         </div>
                     </div>
                 );
