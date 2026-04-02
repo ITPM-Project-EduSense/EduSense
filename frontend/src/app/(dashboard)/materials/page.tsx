@@ -106,7 +106,10 @@ interface Group {
     max: number;
     schedule: string;
     tags: string[];
+    leaderName: string;
+    leaderEmail: string;
     isJoined: boolean;
+    canEdit: boolean;
 }
 
 interface GroupInvite {
@@ -130,7 +133,10 @@ function apiGroupToGroup(g: {
     max_members: number;
     schedule: string;
     tags: string[];
+    leader_name?: string;
+    leader_email?: string;
     is_joined?: boolean;
+    can_edit?: boolean;
 }): Group {
     return {
         id: g.id,
@@ -141,7 +147,10 @@ function apiGroupToGroup(g: {
         max: g.max_members,
         schedule: g.schedule,
         tags: g.tags,
+        leaderName: g.leader_name ?? "",
+        leaderEmail: g.leader_email ?? "",
         isJoined: Boolean(g.is_joined),
+        canEdit: Boolean(g.can_edit),
     };
 }
 
@@ -584,21 +593,26 @@ export default function PeerConnectHome() {
     const [groupTags, setGroupTags] = useState("");
     // ── NEW: group leader name state ──
     const [groupLeader, setGroupLeader] = useState("");
+    const [groupLeaderEmail, setGroupLeaderEmail] = useState("");
+    const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
 
     // ── NEW: derived flag — all required fields filled ──
+    const leaderEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(groupLeaderEmail.trim().toLowerCase());
     const isFormValid =
         groupName.trim() !== "" &&
         groupModule !== "" &&
         groupSchedule.trim() !== "" &&
-        groupLeader.trim() !== "";
+        groupLeader.trim() !== "" &&
+        leaderEmailValid;
 
     const [incomingInvites, setIncomingInvites] = useState<GroupInvite[]>([]);
     const [acceptingInviteId, setAcceptingInviteId] = useState<string | null>(null);
     const [decliningInviteId, setDecliningInviteId] = useState<string | null>(null);
     const [inviteActionError, setInviteActionError] = useState("");
     const [joiningId, setJoiningId] = useState<string | null>(null);
+    const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
     const loadGroups = async () => {
@@ -609,6 +623,36 @@ export default function PeerConnectHome() {
     const loadIncomingInvites = async () => {
         const data = await apiFetch("/groups/invites/me");
         setIncomingInvites(Array.isArray(data) ? data.map(apiInviteToInvite) : []);
+    };
+
+    const resetGroupForm = () => {
+        setGroupName("");
+        setGroupModule("");
+        setGroupSchedule("");
+        setGroupMax("6");
+        setGroupTags("");
+        setGroupLeader("");
+        setGroupLeaderEmail("");
+        setEditingGroupId(null);
+        setCreateError("");
+    };
+
+    const openCreateModal = () => {
+        resetGroupForm();
+        setShowCreateModal(true);
+    };
+
+    const openEditModal = (group: Group) => {
+        setEditingGroupId(group.id);
+        setGroupName(group.name);
+        setGroupModule(group.module);
+        setGroupSchedule(group.schedule);
+        setGroupMax(String(group.max));
+        setGroupTags(group.tags.join(", "));
+        setGroupLeader(group.leaderName);
+        setGroupLeaderEmail(group.leaderEmail);
+        setCreateError("");
+        setShowCreateModal(true);
     };
 
     useEffect(() => {
@@ -630,7 +674,7 @@ export default function PeerConnectHome() {
     });
 
     const handleCreate = async () => {
-        if (!groupName.trim() || !groupModule || !groupSchedule.trim()) {
+        if (!groupName.trim() || !groupModule || !groupSchedule.trim() || !groupLeader.trim() || !leaderEmailValid) {
             setCreateError("Please fill in all required fields.");
             return;
         }
@@ -643,25 +687,26 @@ export default function PeerConnectHome() {
         setCreateError("");
         try {
             const tags = groupTags.split(",").map((t) => t.trim()).filter(Boolean);
-            const data = await apiFetch("/groups/", {
-                method: "POST",
+            const data = await apiFetch(editingGroupId ? `/groups/${editingGroupId}` : "/groups/", {
+                method: editingGroupId ? "PUT" : "POST",
                 body: JSON.stringify({
                     name: groupName.trim(),
                     module: groupModule,
                     schedule: groupSchedule.trim(),
                     max_members: maxVal,
                     tags,
+                    leader_name: groupLeader.trim(),
+                    leader_email: groupLeaderEmail.trim().toLowerCase(),
                 }),
             });
             const newGroup = apiGroupToGroup(data);
-            setGroups((prev) => [newGroup, ...prev]);
-            setSelectedGroup(newGroup);
+            setGroups((prev) => editingGroupId ? prev.map((group) => (group.id === newGroup.id ? newGroup : group)) : [newGroup, ...prev]);
+            setSelectedGroup((prev) => prev?.id === newGroup.id || !prev ? newGroup : prev);
             setShowCreateModal(false);
-            setGroupName(""); setGroupModule(""); setGroupSchedule(""); setGroupMax("6"); setGroupTags("");
+            resetGroupForm();
             // ── NEW: reset leader field on success ──
-            setGroupLeader("");
         } catch (err: unknown) {
-            setCreateError(err instanceof Error ? err.message : "Failed to create group");
+            setCreateError(err instanceof Error ? err.message : `Failed to ${editingGroupId ? "update" : "create"} group`);
         } finally {
             setCreating(false);
         }
@@ -716,6 +761,25 @@ export default function PeerConnectHome() {
             setInviteActionError(err instanceof Error ? err.message : "Failed to decline invite");
         } finally {
             setDecliningInviteId(null);
+        }
+    };
+
+    const handleDeleteGroup = async (group: Group) => {
+        const confirmed = window.confirm(`Delete "${group.name}" for all members? This cannot be undone.`);
+        if (!confirmed) return;
+
+        setDeletingGroupId(group.id);
+        try {
+            await apiFetch(`/groups/${group.id}`, { method: "DELETE" });
+            setGroups((prev) => prev.filter((currentGroup) => currentGroup.id !== group.id));
+            setIncomingInvites((prev) => prev.filter((invite) => invite.groupId !== group.id));
+            if (selectedGroup?.id === group.id) {
+                setSelectedGroup(null);
+            }
+        } catch (err: unknown) {
+            setCreateError(err instanceof Error ? err.message : "Failed to delete group");
+        } finally {
+            setDeletingGroupId(null);
         }
     };
 
@@ -1029,6 +1093,9 @@ export default function PeerConnectHome() {
         /* DETAIL VIEW */
         .pc-back-btn { display: inline-flex; align-items: center; gap: 0.45rem; background: rgba(255,255,255,0.48); border: 1px solid rgba(96, 125, 173, 0.24); border-radius: 9px; padding: 0.48rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.8rem; color: #334155; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(15,23,42,0.06); }
         .pc-back-btn:hover { background: rgba(255,255,255,0.72); color: #1E293B; border-color: rgba(96, 125, 173, 0.32); }
+        .pc-danger-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; background: #FEF2F2; color: #DC2626; border: 1px solid rgba(239,68,68,0.22); border-radius: 9px; padding: 0.48rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.15s ease; }
+        .pc-danger-btn:hover:not(:disabled) { background: #FEE2E2; border-color: rgba(239,68,68,0.32); }
+        .pc-danger-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .pc-mat-group-hero { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 18px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 6px 22px rgba(15,23,42,0.08); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
         .pc-mat-group-hero-left { flex: 1; min-width: 0; }
@@ -1161,6 +1228,20 @@ export default function PeerConnectHome() {
                                 >
                                     {isLoading ? "…" : isJoined ? "✓ Joined — Leave" : isFull ? "Group is full" : (<><svg width="12" height="12" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>Join group</>)}
                                 </button>
+                                {selectedGroup.canEdit && (
+                                    <>
+                                        <button className="pc-back-btn" style={{ marginBottom: 0 }} onClick={() => openEditModal(selectedGroup)}>
+                                            Edit Group
+                                        </button>
+                                        <button
+                                            className="pc-danger-btn"
+                                            disabled={deletingGroupId === selectedGroup.id}
+                                            onClick={() => void handleDeleteGroup(selectedGroup)}
+                                        >
+                                            {deletingGroupId === selectedGroup.id ? "Deleting..." : "Delete Group"}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                             <div className="pc-mat-content-grid">
                                 <div className="pc-mat-card">
@@ -1211,7 +1292,7 @@ export default function PeerConnectHome() {
                             <div className="pc-hero-label">Community Hub</div>
                             <h1>Peer <em>Connect</em></h1>
                             <p>Find your tribe, share resources, and conquer your modules with peer-led study groups.</p>
-                            <button className="pc-create-btn" onClick={() => setShowCreateModal(true)}>
+                            <button className="pc-create-btn" onClick={openCreateModal}>
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
                                 Create New Group
                             </button>
@@ -1341,11 +1422,11 @@ export default function PeerConnectHome() {
 
             {/* ── CREATE MODAL ── */}
             {showCreateModal && (
-                <div className="pc-modal-overlay" onClick={() => !creating && setShowCreateModal(false)}>
+                <div className="pc-modal-overlay" onClick={() => !creating && (setShowCreateModal(false), resetGroupForm())}>
                     <div className="pc-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="pc-modal-header">
-                            <div className="pc-modal-title">Create Study Group</div>
-                            <button className="pc-modal-close" onClick={() => setShowCreateModal(false)}>×</button>
+                            <div className="pc-modal-title">{editingGroupId ? "Edit Study Group" : "Create Study Group"}</div>
+                            <button className="pc-modal-close" onClick={() => { setShowCreateModal(false); resetGroupForm(); }}>×</button>
                         </div>
                         <div className="pc-form-group">
                             <label className="pc-form-label">Group Name</label>
@@ -1355,6 +1436,10 @@ export default function PeerConnectHome() {
                         <div className="pc-form-group">
                             <label className="pc-form-label">Group Leader Name</label>
                             <input className="pc-form-input" placeholder="e.g. Jane Doe" value={groupLeader} onChange={(e) => setGroupLeader(e.target.value)} />
+                        </div>
+                        <div className="pc-form-group">
+                            <label className="pc-form-label">Group Leader Email</label>
+                            <input className="pc-form-input" type="email" placeholder="e.g. leader@example.com" value={groupLeaderEmail} onChange={(e) => setGroupLeaderEmail(e.target.value)} />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                             <div className="pc-form-group">
@@ -1380,7 +1465,7 @@ export default function PeerConnectHome() {
                         {createError && <div className="pc-form-error">{createError}</div>}
                         {/* ── CHANGED: disabled unless isFormValid (or creating) ── */}
                         <button className="pc-modal-submit" disabled={creating || !isFormValid} onClick={handleCreate}>
-                            {creating ? "Creating..." : "Launch Group"}
+                            {creating ? (editingGroupId ? "Saving..." : "Creating...") : (editingGroupId ? "Save Changes" : "Launch Group")}
                         </button>
                     </div>
                 </div>

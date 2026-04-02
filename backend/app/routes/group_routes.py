@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, status, Depends
 from beanie import PydanticObjectId
 
-from app.models.study_group import StudyGroup, StudyGroupCreate, StudyGroupResponse
+from app.models.study_group import StudyGroup, StudyGroupCreate, StudyGroupResponse, StudyGroupUpdate
 from app.models.study_group_invite import (
     StudyGroupInvite,
     StudyGroupInviteCreate,
@@ -20,6 +20,9 @@ router = APIRouter(prefix="/groups", tags=["Groups"])
 
 def group_to_response(group: StudyGroup, current_user: Optional[User] = None) -> StudyGroupResponse:
     current_user_id = str(current_user.id) if current_user else None
+    current_user_email = str(current_user.email).strip().lower() if current_user else None
+    leader_email = str(group.leader_email).strip().lower() if group.leader_email else ""
+    leader_name = group.leader_name or "Group Leader"
     return StudyGroupResponse(
         id=str(group.id),
         name=group.name,
@@ -28,8 +31,11 @@ def group_to_response(group: StudyGroup, current_user: Optional[User] = None) ->
         max_members=group.max_members,
         tags=group.tags,
         created_by=group.created_by,
+        leader_name=leader_name,
+        leader_email=leader_email,
         members=len(group.member_ids),
         is_joined=current_user_id in group.member_ids if current_user_id else False,
+        can_edit=current_user_email == leader_email if current_user_email and leader_email else False,
         created_at=group.created_at,
     )
 
@@ -69,10 +75,63 @@ async def create_group(
         max_members=data.max_members,
         tags=data.tags,
         created_by=str(current_user.id),
+        leader_name=data.leader_name,
+        leader_email=data.leader_email,
         member_ids=[str(current_user.id)],
     )
     await group.insert()
     return group_to_response(group, current_user)
+
+
+@router.put(
+    "/{group_id}",
+    response_model=StudyGroupResponse,
+    summary="Update a study group",
+)
+async def update_group(
+    group_id: str,
+    data: StudyGroupUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    if not group.leader_email or str(current_user.email).strip().lower() != str(group.leader_email).strip().lower():
+        raise HTTPException(status_code=403, detail="Only the group leader can edit this group")
+
+    if data.max_members < len(group.member_ids):
+        raise HTTPException(status_code=400, detail="Max members cannot be lower than the current member count")
+
+    group.name = data.name
+    group.module = data.module
+    group.schedule = data.schedule
+    group.max_members = data.max_members
+    group.tags = data.tags
+    group.leader_name = data.leader_name
+    group.leader_email = data.leader_email
+    await group.save()
+    return group_to_response(group, current_user)
+
+
+@router.delete(
+    "/{group_id}",
+    summary="Delete a study group",
+)
+async def delete_group(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    if not group.leader_email or str(current_user.email).strip().lower() != str(group.leader_email).strip().lower():
+        raise HTTPException(status_code=403, detail="Only the group leader can delete this group")
+
+    await StudyGroupInvite.find(StudyGroupInvite.group_id == group_id).delete()
+    await group.delete()
+    return {"message": "Group deleted successfully", "group_id": group_id}
 
 
 # ─── GET /groups/ ─── List all study groups ───
