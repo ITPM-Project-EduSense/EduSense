@@ -20,10 +20,11 @@ async def connect_db():
     from app.models.study_material import StudyMaterial, Concept
     from app.models.study_schedule import StudySchedule, SmartSchedule
     from app.models.study_group import StudyGroup
+    from app.models.study_group_invite import StudyGroupInvite
 
     await init_beanie(
         database=db,
-        document_models=[Task, User, StudyMaterial, Concept, StudySchedule, SmartSchedule, StudyGroup]
+        document_models=[Task, User, StudyMaterial, Concept, StudySchedule, SmartSchedule, StudyGroup, StudyGroupInvite]
     )
 
     print(f"Connected to MongoDB: {settings.DATABASE_NAME}")

@@ -109,6 +109,19 @@ interface Group {
     isJoined: boolean;
 }
 
+interface GroupInvite {
+    id: string;
+    groupId: string;
+    groupName: string;
+    groupModule: string;
+    invitedEmail: string;
+    invitedByName: string;
+    status: "pending" | "accepted" | "declined";
+    emailSent: boolean;
+    createdAt: string;
+    respondedAt?: string | null;
+}
+
 function apiGroupToGroup(g: {
     id: string;
     name: string;
@@ -129,6 +142,32 @@ function apiGroupToGroup(g: {
         schedule: g.schedule,
         tags: g.tags,
         isJoined: Boolean(g.is_joined),
+    };
+}
+
+function apiInviteToInvite(invite: {
+    id: string;
+    group_id: string;
+    group_name: string;
+    group_module: string;
+    invited_email: string;
+    invited_by_name: string;
+    status: "pending" | "accepted" | "declined";
+    email_sent?: boolean;
+    created_at: string;
+    responded_at?: string | null;
+}): GroupInvite {
+    return {
+        id: invite.id,
+        groupId: invite.group_id,
+        groupName: invite.group_name,
+        groupModule: invite.group_module,
+        invitedEmail: invite.invited_email,
+        invitedByName: invite.invited_by_name,
+        status: invite.status,
+        emailSent: Boolean(invite.email_sent),
+        createdAt: invite.created_at,
+        respondedAt: invite.responded_at,
     };
 }
 
@@ -168,24 +207,82 @@ function ActivityGraph() {
 }
 
 // ── NEW: Invite Member Component ──
-function InviteMemberCard({ moduleColor }: { moduleColor: string }) {
+function InviteMemberCard({
+    group,
+    moduleColor,
+}: {
+    group: Group;
+    moduleColor: string;
+}) {
     const [email, setEmail] = useState("");
     const [touched, setTouched] = useState(false);
-    const [invitedList, setInvitedList] = useState<string[]>([]);
+    const [invites, setInvites] = useState<GroupInvite[]>([]);
     const [successMsg, setSuccessMsg] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [loadingInvites, setLoadingInvites] = useState(true);
 
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isValidEmail = EMAIL_REGEX.test(email.trim());
+    const normalizedEmail = email.trim().toLowerCase();
+    const isValidEmail = EMAIL_REGEX.test(normalizedEmail);
     const showError = touched && email.trim() !== "" && !isValidEmail;
-    const alreadyInvited = invitedList.includes(email.trim().toLowerCase());
+    const alreadyInvited = invites.some(
+        (invite) => invite.invitedEmail === normalizedEmail && invite.status === "pending"
+    );
 
-    const handleInvite = () => {
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadInvites = async () => {
+            setLoadingInvites(true);
+            try {
+                const data = await apiFetch(`/groups/${group.id}/invites`);
+                if (!cancelled) {
+                    setInvites(Array.isArray(data) ? data.map(apiInviteToInvite) : []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setInvites([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingInvites(false);
+                }
+            }
+        };
+
+        void loadInvites();
+        return () => {
+            cancelled = true;
+        };
+    }, [group.id]);
+
+    const handleInvite = async () => {
         if (!isValidEmail || alreadyInvited) return;
-        setInvitedList((prev) => [...prev, email.trim().toLowerCase()]);
-        setSuccessMsg(`Invite sent to ${email.trim()}`);
-        setEmail("");
-        setTouched(false);
-        setTimeout(() => setSuccessMsg(""), 3000);
+
+        setSubmitting(true);
+        setSuccessMsg("");
+        setErrorMsg("");
+        try {
+            const data = await apiFetch(`/groups/${group.id}/invites`, {
+                method: "POST",
+                body: JSON.stringify({ invited_email: normalizedEmail }),
+            });
+            const createdInvite = apiInviteToInvite(data);
+            setInvites((prev) => [createdInvite, ...prev]);
+            setSuccessMsg(
+                createdInvite.emailSent
+                    ? `Invite sent to ${createdInvite.invitedEmail}`
+                    : `Invite saved for ${createdInvite.invitedEmail}. Email delivery is not available right now.`
+            );
+            setEmail("");
+            setTouched(false);
+            setTimeout(() => setSuccessMsg(""), 3500);
+        } catch (err: unknown) {
+            setErrorMsg(err instanceof Error ? err.message : "Failed to send invite");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -205,8 +302,8 @@ function InviteMemberCard({ moduleColor }: { moduleColor: string }) {
                         type="email"
                         placeholder="Enter email address..."
                         value={email}
-                        onChange={(e) => { setEmail(e.target.value); setTouched(true); setSuccessMsg(""); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
+                        onChange={(e) => { setEmail(e.target.value); setTouched(true); setSuccessMsg(""); setErrorMsg(""); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") void handleInvite(); }}
                         style={{
                             background: "#F7F7FA",
                             borderColor: showError ? "rgba(239,68,68,0.6)" : alreadyInvited && touched ? "rgba(239,68,68,0.6)" : undefined,
@@ -220,10 +317,10 @@ function InviteMemberCard({ moduleColor }: { moduleColor: string }) {
                 <button
                     className="pc-invite-btn"
                     style={{ background: moduleColor }}
-                    disabled={!isValidEmail || alreadyInvited}
-                    onClick={handleInvite}
+                    disabled={!isValidEmail || alreadyInvited || submitting}
+                    onClick={() => void handleInvite()}
                 >
-                    Send Invite
+                    {submitting ? "Sending..." : "Send Invite"}
                 </button>
             </div>
 
@@ -231,28 +328,100 @@ function InviteMemberCard({ moduleColor }: { moduleColor: string }) {
                 <p className="pc-invite-hint pc-invite-error">Please enter a valid email address (e.g. name@domain.com)</p>
             )}
             {alreadyInvited && touched && (
-                <p className="pc-invite-hint pc-invite-error">This email has already been invited.</p>
+                <p className="pc-invite-hint pc-invite-error">This email already has a pending invite for this group.</p>
+            )}
+            {errorMsg && (
+                <p className="pc-invite-hint pc-invite-error">{errorMsg}</p>
             )}
             {successMsg && (
                 <p className="pc-invite-hint pc-invite-success">{successMsg}</p>
             )}
 
-            {invitedList.length > 0 && (
-                <div className="pc-invited-list">
-                    <p className="pc-invited-list-label">Pending invites</p>
-                    {invitedList.map((e) => (
-                        <div key={e} className="pc-invited-chip">
-                            <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            {e}
+            <div className="pc-invited-list">
+                <p className="pc-invited-list-label">Invite status</p>
+                {loadingInvites ? (
+                    <div className="pc-invite-empty">Loading invites...</div>
+                ) : invites.length === 0 ? (
+                    <div className="pc-invite-empty">No invites have been sent for this group yet.</div>
+                ) : (
+                    invites.map((invite) => (
+                        <div key={invite.id} className="pc-invite-row">
+                            <div className="pc-invite-row-main">
+                                <div className="pc-invite-row-email">{invite.invitedEmail}</div>
+                                <div className="pc-invite-row-meta">
+                                    {invite.emailSent ? "Email sent" : "In-app invite saved"} · {invite.groupModule}
+                                </div>
+                            </div>
+                            <span className={`pc-invite-status pc-status-${invite.status}`}>{invite.status}</span>
                         </div>
-                    ))}
-                </div>
-            )}
+                    ))
+                )}
+            </div>
         </div>
     );
 }
 
 // ── NEW: Upload Study Material Component ──
+function IncomingInvitesCard({
+    invites,
+    acceptingInviteId,
+    decliningInviteId,
+    onAccept,
+    onDecline,
+}: {
+    invites: GroupInvite[];
+    acceptingInviteId: string | null;
+    decliningInviteId: string | null;
+    onAccept: (invite: GroupInvite) => void;
+    onDecline: (invite: GroupInvite) => void;
+}) {
+    if (invites.length === 0) return null;
+
+    return (
+        <section className="pc-incoming-card">
+            <div className="pc-section-title" style={{ marginBottom: "1rem" }}>
+                Invitations Waiting for You
+                <span className="pc-count">{invites.length}</span>
+            </div>
+            <div className="pc-incoming-list">
+                {invites.map((invite) => {
+                    const accepting = acceptingInviteId === invite.id;
+                    const declining = decliningInviteId === invite.id;
+                    return (
+                        <div key={invite.id} className="pc-incoming-item">
+                            <div className="pc-incoming-copy">
+                                <div className="pc-incoming-title">
+                                    Join {invite.groupName}
+                                    <span className="pc-incoming-module">{invite.groupModule}</span>
+                                </div>
+                                <div className="pc-incoming-subtitle">
+                                    {invite.invitedByName} invited you to this study group.
+                                </div>
+                            </div>
+                            <div className="pc-incoming-actions">
+                                <button
+                                    className="pc-incoming-btn pc-accept"
+                                    disabled={accepting || declining}
+                                    onClick={() => onAccept(invite)}
+                                >
+                                    {accepting ? "Joining..." : "Join"}
+                                </button>
+                                <button
+                                    className="pc-incoming-btn pc-decline"
+                                    disabled={accepting || declining}
+                                    onClick={() => onDecline(invite)}
+                                >
+                                    {declining ? "Declining..." : "Decline"}
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
 interface UploadedFile {
     name: string;
     size: string;
@@ -425,14 +594,27 @@ export default function PeerConnectHome() {
         groupSchedule.trim() !== "" &&
         groupLeader.trim() !== "";
 
+    const [incomingInvites, setIncomingInvites] = useState<GroupInvite[]>([]);
+    const [acceptingInviteId, setAcceptingInviteId] = useState<string | null>(null);
+    const [decliningInviteId, setDecliningInviteId] = useState<string | null>(null);
+    const [inviteActionError, setInviteActionError] = useState("");
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+
+    const loadGroups = async () => {
+        const data = await apiFetch("/groups/");
+        setGroups(data.map(apiGroupToGroup));
+    };
+
+    const loadIncomingInvites = async () => {
+        const data = await apiFetch("/groups/invites/me");
+        setIncomingInvites(Array.isArray(data) ? data.map(apiInviteToInvite) : []);
+    };
 
     useEffect(() => {
         (async () => {
             try {
-                const data = await apiFetch("/groups/");
-                setGroups(data.map(apiGroupToGroup));
+                await Promise.all([loadGroups(), loadIncomingInvites()]);
             } catch {
                 // silently fall back to empty list
             } finally {
@@ -500,6 +682,40 @@ export default function PeerConnectHome() {
             // keep previous UI state on failure
         } finally {
             setJoiningId(null);
+        }
+    };
+
+    const handleAcceptInvite = async (invite: GroupInvite) => {
+        setAcceptingInviteId(invite.id);
+        setInviteActionError("");
+        try {
+            const data = await apiFetch(`/groups/invites/${invite.id}/accept`, { method: "POST" });
+            const joinedGroup = apiGroupToGroup(data);
+            setGroups((prev) => {
+                const exists = prev.some((group) => group.id === joinedGroup.id);
+                return exists
+                    ? prev.map((group) => (group.id === joinedGroup.id ? joinedGroup : group))
+                    : [joinedGroup, ...prev];
+            });
+            setSelectedGroup(joinedGroup);
+            setIncomingInvites((prev) => prev.filter((currentInvite) => currentInvite.id !== invite.id));
+        } catch (err: unknown) {
+            setInviteActionError(err instanceof Error ? err.message : "Failed to accept invite");
+        } finally {
+            setAcceptingInviteId(null);
+        }
+    };
+
+    const handleDeclineInvite = async (invite: GroupInvite) => {
+        setDecliningInviteId(invite.id);
+        setInviteActionError("");
+        try {
+            await apiFetch(`/groups/invites/${invite.id}/decline`, { method: "POST" });
+            setIncomingInvites((prev) => prev.filter((currentInvite) => currentInvite.id !== invite.id));
+        } catch (err: unknown) {
+            setInviteActionError(err instanceof Error ? err.message : "Failed to decline invite");
+        } finally {
+            setDecliningInviteId(null);
         }
     };
 
@@ -863,6 +1079,34 @@ export default function PeerConnectHome() {
         .pc-invited-chip { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; color: #059669; background: #ECFDF5; border: 1px solid rgba(16,185,129,0.20); border-radius: 100px; padding: 0.28rem 0.75rem; width: fit-content; }
 
         /* ── NEW: Upload card styles ── */
+        .pc-invite-empty { font-size: 0.78rem; color: #475569; font-family: 'DM Sans', sans-serif; background: rgba(255,255,255,0.45); border: 1px dashed rgba(96, 125, 173, 0.26); border-radius: 11px; padding: 0.85rem 1rem; }
+        .pc-invite-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.18); border-radius: 11px; padding: 0.75rem 0.9rem; }
+        .pc-invite-row-main { min-width: 0; }
+        .pc-invite-row-email { font-size: 0.84rem; font-weight: 600; color: #1E293B; font-family: 'DM Sans', sans-serif; word-break: break-word; }
+        .pc-invite-row-meta { font-size: 0.72rem; color: #64748B; font-family: 'DM Sans', sans-serif; margin-top: 0.2rem; }
+        .pc-invite-status { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0.28rem 0.7rem; text-transform: capitalize; font-size: 0.68rem; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pc-status-pending { color: #92400E; background: #FEF3C7; border: 1px solid rgba(245,158,11,0.28); }
+        .pc-status-accepted { color: #065F46; background: #D1FAE5; border: 1px solid rgba(16,185,129,0.24); }
+        .pc-status-declined { color: #991B1B; background: #FEE2E2; border: 1px solid rgba(239,68,68,0.24); }
+        .pc-incoming-card { background: #ECF3FF; border: 1px solid rgba(37,99,235,0.2); border-radius: 18px; padding: 1.35rem; box-shadow: 0 8px 22px rgba(37,99,235,0.08); margin-bottom: 1.8rem; }
+        .pc-incoming-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .pc-incoming-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: rgba(255,255,255,0.72); border: 1px solid rgba(96,125,173,0.18); border-radius: 14px; padding: 1rem; }
+        .pc-incoming-copy { min-width: 0; }
+        .pc-incoming-title { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.95rem; font-weight: 700; color: #1E3A8A; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pc-incoming-module { display: inline-flex; align-items: center; justify-content: center; padding: 0.2rem 0.55rem; border-radius: 999px; background: rgba(37,99,235,0.12); color: #2563EB; font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; }
+        .pc-incoming-subtitle { margin-top: 0.28rem; font-size: 0.8rem; color: #475569; font-family: 'DM Sans', sans-serif; }
+        .pc-incoming-actions { display: flex; gap: 0.55rem; flex-shrink: 0; }
+        .pc-incoming-btn { border: none; border-radius: 10px; padding: 0.62rem 1rem; font-size: 0.78rem; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: all 0.15s ease; }
+        .pc-incoming-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .pc-incoming-btn.pc-accept { background: #2563EB; color: #fff; box-shadow: 0 8px 20px rgba(37,99,235,0.18); }
+        .pc-incoming-btn.pc-accept:hover:not(:disabled) { background: #1D4ED8; }
+        .pc-incoming-btn.pc-decline { background: #fff; color: #475569; border: 1px solid rgba(148,163,184,0.28); }
+        .pc-incoming-btn.pc-decline:hover:not(:disabled) { background: #F8FAFC; }
+        @media (max-width: 640px) {
+          .pc-incoming-item { flex-direction: column; align-items: stretch; }
+          .pc-incoming-actions { width: 100%; }
+          .pc-incoming-btn { flex: 1; }
+        }
         .pc-upload-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); margin-top: 1.35rem; }
         .pc-upload-dropzone { border: 2px dashed rgba(96, 125, 173, 0.28); border-radius: 12px; padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; user-select: none; background: rgba(255,255,255,0.5); }
         .pc-upload-dropzone:hover { border-color: rgba(96, 125, 173, 0.40); background: rgba(255,255,255,0.72); }
@@ -954,7 +1198,7 @@ export default function PeerConnectHome() {
                                 </div>
                             </div>
                             {/* ── NEW: Invite Member card, below the two existing cards ── */}
-                            <InviteMemberCard moduleColor={selectedGroup.moduleColor} />
+                            <InviteMemberCard group={selectedGroup} moduleColor={selectedGroup.moduleColor} />
                             {/* ── NEW: Upload Study Material card, below the invite card ── */}
                             <UploadMaterialCard moduleColor={selectedGroup.moduleColor} />
                         </div>
@@ -975,6 +1219,14 @@ export default function PeerConnectHome() {
 
                         {/* --- NEW ACTIVITY GRAPH SECTION --- */}
                         <ActivityGraph />
+                        <IncomingInvitesCard
+                            invites={incomingInvites}
+                            acceptingInviteId={acceptingInviteId}
+                            decliningInviteId={decliningInviteId}
+                            onAccept={(invite) => void handleAcceptInvite(invite)}
+                            onDecline={(invite) => void handleDeclineInvite(invite)}
+                        />
+                        {inviteActionError && <div className="pc-form-error" style={{ marginBottom: "1.5rem" }}>{inviteActionError}</div>}
 
                         <section className="pc-modules-section">
                             <div className="pc-section-title">
