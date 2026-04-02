@@ -162,3 +162,42 @@ body {
     transform: translateX(100%) translateY(20px);
   }
 }
+
+@keyframes authFloat3d {
+  0%,
+  100% {
+    transform: translateY(0) rotateX(14deg) rotateY(-12deg);
+  }
+  50% {
+    transform: translateY(-10px) rotateX(10deg) rotateY(-6deg);
+  }
+}
+
+@keyframes authOrbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes authPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes authLogoTilt {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateZ(140px) rotateX(0deg) rotateY(-10deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateZ(160px) rotateX(-8deg) rotateY(10deg);
+  }
+}
