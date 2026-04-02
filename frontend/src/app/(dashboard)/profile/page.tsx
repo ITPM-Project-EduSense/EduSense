@@ -58,10 +58,10 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 px-4 py-8 md:px-8">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-sky-50/30 px-4 py-8 md:px-8">
       <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 rounded-3xl border border-slate-200/80 bg-white/85 px-6 py-6 shadow-sm backdrop-blur-sm">
           <h1 className="text-4xl font-bold text-slate-900">User Profile</h1>
           <p className="mt-2 text-sm text-slate-600">Manage your account information and learning preferences</p>
         </div>
@@ -73,12 +73,12 @@ export default function ProfilePage() {
         ) : user ? (
           <div className="space-y-6">
             {/* Profile Header Card */}
-            <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm overflow-hidden">
-              <div className="border-b border-slate-200/60 px-6 py-4 bg-gradient-to-r from-indigo-50/50 to-transparent flex items-center justify-between">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white/92 shadow-sm backdrop-blur-md">
+              <div className="flex items-center justify-between border-b border-slate-200/60 bg-linear-to-r from-sky-50/70 to-transparent px-6 py-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">Profile Information</h2>
                 <button
                   onClick={() => setIsEditing(!isEditing)}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-700 shadow-sm hover:shadow-md"
+                  className="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
                 >
                   {isEditing ? "Cancel" : "Edit Profile"}
                 </button>
@@ -98,7 +98,7 @@ export default function ProfilePage() {
                         name="full_name"
                         value={formData.full_name || ""}
                         onChange={handleInputChange}
-                        className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                     ) : (
                       <p className="text-slate-700 font-medium">{user.full_name}</p>
@@ -128,7 +128,7 @@ export default function ProfilePage() {
                         value={formData.program_name || ""}
                         onChange={handleInputChange}
                         placeholder="e.g., Computer Science"
-                        className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                     ) : (
                       <p className="text-slate-700 font-medium">{user.program_name || "Not specified"}</p>
@@ -150,7 +150,7 @@ export default function ProfilePage() {
                         min="1"
                         max="8"
                         placeholder="1-8"
-                        className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                     ) : (
                       <p className="text-slate-700 font-medium">{user.year_of_study ? `Year ${user.year_of_study}` : "Not specified"}</p>
@@ -167,7 +167,7 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         placeholder="Tell us about yourself..."
                         rows={4}
-                        className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-900 bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                     ) : (
                       <p className="text-slate-700">{user.bio || "No bio added yet"}</p>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
                   <div className="mt-6 flex gap-3 border-t border-slate-200/50 pt-6">
                     <button
                       onClick={handleSaveProfile}
-                      className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-700 shadow-sm hover:shadow-md"
+                      className="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
                     >
                       Save Changes
                     </button>
@@ -196,7 +196,7 @@ export default function ProfilePage() {
 
             {/* Account Stats */}
             <div className="grid gap-6 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-slate-200/60 bg-white/90 p-6 shadow-sm backdrop-blur-md transition-shadow hover:shadow-md">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Member Since</p>
                 <p className="mt-4 text-lg font-semibold text-slate-900">
                   {new Date(user.created_at).toLocaleDateString("en-US", {
@@ -205,11 +205,11 @@ export default function ProfilePage() {
                   })}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-slate-200/60 bg-white/90 p-6 shadow-sm backdrop-blur-md transition-shadow hover:shadow-md">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Account Status</p>
                 <p className="mt-4 text-lg font-semibold text-emerald-600">Active</p>
               </div>
-              <div className="rounded-xl border border-slate-200/60 bg-white/90 backdrop-blur-md p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-slate-200/60 bg-white/90 p-6 shadow-sm backdrop-blur-md transition-shadow hover:shadow-md">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Profile Completion</p>
                 <p className="mt-4 text-lg font-semibold text-slate-900">75%</p>
               </div>
