@@ -52,18 +52,24 @@ type SidebarProps = {
   open: boolean;
   onClose: () => void;
   user: CurrentUser | null;
+  theme?: "light" | "dark";
 };
 
-export default function Sidebar({ open, onClose, user }: SidebarProps) {
+export default function Sidebar({ open, onClose, user, theme = "light" }: SidebarProps) {
   const pathname = usePathname();
   const displayName = user?.full_name || "Student";
   const email = user?.email || "No email";
+  const isDark = theme === "dark";
 
   const itemClass = (isActive: boolean) =>
     `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
       isActive
-        ? "bg-blue-50 text-blue-700 border border-blue-100"
-        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        ? isDark
+          ? "bg-sky-500/20 text-sky-200 border border-sky-400/30"
+          : "bg-blue-50 text-blue-700 border border-blue-100"
+        : isDark
+          ? "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
     }`;
 
   return (
@@ -76,27 +82,31 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] border-r border-slate-200 bg-white transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-65 border-r transition-transform duration-200 lg:translate-x-0 ${
+          isDark ? "border-slate-800 bg-slate-950/95" : "border-slate-200 bg-white"
+        } ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? "border-slate-800" : "border-slate-200"}`}>
           <Link href="/landing" className="flex items-center gap-3">
             <Image
               src="/logo.png"
               alt="EduSense logo"
               width={34}
               height={34}
-              className="h-[34px] w-[34px] rounded-lg border border-slate-200 object-cover"
+              className={`h-8.5 w-8.5 rounded-lg border object-cover ${isDark ? "border-slate-700" : "border-slate-200"}`}
             />
             <div>
-              <p className="text-lg font-semibold text-slate-900">EduSense</p>
-              <p className="text-xs text-slate-500">Student Productivity OS</p>
+              <p className={`text-lg font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>EduSense</p>
+              <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Student Productivity OS</p>
             </div>
           </Link>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+            className={`rounded-md p-1 lg:hidden ${
+              isDark ? "text-slate-400 hover:bg-slate-800 hover:text-slate-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            }`}
             aria-label="Close sidebar"
           >
             <X size={16} />
@@ -117,7 +127,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
             })}
           </div>
 
-          <div className="space-y-1 border-t border-slate-200 pt-3">
+          <div className={`space-y-1 border-t pt-3 ${isDark ? "border-slate-800" : "border-slate-200"}`}>
             {navBottom.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href;
@@ -129,9 +139,9 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
               );
             })}
 
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-medium text-slate-700 truncate">{displayName}</p>
-              <p className="mt-0.5 text-xs text-slate-500 truncate">{email}</p>
+            <div className={`mt-3 rounded-xl border p-3 ${isDark ? "border-slate-800 bg-slate-900/70" : "border-slate-200 bg-slate-50"}`}>
+              <p className={`truncate text-xs font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>{displayName}</p>
+              <p className={`mt-0.5 truncate text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>{email}</p>
             </div>
           </div>
         </nav>

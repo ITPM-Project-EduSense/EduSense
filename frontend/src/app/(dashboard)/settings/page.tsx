@@ -32,6 +32,20 @@ type SettingsState = {
 
 const STORAGE_KEY = "edusense_user_settings_v1";
 
+type ThemeMode = SettingsState["theme"];
+
+function resolveTheme(mode: ThemeMode): "light" | "dark" {
+  if (mode === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return mode;
+}
+
+function applyTheme(mode: ThemeMode) {
+  const theme = resolveTheme(mode);
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
 const defaultSettings: SettingsState = {
   theme: "system",
   reminderEmails: true,
@@ -56,7 +70,11 @@ export default function SettingsPage() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<SettingsState>;
-          setSettings({ ...defaultSettings, ...parsed });
+          const merged = { ...defaultSettings, ...parsed };
+          setSettings(merged);
+          applyTheme(merged.theme);
+        } else {
+          applyTheme(defaultSettings.theme);
         }
 
         const me = await apiFetch("/auth/me");
@@ -75,6 +93,16 @@ export default function SettingsPage() {
 
     init();
   }, [addToast]);
+
+  useEffect(() => {
+    applyTheme(settings.theme);
+
+    if (settings.theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => applyTheme("system");
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [settings.theme]);
 
   const profileStatus = useMemo(() => {
     if (!user?.full_name || !user?.email) return "Needs attention";
