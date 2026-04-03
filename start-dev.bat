@@ -10,7 +10,7 @@ set ROOT_DIR=%~dp0
 REM Start Backend
 echo [1/3] Starting Backend Server (FastAPI on port 8000)...
 cd %ROOT_DIR%backend
-start cmd /k "venv\Scripts\activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+start cmd /k "venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
 
 REM Wait for backend to start
 timeout /t 3 /nobreak

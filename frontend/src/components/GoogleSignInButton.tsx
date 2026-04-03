@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect } from "firebase/auth";
 
 import { apiFetch } from "@/lib/api";
 import { getFirebaseAuth, googleProvider } from "@/lib/firebase";
@@ -22,9 +22,10 @@ export default function GoogleSignInButton({
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    const auth = getFirebaseAuth();
 
     try {
-      const result = await signInWithPopup(getFirebaseAuth(), googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken(true);
 
       await apiFetch("/auth/firebase-login", {
@@ -34,8 +35,27 @@ export default function GoogleSignInButton({
 
       onSuccess?.();
     } catch (error: unknown) {
-      const fallback = "Google Sign-In failed. Please try again.";
-      const message = error instanceof Error ? error.message : fallback;
+      const errorCode =
+        typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code?: unknown }).code)
+          : "";
+
+      const shouldUseRedirectFallback =
+        errorCode === "auth/popup-blocked" ||
+        errorCode === "auth/popup-closed-by-user" ||
+        errorCode === "auth/cancelled-popup-request" ||
+        errorCode === "auth/network-request-failed";
+
+      if (shouldUseRedirectFallback) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch {
+          // Continue to unified error handling below.
+        }
+      }
+
+      const message = mapFirebaseAuthError(errorCode, error);
       onError?.(message);
     } finally {
       setLoading(false);
@@ -68,6 +88,26 @@ export default function GoogleSignInButton({
       )}
     </button>
   );
+}
+
+function mapFirebaseAuthError(code: string, error: unknown): string {
+  if (code === "auth/unauthorized-domain") {
+    return "This domain is not authorized in Firebase Auth. Add localhost (or your current host) in Firebase Console > Authentication > Settings > Authorized domains.";
+  }
+
+  if (code === "auth/network-request-failed") {
+    return "Google Sign-In could not reach Firebase. Check your internet, disable strict ad/tracker blockers for this site, and try again.";
+  }
+
+  if (code === "auth/popup-closed-by-user") {
+    return "The Google sign-in window was closed before completion.";
+  }
+
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return "Google Sign-In failed. Please try again.";
 }
 
 function GoogleIcon() {
