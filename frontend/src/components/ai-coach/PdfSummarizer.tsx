@@ -14,7 +14,6 @@ interface Props {
 
 export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Props) {
   const [loading, setLoading] = useState(false);
-  const [fullSummaryLoading, setFullSummaryLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [selectedDocId, setSelectedDocId] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -27,8 +26,8 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
     setSuccessMessage("");
   };
 
-  // Get Quick Summary + Concepts
-  const handleFetchSummary = async () => {
+  // Single Button - Calls summary-full endpoint
+  const handleGenerateSummary = async () => {
     if (!selectedDocId) {
       alert("Please select a document first.");
       return;
@@ -38,42 +37,6 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
     setError("");
     setSuccessMessage("");
     setResult(null);
-
-    try {
-      const res = await fetch(`${API_BASE}/pdf/summary/${selectedDocId}`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text().catch(() => "Unknown error");
-        throw new Error(`Server error ${res.status}: ${errorText}`);
-      }
-
-      const data = await res.json();
-      if (data.success === false) {
-        setError(data.detail || "Failed to generate summary");
-      } else {
-        setResult(data);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to fetch summary. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Generate Full Detailed Summary
-  const handleGenerateFullSummary = async () => {
-    if (!selectedDocId) {
-      alert("Please select a document first.");
-      return;
-    }
-
-    setFullSummaryLoading(true);
-    setError("");
-    setSuccessMessage("");
 
     try {
       const res = await fetch(`${API_BASE}/pdf/summary-full/${selectedDocId}`, {
@@ -88,19 +51,17 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
 
       const data = await res.json();
 
-      setSuccessMessage(`Full detailed summary generated successfully for "${data.filename}"!`);
-
-      // Optionally refresh the quick summary to show the new detailed_summary
-      if (result?.success) {
-        handleFetchSummary(); // Refresh to show updated detailed_summary
+      if (data.success === false) {
+        setError(data.detail || "Failed to generate summary");
       } else {
-        handleFetchSummary();
+        setResult(data);
+        setSuccessMessage(`Summary generated successfully for "${data.filename}"!`);
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to generate full summary. Please try again.");
+      setError(err.message || "Failed to generate summary. Please try again.");
     } finally {
-      setFullSummaryLoading(false);
+      setLoading(false);
     }
   };
 
@@ -121,11 +82,13 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
     <div className="p-8 max-w-5xl mx-auto">
       <div className="text-center mb-10">
         <FileText size={64} className="mx-auto text-indigo-500 mb-4" />
-        <h2 className="text-3xl font-bold text-gray-800">PDF Summarizer + Key Concepts</h2>
-        <p className="text-gray-500 mt-2">Select a PDF to get quick insights or generate full study summary</p>
+        <h2 className="text-3xl font-bold text-gray-800">AI PDF Summarizer</h2>
+        <p className="text-gray-500 mt-2">
+          Select a PDF and generate a rich, student-friendly summary with key points and difficult terms
+        </p>
       </div>
 
-      {/* Document Selector + Buttons */}
+      {/* Document Selector + Button */}
       <div className="flex flex-col sm:flex-row items-center justify-center mb-10 gap-4">
         <select
           value={selectedDocId}
@@ -142,32 +105,20 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
         </select>
 
         <button
-          onClick={handleFetchSummary}
+          onClick={handleGenerateSummary}
           disabled={!selectedDocId || loading}
-          className="px-8 py-4 bg-indigo-600 font-semibold text-white rounded-2xl disabled:opacity-50 hover:bg-indigo-700 transition flex items-center justify-center gap-2 min-w-[200px]"
+          className="px-8 py-4 bg-indigo-600 font-semibold text-white rounded-2xl disabled:opacity-50 hover:bg-indigo-700 transition flex items-center justify-center gap-2 min-w-[220px]"
         >
           {loading ? (
             <>
               <Loader2 className="animate-spin" size={20} />
-              Loading Summary...
+              Generating AI Summary...
             </>
           ) : (
-            "Get Summary & Concepts"
-          )}
-        </button>
-
-        <button
-          onClick={handleGenerateFullSummary}
-          disabled={!selectedDocId || fullSummaryLoading}
-          className="px-8 py-4 bg-gray-900 font-semibold text-white rounded-2xl disabled:opacity-50 hover:bg-black transition flex items-center justify-center gap-2 min-w-[200px]"
-        >
-          {fullSummaryLoading ? (
             <>
-              <Loader2 className="animate-spin" size={20} />
-              Generating Full Summary...
+              <FileText size={20} />
+              Generate Summary
             </>
-          ) : (
-            "Generate Full Summary"
           )}
         </button>
       </div>
@@ -188,14 +139,10 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
       )}
 
       {/* Loading Indicator */}
-      {(loading || fullSummaryLoading) && !result && (
+      {loading && !result && (
         <div className="mt-10 flex flex-col items-center">
           <Loader2 className="animate-spin text-indigo-600" size={48} />
-          <p className="mt-4 text-gray-600">
-            {fullSummaryLoading
-              ? "Generating comprehensive full summary... This may take a while."
-              : "Fetching summary and key concepts..."}
-          </p>
+          <p className="mt-4 text-gray-600">Generating rich AI summary with key points and difficult terms...</p>
         </div>
       )}
 
@@ -210,11 +157,11 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
           </div>
 
           <div className="space-y-12">
-            {/* Quick Insights */}
+            {/* Quick Insights / Key Takeaways */}
             {result.summary?.length > 0 && (
               <div className="p-8 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-3xl border border-indigo-100">
                 <h4 className="flex items-center gap-3 text-xl font-bold text-indigo-900 mb-6">
-                  <FileText size={24} /> Quick Insights (Top Key Points)
+                  <FileText size={24} /> Key Takeaways
                 </h4>
                 <ul className="space-y-4">
                   {result.summary.map((point: string, i: number) => (
@@ -245,7 +192,7 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
                         <h5 className="font-semibold text-lg text-gray-900">{concept.title}</h5>
                         <span
                           className={`text-xs px-3 py-1 rounded-full font-bold ${
-                            concept.difficulty === "Hard"
+                            concept.difficulty?.toLowerCase() === "hard"
                               ? "bg-red-100 text-red-700"
                               : "bg-emerald-100 text-emerald-700"
                           }`}
@@ -260,19 +207,23 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
               </div>
             )}
 
-            {/* Difficult Terms */}
+            {/* Difficult Terms - Improved */}
             {result.difficult_terms?.length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-700 mb-4">⚠️ Difficult Terms</h4>
-                <div className="flex flex-wrap gap-3">
-                  {result.difficult_terms.map((term: string, i: number) => (
-                    <span
-                      key={i}
-                      className="px-5 py-2 bg-amber-100 text-amber-800 rounded-2xl text-sm font-medium"
-                    >
-                      {term}
-                    </span>
-                  ))}
+                <h4 className="font-semibold text-gray-700 mb-4">⚠️ Difficult Terms & Explanations</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.difficult_terms.map((item: any, i: number) => {
+                    const term = typeof item === "string" ? item : item.term || item;
+                    const explanation = typeof item === "object" ? item.explanation : "";
+                    return (
+                      <div key={i} className="bg-amber-50 border border-amber-200 p-5 rounded-2xl">
+                        <div className="font-medium text-amber-800">• {term}</div>
+                        {explanation && (
+                          <p className="text-amber-700 text-sm mt-2 leading-relaxed">{explanation}</p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -287,7 +238,7 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
                     className="flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white rounded-2xl transition-all shadow-md"
                   >
                     <Download size={20} />
-                    Download Full Summary (.md)
+                    Download as Markdown
                   </button>
                 </div>
 

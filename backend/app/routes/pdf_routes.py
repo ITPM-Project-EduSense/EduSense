@@ -140,7 +140,7 @@ async def generate_pdf_quiz(
 
     try:
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -197,7 +197,6 @@ async def get_pdf_material_summary(
         ],
     }
 
-
 @router.post(
     "/summary-full/{material_id}",
     status_code=status.HTTP_200_OK,
@@ -208,10 +207,6 @@ async def generate_full_pdf_summary(
     material_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Generates a longer, full-content summary by chunking extracted_text and using Groq.
-    Saves the result into PdfMaterial.detailed_summary.
-    """
     groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
     if not groq_client:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured.")
@@ -228,7 +223,7 @@ async def generate_full_pdf_summary(
     if not text:
         raise HTTPException(status_code=400, detail="No extracted text found for this material.")
 
-    # Split into chunks (character-based to keep it simple/reliable)
+    # === Chunking (your existing logic) ===
     chunk_size = 4500
     chunks = [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
     chunks = chunks[:10]  # safety cap
@@ -245,7 +240,7 @@ async def generate_full_pdf_summary(
             f"PART {idx}/{len(chunks)}:\n{chunk}"
         )
         resp = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": "You summarize academic text accurately and clearly."},
                 {"role": "user", "content": prompt},
@@ -255,38 +250,59 @@ async def generate_full_pdf_summary(
         )
         chunk_summaries.append((resp.choices[0].message.content or "").strip())
 
+    # === NEW: Structured JSON output (this is the key change) ===
     combine_prompt = (
-        "Combine these part-summaries into a single cohesive full summary.\n"
-        "Return Markdown only.\n"
-        "Output format:\n"
-        "# <Title>\n"
-        "## Overview (1 short paragraph)\n"
-        "## Sectioned Summary (use multiple ### headings)\n"
-        "## Key Takeaways (10-15 bullets)\n"
-        "## Glossary (optional table)\n\n"
+        "You are an expert academic summarizer. Combine the part-summaries below into a rich student-friendly summary.\n"
+        "Return ONLY valid JSON with this exact structure (no extra text):\n"
+        "{\n"
+        '  "summary": ["key point 1", "key point 2", ...],   // 8-12 important takeaways\n'
+        '  "concepts": [\n'
+        '    {"title": "Concept name", "summary": "short explanation", "difficulty": "Easy|Medium|Hard"},\n'
+        "    ...\n"
+        "  ],\n"
+        '  "difficult_terms": [\n'
+        '    {"term": "term1", "explanation": "clear explanation"},\n'
+        "    ...\n"
+        "  ],\n"
+        '  "detailed_summary": "# Full Markdown here\\n\\n## Overview..."\n'
+        "}\n\n"
+        "Make the detailed_summary rich, well-structured Markdown.\n"
         "PART SUMMARIES:\n\n" + "\n\n---\n\n".join(chunk_summaries)
     )
+
     resp2 = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
-            {"role": "system", "content": "You produce structured study summaries."},
+            {"role": "system", "content": "You produce structured JSON study summaries."},
             {"role": "user", "content": combine_prompt},
         ],
         temperature=0.2,
-        max_tokens=1800,
+        max_tokens=2000,
+        # Enable JSON mode (very reliable with this model)
+        response_format={"type": "json_object"},
     )
 
-    detailed = (resp2.choices[0].message.content or "").strip()
+    try:
+        result_json = json.loads(resp2.choices[0].message.content or "{}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to parse JSON from Groq.")
+
+    detailed = result_json.get("detailed_summary", "")
+
+    # Save only the full markdown to DB (as before)
     material.detailed_summary = detailed
     await material.save()
 
+    # Return everything the React frontend expects
     return {
         "success": True,
         "material_id": str(material.id),
         "filename": material.filename,
+        "summary": result_json.get("summary", []),                    # Key Takeaways
+        "concepts": result_json.get("concepts", []),                  # Essential Concepts
+        "difficult_terms": result_json.get("difficult_terms", []),    # Difficult Terms
         "detailed_summary": detailed,
     }
-
 @router.post(
     "/upload",
     status_code=status.HTTP_201_CREATED,
