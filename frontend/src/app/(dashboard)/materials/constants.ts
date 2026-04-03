@@ -4,27 +4,27 @@ export const MOCK_SESSIONS: Record<string, { label: string; url: string; platfor
         { label: "Discord Study Voice", url: "#", platform: "Discord" },
     ],
     CS2040: [
-        { label: "Monday Review â€” Zoom", url: "#", platform: "Zoom" },
+        { label: "Monday Review - Zoom", url: "#", platform: "Zoom" },
         { label: "Problem-Set Discord VC", url: "#", platform: "Discord" },
-        { label: "Friday Deep Dive â€” Google Meet", url: "#", platform: "Meet" },
+        { label: "Friday Deep Dive - Google Meet", url: "#", platform: "Meet" },
     ],
     MA1101: [
-        { label: "Tuesday Matrix Session â€” Zoom", url: "#", platform: "Zoom" },
-        { label: "Office Hours â€” Google Meet", url: "#", platform: "Meet" },
+        { label: "Tuesday Matrix Session - Zoom", url: "#", platform: "Zoom" },
+        { label: "Office Hours - Google Meet", url: "#", platform: "Meet" },
     ],
     CS3230: [
-        { label: "Algo Sprint â€” Discord", url: "#", platform: "Discord" },
-        { label: "Mock Contest â€” Zoom", url: "#", platform: "Zoom" },
+        { label: "Algo Sprint - Discord", url: "#", platform: "Discord" },
+        { label: "Mock Contest - Zoom", url: "#", platform: "Zoom" },
     ],
     ST2334: [
-        { label: "Sunday Probability Clinic â€” Zoom", url: "#", platform: "Zoom" },
+        { label: "Sunday Probability Clinic - Zoom", url: "#", platform: "Zoom" },
     ],
     CS2103: [
-        { label: "Sprint Planning â€” Teams", url: "#", platform: "Teams" },
-        { label: "Code Review VC â€” Discord", url: "#", platform: "Discord" },
+        { label: "Sprint Planning - Teams", url: "#", platform: "Teams" },
+        { label: "Code Review VC - Discord", url: "#", platform: "Discord" },
     ],
     IS3103: [
-        { label: "Case Study Session â€” Google Meet", url: "#", platform: "Meet" },
+        { label: "Case Study Session - Google Meet", url: "#", platform: "Meet" },
     ],
 };
 // ── MOCK_SESSIONS REMOVED ──

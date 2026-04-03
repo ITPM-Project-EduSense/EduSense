@@ -230,15 +230,15 @@ export default function AiChat() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-white text-gray-800 rounded-xl border border-gray-200 shadow-sm relative m-4 mb-8 font-sans">
+    <div className="flex h-[calc(100vh-180px)] overflow-hidden bg-transparent text-slate-800 relative font-sans">
       
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 transition-all duration-300">
         
         {/* Header */}
-        <header className="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white/90 backdrop-blur-sm z-10">
+        <header className="h-16 border-b border-slate-200/50 flex items-center justify-between px-6 bg-white/40 backdrop-blur-xl z-20 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 shadow-sm border border-white/60">
               <Bot size={22} />
             </div>
             <div>
@@ -257,10 +257,10 @@ export default function AiChat() {
         </header>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-transparent relative z-10">
           {!currentSession || currentSession.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-75 px-4">
-              <div className="bg-indigo-50 p-8 rounded-3xl mb-6 border border-indigo-100">
+              <div className="bg-white/60 backdrop-blur-sm p-8 rounded-3xl mb-6 border border-white shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] eds-fade-up">
                 <FileText size={64} className="text-indigo-400 mx-auto" strokeWidth={1.2} />
               </div>
               <h2 className="text-3xl font-semibold mb-3 text-gray-700">Ready to Learn?</h2>
@@ -287,7 +287,7 @@ export default function AiChat() {
 
                 <div className={`p-5 rounded-3xl max-w-[80%] text-[15.2px] leading-relaxed ${
                   msg.sender === "user" 
-                    ? "bg-gray-800 text-white rounded-tr-none" 
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md border border-blue-500/20" 
                     : "bg-white border border-gray-200 shadow-sm text-gray-700 rounded-tl-none"
                 }`}>
                   {msg.sender === "user" ? (
@@ -360,8 +360,8 @@ export default function AiChat() {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white border-t border-gray-100">
-          <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-3xl p-2 px-4 shadow-sm focus-within:ring-2 focus-within:ring-indigo-200 focus-within:border-indigo-300 transition-all">
+        <div className="p-4 bg-white/40 backdrop-blur-xl border-t border-slate-200/50 relative z-20">
+          <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-white/80 backdrop-blur-md border border-white rounded-3xl p-2 px-4 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-blue-400/30 focus-within:border-blue-300 transition-all">
             
             <input 
               type="file" 
@@ -420,9 +420,9 @@ export default function AiChat() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            className="border-l border-gray-200 bg-gray-50 flex flex-col shrink-0 z-20 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)]"
+            className="border-l border-slate-200/50 bg-white/50 backdrop-blur-xl flex flex-col shrink-0 z-20 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)]"
           >
-            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+            <div className="p-4 border-b border-slate-200/50 bg-transparent flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2 text-gray-700">
                 <MessageSquare size={18} className="text-indigo-500" />
                 Previous Sessions

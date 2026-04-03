@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Network, Sparkles, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import { ActivityGraph, IncomingInvitesCard, InviteMemberCard, UploadMaterialCard } from "./components";
@@ -327,7 +328,7 @@ export default function PeerConnectHome() {
 
         .pc-wrap {
           width: 100%;
-          background: #FFFFFF;
+          background: transparent;
         }
 
         .pc-main {
@@ -336,89 +337,51 @@ export default function PeerConnectHome() {
           padding: 2.5rem 2rem 6rem;
         }
 
-        .pc-hero { margin-bottom: 2.5rem; }
-        .pc-hero-label {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(37,99,235,0.10);
-          border: 1px solid rgba(37,99,235,0.22);
-          border-radius: 100px;
-          padding: 0.3rem 0.9rem;
-          font-size: 0.73rem;
-          font-weight: 600;
-          color: #2563EB;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          margin-bottom: 1.25rem;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .pc-hero-label::before {
-          content: '';
-          width: 5px; height: 5px;
-          border-radius: 50%;
-          background: #2563EB;
-          animation: pc-pulse 2s ease-in-out infinite;
-        }
-        @keyframes pc-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(0.7); }
-        }
-        .pc-wrap h1 {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-weight: 800;
-          font-size: clamp(1.8rem, 4vw, 3rem);
-          line-height: 1.1;
-          letter-spacing: -0.025em;
-          margin-bottom: 0.9rem;
-          color: #1E40AF;
-        }
-        .pc-wrap h1 em {
-          font-style: normal;
-          color: #ffffff;
-          background: #2563EB;
-          padding: 0 0.25em;
-          border-radius: 6px;
-        }
-        .pc-hero p {
-          font-size: 0.95rem;
-          color: #5A5A72;
-          max-width: 440px;
-          line-height: 1.7;
-          font-weight: 400;
-          font-family: 'DM Sans', sans-serif;
+                @keyframes pc-pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.5; transform: scale(0.7); }
         }
 
         .pc-create-btn {
-          margin-top: 1.75rem;
-          display: inline-flex;
+          background: rgba(255, 255, 255, 0.7) !important;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px dashed rgba(37, 99, 235, 0.3);
+          border-radius: 1rem;
+          display: flex;
           align-items: center;
-          gap: 0.6rem;
-          background: #2563EB;
-          color: #ffffff;
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          justify-content: center;
+          gap: 0.75rem;
           font-weight: 700;
-          font-size: 0.88rem;
-          padding: 0.75rem 1.75rem;
-          border-radius: 10px;
-          border: none;
+          color: #2563EB;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          min-height: 100px;
+          box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.05);
         }
         .pc-create-btn:hover {
-          background: #1D4ED8;
           transform: translateY(-2px);
-          box-shadow: 0 12px 40px rgba(37,99,235,0.3);
+          box-shadow: 0 8px 30px -4px rgba(37, 99, 235, 0.15);
+          background: rgba(255, 255, 255, 0.9) !important;
+          border: 1px solid rgba(37, 99, 235, 0.5);
         }
 
         /* --- GRAPH STYLES --- */
-        .pc-activity-card {
-            background: #d2dff7;
-            border-radius: 18px;
-            padding: 1.5rem;
-            margin-bottom: 3rem;
-            border: 1px solid rgba(96, 125, 173, 0.28);
-            box-shadow: 0 6px 22px rgba(15,23,42,0.08);
+        .pc-activity-card { 
+          background: rgba(255, 255, 255, 0.7) !important;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.5) !important;
+          border-radius: 1rem !important;
+          padding: 1.35rem; 
+          box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.1) !important; 
+          margin-top: 1.35rem; 
+        }
+        .pc-activity-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(37, 99, 235, 0.32);
+            box-shadow: 0 16px 34px rgba(37, 99, 235, 0.14);
         }
         .pc-activity-header {
             display: flex;
@@ -480,23 +443,31 @@ export default function PeerConnectHome() {
           font-family: 'DM Sans', sans-serif;
         }
 
-        .pc-modules-section { margin-bottom: 3rem; }
+        .pc-modules-section { margin-bottom: 2rem; }
         .pc-modules-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
           gap: 0.7rem;
         }
+                
         .pc-module-card {
-          background: #FFFFFF;
-          border: 1px solid rgba(0,0,0,0.07);
-          border-radius: 13px;
-          padding: 1rem 1.15rem;
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          border-radius: 1rem;
+          padding: 1.25rem;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.1);
         }
+        .pc-module-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 30px -4px rgba(37, 99, 235, 0.15);
+        }
+
         .pc-module-card::before {
           content: '';
           position: absolute;
@@ -507,8 +478,9 @@ export default function PeerConnectHome() {
           border-radius: 13px;
         }
         .pc-module-card:hover::before,
-        .pc-module-card.pc-active::before { opacity: 0.08; }
-        .pc-module-card.pc-active { border-color: var(--card-color); }
+        .pc-module-card.pc-active::before { opacity: 0.1; }
+        .pc-module-card:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(15,23,42,0.11); }
+        .pc-module-card.pc-active { border-color: var(--card-color); box-shadow: 0 14px 30px color-mix(in srgb, var(--card-color) 24%, transparent); }
         .pc-module-dot {
           width: 7px; height: 7px;
           border-radius: 50%;
@@ -545,7 +517,7 @@ export default function PeerConnectHome() {
           padding: 0.35rem 0.9rem;
           border-radius: 100px;
           border: 1px solid rgba(148,163,184,0.24);
-          background: #FFFFFF;
+          background: transparent;
           color: #475569;
           font-size: 0.75rem;
           font-family: 'DM Sans', sans-serif;
@@ -561,16 +533,16 @@ export default function PeerConnectHome() {
           grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
           gap: 0.9rem;
         }
-        .pc-group-card {
-          background: #d2dff7;
-          border: 1px solid rgba(96, 125, 173, 0.28);
+                .pc-group-card {
+                    background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(243,248,255,0.98) 100%);
+                    border: 1px solid rgba(148, 163, 184, 0.28);
           border-radius: 15px;
           padding: 1.25rem;
           transition: all 0.2s ease;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(15,23,42,0.07);
+                    box-shadow: 0 10px 24px rgba(15,23,42,0.06);
         }
-        .pc-group-card:hover { border-color: rgba(96, 125, 173, 0.42); transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15,23,42,0.10); }
+                .pc-group-card:hover { border-color: rgba(37, 99, 235, 0.32); transform: translateY(-3px); box-shadow: 0 18px 34px rgba(37, 99, 235, 0.12); }
         .pc-group-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.85rem; }
         .pc-group-module-badge {
           display: inline-flex; align-items: center; gap: 0.4rem;
@@ -589,7 +561,7 @@ export default function PeerConnectHome() {
         .pc-member-bar-fill { height: 100%; border-radius: 100px; transition: width 0.4s ease; }
         .pc-join-btn { padding: 0.45rem 1.1rem; border-radius: 8px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
         .pc-join-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .pc-join-btn.pc-default { background: #FFFFFF; color: #334155; border: 1px solid rgba(148,163,184,0.24); }
+        .pc-join-btn.pc-default { background: transparent; color: #334155; border: 1px solid rgba(148,163,184,0.24); }
         .pc-join-btn.pc-default:hover:not(:disabled) { background: #F8FAFC; border-color: rgba(59,130,246,0.22); color: #1E293B; }
         .pc-join-btn.pc-joined { background: #ECFDF5; color: #059669; border: 1px solid rgba(16,185,129,0.24); }
 
@@ -607,9 +579,14 @@ export default function PeerConnectHome() {
         }
         @keyframes pc-fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .pc-modal {
-          background: #FFFFFF; border: 1px solid rgba(148,163,184,0.22); border-radius: 18px;
-          padding: 1.75rem; width: 100%; max-width: 420px;
-          animation: pc-slideUp 0.25s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+          background: #ffffff; 
+          border: 1px solid rgba(148, 163, 184, 0.22); 
+          border-radius: 18px;
+          padding: 1.75rem; 
+          width: 100%; 
+          max-width: 460px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+          animation: pc-slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         @keyframes pc-slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .pc-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
@@ -618,9 +595,24 @@ export default function PeerConnectHome() {
         .pc-modal-close:hover { background: rgba(0,0,0,0.11); color: #1A1A2E; }
         .pc-form-group { margin-bottom: 1.1rem; }
         .pc-form-label { display: block; font-size: 0.72rem; font-weight: 600; color: #6B6B8A; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .pc-form-input, .pc-form-select { width: 100%; background: #F8FAFC; border: 1px solid rgba(148,163,184,0.24); border-radius: 9px; padding: 0.65rem 0.9rem; color: #1A1A2E; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; }
-        .pc-form-input:focus, .pc-form-select:focus { border-color: rgba(59,130,246,0.45); background: #FFFFFF; box-shadow: 0 0 0 3px rgba(59,130,246,0.10); }
-        .pc-form-select option { background: #FFFFFF; color: #1A1A2E; }
+        .pc-form-input, .pc-form-select { 
+          width: 100%; 
+          background: #F8FAFC !important; 
+          border: 1px solid rgba(148,163,184,0.24); 
+          border-radius: 9px; 
+          padding: 0.75rem 0.9rem; 
+          color: #1A1A2E !important; 
+          font-size: 0.85rem; 
+          font-family: 'DM Sans', sans-serif; 
+          outline: none; 
+          transition: all 0.15s; 
+        }
+        .pc-form-input:focus, .pc-form-select:focus { 
+          border-color: #2563eb !important; 
+          background: #ffffff !important; 
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important; 
+        }
+        .pc-form-select option { background: #ffffff; color: #1A1A2E; }
         .pc-form-hint { margin-top: 0.3rem; font-size: 0.72rem; color: #9A9AB0; font-family: 'DM Sans', sans-serif; }
         .pc-form-error { margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 7px; color: #EF4444; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; }
         .pc-modal-submit { width: 100%; padding: 0.78rem; background: #2563EB; color: #ffffff; border: none; border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: all 0.2s ease; margin-top: 0.4rem; box-shadow: 0 8px 20px rgba(37,99,235,0.18); }
@@ -634,7 +626,7 @@ export default function PeerConnectHome() {
         .pc-danger-btn:hover:not(:disabled) { background: #FEE2E2; border-color: rgba(239,68,68,0.32); }
         .pc-danger-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        .pc-mat-group-hero { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 18px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 6px 22px rgba(15,23,42,0.08); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+        .pc-mat-group-hero { background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(241,246,255,0.98) 100%); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 18px; padding: 1.75rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 14px 32px rgba(30,64,175,0.12); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
         .pc-mat-group-hero-left { flex: 1; min-width: 0; }
         .pc-mat-group-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.025em; color: #1E3A8A; margin-bottom: 0.65rem; }
         .pc-mat-group-meta { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
@@ -652,18 +644,19 @@ export default function PeerConnectHome() {
 
         .pc-mat-content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.35rem; }
         @media (max-width: 640px) { .pc-mat-content-grid { grid-template-columns: 1fr; } }
-        .pc-mat-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
+        .pc-mat-card { background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(245,249,255,0.98) 100%); border: 1px solid rgba(148,163,184,0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 10px 24px rgba(15,23,42,0.07); transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease; }
+        .pc-mat-card:hover { transform: translateY(-2px); border-color: rgba(37,99,235,0.28); box-shadow: 0 16px 32px rgba(37,99,235,0.12); }
         .pc-mat-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background: #2563EB; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.28rem 0.75rem; border-radius: 100px; margin-bottom: 1rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
         .pc-session-list { display: flex; flex-direction: column; gap: 0.55rem; }
-        .pc-session-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.20); border-radius: 11px; text-decoration: none; transition: all 0.15s ease; cursor: pointer; }
-        .pc-session-item:hover { background: rgba(255,255,255,0.72); border-color: rgba(96, 125, 173, 0.30); transform: translateX(2px); }
+        .pc-session-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.76); border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 11px; text-decoration: none; transition: all 0.15s ease; cursor: pointer; }
+        .pc-session-item:hover { background: rgba(255,255,255,0.96); border-color: rgba(37, 99, 235, 0.28); transform: translateX(2px); }
         .pc-session-platform-dot { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.6rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #fff; }
         .pc-session-label { flex: 1; font-size: 0.82rem; font-weight: 500; color: #1E293B; font-family: 'DM Sans', sans-serif; }
         .pc-session-arrow { color: #475569; font-size: 0.95rem; }
         .pc-material-list { display: flex; flex-direction: column; gap: 0.55rem; }
         .pc-material-list-scroll { max-height: 320px; overflow-y: auto; padding-right: 0.2rem; }
-        .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.5); border: 1px solid rgba(96, 125, 173, 0.20); border-radius: 11px; cursor: pointer; transition: all 0.15s ease; }
-        .pc-material-item:hover { background: rgba(255,255,255,0.72); border-color: rgba(96, 125, 173, 0.30); transform: translateX(2px); }
+        .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.76); border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 11px; cursor: pointer; transition: all 0.15s ease; }
+        .pc-material-item:hover { background: rgba(255,255,255,0.96); border-color: rgba(37, 99, 235, 0.28); transform: translateX(2px); }
         .pc-material-type-badge { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.56rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #fff; }
         .pc-material-info { flex: 1; min-width: 0; }
         .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
@@ -673,7 +666,16 @@ export default function PeerConnectHome() {
         .pc-material-action:hover { background: #ffffff; border-color: rgba(96, 125, 173, 0.35); }
 
         /* ── NEW: Invite card styles ── */
-        .pc-invite-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); margin-top: 1.35rem; }
+        .pc-invite-card { 
+          background: rgba(255, 255, 255, 0.7) !important;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.5) !important;
+          border-radius: 1rem !important;
+          padding: 1.35rem; 
+          box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.1) !important; 
+          margin-top: 1.35rem; 
+        }
         .pc-invite-input-row { display: flex; gap: 0.65rem; align-items: flex-start; }
         .pc-invite-btn { padding: 0.65rem 1.15rem; border-radius: 9px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; opacity: 1; flex-shrink: 0; box-shadow: 0 8px 20px rgba(15,23,42,0.10); }
         .pc-invite-btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -695,7 +697,16 @@ export default function PeerConnectHome() {
         .pc-status-pending { color: #92400E; background: #FEF3C7; border: 1px solid rgba(245,158,11,0.28); }
         .pc-status-accepted { color: #065F46; background: #D1FAE5; border: 1px solid rgba(16,185,129,0.24); }
         .pc-status-declined { color: #991B1B; background: #FEE2E2; border: 1px solid rgba(239,68,68,0.24); }
-        .pc-incoming-card { background: #ECF3FF; border: 1px solid rgba(37,99,235,0.2); border-radius: 18px; padding: 1.35rem; box-shadow: 0 8px 22px rgba(37,99,235,0.08); margin-bottom: 1.8rem; }
+        .pc-incoming-card { 
+          background: rgba(255, 255, 255, 0.7) !important;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.5) !important;
+          border-radius: 1rem !important;
+          padding: 1.35rem; 
+          box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.1) !important; 
+          margin-top: 1.35rem; 
+        }
         .pc-incoming-list { display: flex; flex-direction: column; gap: 0.75rem; }
         .pc-incoming-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: rgba(255,255,255,0.72); border: 1px solid rgba(96,125,173,0.18); border-radius: 14px; padding: 1rem; }
         .pc-incoming-copy { min-width: 0; }
@@ -714,7 +725,16 @@ export default function PeerConnectHome() {
           .pc-incoming-actions { width: 100%; }
           .pc-incoming-btn { flex: 1; }
         }
-        .pc-upload-card { background: #d2dff7; border: 1px solid rgba(96, 125, 173, 0.28); border-radius: 16px; padding: 1.35rem; box-shadow: 0 4px 14px rgba(15,23,42,0.07); margin-top: 1.35rem; }
+        .pc-upload-card { 
+          background: rgba(255, 255, 255, 0.7) !important;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.5) !important;
+          border-radius: 1rem !important;
+          padding: 1.35rem; 
+          box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.1) !important; 
+          margin-top: 1.35rem; 
+        }
         .pc-upload-dropzone { border: 2px dashed rgba(96, 125, 173, 0.28); border-radius: 12px; padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; user-select: none; background: rgba(255,255,255,0.5); }
         .pc-upload-dropzone:hover { border-color: rgba(96, 125, 173, 0.40); background: rgba(255,255,255,0.72); }
         .pc-upload-dropzone-active { border-style: solid !important; }
@@ -735,8 +755,8 @@ export default function PeerConnectHome() {
                 const isFull = selectedGroup.members >= selectedGroup.max && !isJoined;
                 const isLoading = joiningId === selectedGroup.id;
                 return (
-                    <div className="pc-wrap">
-                        <div className="pc-main">
+                    <div className="pc-wrap eds-page-shell">
+                        <div className="pc-main eds-content-flow">
                             <button className="pc-back-btn" onClick={() => setSelectedGroup(null)}>
                                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                                     <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -843,30 +863,63 @@ export default function PeerConnectHome() {
                     </div>
                 );
             })() : (
-                <div className="pc-wrap">
-                    <div className="pc-main">
-                        <header className="pc-hero">
-                            <div className="pc-hero-label">Community Hub</div>
-                            <h1>Peer <em>Connect</em></h1>
-                            <p>Find your tribe, share resources, and conquer your modules with peer-led study groups.</p>
-                            <button className="pc-create-btn" onClick={openCreateModal}>
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
-                                Create New Group
-                            </button>
-                        </header>
+                <div className="pc-wrap eds-page-shell">
+                    <div className="pc-main eds-content-flow">
+                        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 shadow-2xl shadow-blue-900/40 eds-fade-up">
+                            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+                            <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-400/15 blur-3xl" />
+                            <div className="pointer-events-none absolute left-1/2 top-0 h-px w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+                            <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="rounded-2xl bg-white/15 p-3 ring-1 ring-white/25 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                        <Network size={26} className="text-white" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-200">
+                                            Collaboration Space
+                                        </p>
+                                        <h1 className="text-2xl font-bold text-white lg:text-3xl">
+                                            PeerConnect Materials Hub
+                                        </h1>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-100 ring-1 ring-white/20 backdrop-blur-sm">
+                                        <Sparkles size={13} />
+                                        Smart Group Discovery
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-100 ring-1 ring-white/20 backdrop-blur-sm">
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                                        Live Collaboration
+                                    </span>
+                                    <button className="eds-hero-action !bg-white !text-blue-700 hover:!bg-blue-50" onClick={() => setShowCreateModal(true)}>
+                                        <Users size={16} />
+                                        Create New Group
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
 
                         {/* --- NEW ACTIVITY GRAPH SECTION --- */}
-                        <ActivityGraph activeGroupsCount={loadingGroups ? 0 : groups.length} />
-                        <IncomingInvitesCard
-                            invites={incomingInvites}
-                            acceptingInviteId={acceptingInviteId}
-                            decliningInviteId={decliningInviteId}
-                            onAccept={(invite) => void handleAcceptInvite(invite)}
-                            onDecline={(invite) => void handleDeclineInvite(invite)}
-                        />
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 eds-fade-up" style={{ animationDelay: "100ms" }}>
+                                <ActivityGraph activeGroupsCount={loadingGroups ? 0 : groups.length} />
+                            </div>
+                            <div className="eds-fade-up" style={{ animationDelay: "150ms" }}>
+                                <IncomingInvitesCard
+                                    invites={incomingInvites}    
+                                    acceptingInviteId={acceptingInviteId}
+                                    decliningInviteId={decliningInviteId}
+                                    onAccept={(invite) => void handleAcceptInvite(invite)}
+                                    onDecline={(invite) => void handleDeclineInvite(invite)}
+                                />
+                            </div>
+                        </div>
                         {inviteActionError && <div className="pc-form-error" style={{ marginBottom: "1.5rem" }}>{inviteActionError}</div>}
 
-                        <section className="pc-modules-section">
+                        <section className="pc-modules-section eds-fade-up" style={{ animationDelay: "200ms" }}>
                             <div className="pc-section-title">
                                 Targeted Modules
                                 <span className="pc-count">{modules.length}</span>
@@ -890,7 +943,7 @@ export default function PeerConnectHome() {
 
                         <div className="pc-section-divider" />
 
-                        <section className="pc-groups-section">
+                        <section className="pc-groups-section eds-fade-up" style={{ animationDelay: "260ms" }}>
                             <div className="pc-section-title" style={{ marginBottom: "1.5rem" }}>
                                 Discover Peer Groups
                                 <span className="pc-count">{filteredGroups.length}</span>
@@ -979,51 +1032,110 @@ export default function PeerConnectHome() {
 
             {/* ── CREATE MODAL ── */}
             {showCreateModal && (
-                <div className="pc-modal-overlay" onClick={() => !creating && (setShowCreateModal(false), resetGroupForm())}>
-                    <div className="pc-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="pc-modal-header">
-                            <div className="pc-modal-title">{editingGroupId ? "Edit Study Group" : "Create Study Group"}</div>
-                            <button className="pc-modal-close" onClick={() => { setShowCreateModal(false); resetGroupForm(); }}>×</button>
-                        </div>
-                        <div className="pc-form-group">
-                            <label className="pc-form-label">Group Name</label>
-                            <input className="pc-form-input" placeholder="e.g. Midterm Grind Team" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
-                        </div>
-                        {/* ── NEW: Group Leader Name field ── */}
-                        <div className="pc-form-group">
-                            <label className="pc-form-label">Group Leader Name</label>
-                            <input className="pc-form-input" placeholder="e.g. Jane Doe" value={groupLeader} onChange={(e) => setGroupLeader(e.target.value)} />
-                        </div>
-                        <div className="pc-form-group">
-                            <label className="pc-form-label">Group Leader Email</label>
-                            <input className="pc-form-input" type="email" placeholder="e.g. leader@example.com" value={groupLeaderEmail} onChange={(e) => setGroupLeaderEmail(e.target.value)} />
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                            <div className="pc-form-group">
-                                <label className="pc-form-label">Module</label>
-                                <select className="pc-form-select" value={groupModule} onChange={(e) => setGroupModule(e.target.value)}>
-                                    <option value="">Select...</option>
-                                    {modules.map(m => <option key={m.code} value={m.code}>{m.code}</option>)}
-                                </select>
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => !creating && (setShowCreateModal(false), resetGroupForm())}>
+                    <div className="w-full max-w-xl animate-in zoom-in-95 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+                            {editingGroupId ? "✏️ Edit Study Group" : "➕ Create Study Group"}
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-600 mb-5">Fill in the group details below to build your study circle.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Group Name</label>
+                                <input 
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                    placeholder="e.g. Midterm Grind Team" 
+                                    value={groupName} 
+                                    onChange={(e) => setGroupName(e.target.value)} 
+                                />
                             </div>
-                            <div className="pc-form-group">
-                                <label className="pc-form-label">Max Members</label>
-                                <input type="number" className="pc-form-input" min="2" max="10" value={groupMax} onChange={(e) => setGroupMax(e.target.value)} />
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Group Leader Name</label>
+                                    <input 
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                        placeholder="e.g. Jane Doe" 
+                                        value={groupLeader} 
+                                        onChange={(e) => setGroupLeader(e.target.value)} 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Group Leader Email</label>
+                                    <input 
+                                        type="email" 
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                        placeholder="e.g. leader@example.com" 
+                                        value={groupLeaderEmail} 
+                                        onChange={(e) => setGroupLeaderEmail(e.target.value)} 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Module</label>
+                                    <select 
+                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                        value={groupModule} 
+                                        onChange={(e) => setGroupModule(e.target.value)}
+                                    >
+                                        <option value="">Select...</option>
+                                        {modules.map(m => <option key={m.code} value={m.code}>{m.code}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Max Members</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                        min="2" max="10" 
+                                        value={groupMax} 
+                                        onChange={(e) => setGroupMax(e.target.value)} 
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Schedule</label>
+                                <input 
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                    placeholder="e.g. Mon & Wed, 8pm" 
+                                    value={groupSchedule} 
+                                    onChange={(e) => setGroupSchedule(e.target.value)} 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Tags (comma separated)</label>
+                                <input 
+                                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50" 
+                                    placeholder="e.g. NoobsWelcome, FastPaced" 
+                                    value={groupTags} 
+                                    onChange={(e) => setGroupTags(e.target.value)} 
+                                />
+                            </div>
+
+                            {createError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{createError}</div>}
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                                <button
+                                    type="button"
+                                    disabled={creating}
+                                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
+                                    onClick={() => { setShowCreateModal(false); resetGroupForm(); }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => void handleCreate()}
+                                    disabled={creating || !isFormValid}
+                                    className="rounded-xl flex flex-1 sm:flex-none justify-center bg-[#0284c7] hover:bg-[#0369a1] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    {creating ? (editingGroupId ? "Updating..." : "Creating...") : editingGroupId ? "Update Group" : "Create Group"}
+                                </button>
                             </div>
                         </div>
-                        <div className="pc-form-group">
-                            <label className="pc-form-label">Schedule</label>
-                            <input className="pc-form-input" placeholder="e.g. Mon & Wed, 8pm" value={groupSchedule} onChange={(e) => setGroupSchedule(e.target.value)} />
-                        </div>
-                        <div className="pc-form-group">
-                            <label className="pc-form-label">Tags (comma separated)</label>
-                            <input className="pc-form-input" placeholder="e.g. NoobsWelcome, FastPaced" value={groupTags} onChange={(e) => setGroupTags(e.target.value)} />
-                        </div>
-                        {createError && <div className="pc-form-error">{createError}</div>}
-                        {/* ── CHANGED: disabled unless isFormValid (or creating) ── */}
-                        <button className="pc-modal-submit" disabled={creating || !isFormValid} onClick={handleCreate}>
-                            {creating ? (editingGroupId ? "Saving..." : "Creating...") : (editingGroupId ? "Save Changes" : "Launch Group")}
-                        </button>
                     </div>
                 </div>
             )}

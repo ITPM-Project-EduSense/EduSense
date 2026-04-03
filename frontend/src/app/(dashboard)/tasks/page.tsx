@@ -271,53 +271,49 @@ export default function TasksPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
-      {/* ── Page Header with Gradient ── */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-600 p-6 shadow-2xl shadow-blue-900/40">
+      {/* ── Page Header with Gradient (EDS) ── */}
+      <section className="eds-hero-card">
         {/* Ambient glow blobs */}
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-teal-400/15 blur-3xl" />
+        <div className="pointer-events-none absolute eds-hero-glow-right blur-3xl" />
+        <div className="pointer-events-none absolute eds-hero-glow-left blur-3xl" />
         <div className="pointer-events-none absolute left-1/2 top-0 h-px w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between z-10 eds-fade-up">
           <div className="flex items-center gap-4">
-            <div className="rounded-2xl bg-white/15 p-3 ring-1 ring-white/25 backdrop-blur-sm">
-              <ListTodo size={26} className="text-white" />
+            <div className="rounded-2xl bg-white/15 p-3 ring-1 ring-white/25 backdrop-blur-sm shadow-inner shadow-white/10">
+              <ListTodo size={26} className="text-white drop-shadow-md" />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100/90 mb-1">
                 EduSense · Task Center
               </p>
-              <h1 className="text-2xl font-bold text-white lg:text-3xl">
+              <h1 className="text-2xl font-bold text-white lg:text-3xl drop-shadow-sm">
                 Manage Your Tasks
               </h1>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-100 ring-1 ring-white/20 backdrop-blur-sm">
-              <Sparkles size={13} />
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-50 ring-1 ring-white/20 backdrop-blur-md shadow-sm">
+              <Sparkles size={13} className="text-blue-200" />
               Smart Prioritization
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-100 ring-1 ring-white/20 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-50 ring-1 ring-white/20 backdrop-blur-md shadow-sm">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               Live
             </span>
             <button
               onClick={() => setShowCalendarView(!showCalendarView)}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
-                showCalendarView
-                  ? "bg-white/20 text-white ring-1 ring-white/40"
-                  : "bg-white text-blue-600 hover:bg-blue-50"
-              }`}
+              className={`eds-hero-action ${showCalendarView ? "bg-white/25 ring-1 ring-white/50" : ""}`}
             >
-              <Calendar size={18} />
+              <Calendar size={16} />
               {showCalendarView ? "List View" : "Calendar"}
             </button>
             <button
               onClick={openCreate}
-              className="inline-flex items-center gap-2 rounded-full bg-white text-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-all"
+              className="eds-hero-action !bg-white !text-blue-700 hover:!bg-blue-50"
             >
-              <Plus size={18} />
+              <Plus size={16} />
               New Task
             </button>
           </div>
@@ -325,65 +321,65 @@ export default function TasksPage() {
       </section>
 
       {/* ── Section: Quick Stats ── */}
-      <section>
+      <section className="eds-fade-up" style={{ animationDelay: "100ms" }}>
         <div className="mb-4 flex items-center gap-3">
-          <div className="h-5 w-1 rounded-full bg-gradient-to-b from-blue-400 to-teal-600" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+          <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
+          <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
             Performance & Insights
           </h2>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Overdue Tasks Alert */}
-          <article className="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-red-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(225,29,72,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(225,29,72,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-semibold text-rose-700">Overdue Tasks</p>
-                <p className="mt-2 text-3xl font-bold text-rose-900">
+                <p className="text-sm font-bold text-slate-600">Overdue Tasks</p>
+                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
                   {loading ? "--" : tasks.filter(t => t.status !== "completed" && daysLeft(t.deadline) < 0).length}
                 </p>
-                <p className="mt-1 text-xs text-rose-600">Need immediate attention</p>
+                <p className="mt-1 text-xs font-semibold text-rose-500">Need immediate attention</p>
               </div>
-              <div className="rounded-xl bg-rose-200/50 p-2.5">
-                <AlertTriangle size={18} className="text-rose-700" />
+              <div className="rounded-xl bg-gradient-to-br from-rose-100 to-red-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
+                <AlertTriangle size={18} className="text-rose-600" />
               </div>
             </div>
           </article>
 
           {/* Completion Rate */}
-          <article className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-semibold text-emerald-700">Completion Rate</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-900">
+              <div className="w-full">
+                <p className="text-sm font-bold text-slate-600">Completion Rate</p>
+                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
                   {loading ? "--" : `${Math.round((stats.completed / (stats.total || 1)) * 100)}%`}
                 </p>
-                <div className="mt-2 h-1.5 w-16 rounded-full bg-emerald-200">
+                <div className="mt-3 h-1.5 w-full max-w-[124px] overflow-hidden rounded-full bg-slate-100 shadow-inner">
                   <div 
-                    className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600" 
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" 
                     style={{ width: `${Math.round((stats.completed / (stats.total || 1)) * 100)}%` }}
                   />
                 </div>
               </div>
-              <div className="rounded-xl bg-emerald-200/50 p-2.5">
-                <CheckCircle2 size={18} className="text-emerald-700" />
+              <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
+                <CheckCircle2 size={18} className="text-emerald-600" />
               </div>
             </div>
           </article>
 
           {/* Avg Task Complexity */}
-          <article className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-semibold text-amber-700">Avg. Difficulty</p>
-                <p className="mt-2 text-3xl font-bold text-amber-900">
+                <p className="text-sm font-bold text-slate-600">Avg. Difficulty</p>
+                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
                   {loading ? "--" : (
                     tasks.length > 0
                       ? tasks.reduce((sum, t) => sum + (t.difficulty === "hard" ? 3 : t.difficulty === "medium" ? 2 : 1), 0) / tasks.length
                       : 0
                   ).toFixed(1)}
                 </p>
-                <p className="mt-1 text-xs text-amber-600">
+                <p className="mt-1 text-xs font-semibold text-amber-500">
                   {tasks.length > 0 
                     ? tasks.filter(t => t.difficulty === "hard").length > tasks.length / 2
                       ? "Challenging workload"
@@ -392,18 +388,18 @@ export default function TasksPage() {
                   }
                 </p>
               </div>
-              <div className="rounded-xl bg-amber-200/50 p-2.5">
-                <Flame size={18} className="text-amber-700" />
+              <div className="rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
+                <Flame size={18} className="text-amber-600" />
               </div>
             </div>
           </article>
 
           {/* Most Active Subject */}
-          <article className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(59,130,246,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(59,130,246,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-semibold text-blue-700">Top Subject</p>
-                <p className="mt-2 truncate text-2xl font-bold text-blue-900">
+                <p className="text-sm font-bold text-slate-600">Top Subject</p>
+                <p className="mt-2 truncate text-3xl font-extrabold text-slate-800 tracking-tight max-w-[140px]">
                   {loading ? "--" : (
                     tasks.length > 0
                       ? Object.entries(
@@ -415,10 +411,10 @@ export default function TasksPage() {
                       : "N/A"
                   )}
                 </p>
-                <p className="mt-1 text-xs text-blue-600">Most tasks assigned</p>
+                <p className="mt-1 text-xs font-semibold text-blue-500">Most tasks assigned</p>
               </div>
-              <div className="rounded-xl bg-blue-200/50 p-2.5">
-                <BookOpen size={18} className="text-blue-700" />
+              <div className="rounded-xl bg-gradient-to-br from-blue-100 to-indigo-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
+                <BookOpen size={18} className="text-blue-600" />
               </div>
             </div>
           </article>
@@ -427,16 +423,16 @@ export default function TasksPage() {
 
       {/* ── Section: Calendar View ── */}
       {showCalendarView && (
-        <section className="animate-in fade-in duration-300">
+        <section className="animate-in fade-in duration-300 transform-gpu slide-in-from-bottom-4">
           <div className="mb-4 flex items-center gap-3">
-            <div className="h-5 w-1 rounded-full bg-gradient-to-b from-blue-400 to-teal-600" />
+            <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
             <Calendar size={14} className="text-blue-500" />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+            <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
               Task Calendar
             </h2>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-white/60 bg-white/60 p-6 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl">
             {/* Month Navigation */}
             <div className="mb-8 flex items-center justify-between">
               <button
@@ -562,33 +558,33 @@ export default function TasksPage() {
       )}
 
       {/* ── Section: Filters ── */}
-      <section>
+      <section className="eds-fade-up" style={{ animationDelay: "200ms" }}>
         <div className="mb-4 flex items-center gap-3">
-          <div className="h-5 w-1 rounded-full bg-gradient-to-b from-blue-400 to-teal-600" />
+          <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
           <Sparkles size={14} className="text-blue-500" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+          <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
             Search & Filter
           </h2>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:p-5 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border border-white/60 bg-white/60 p-4 lg:p-5 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="relative md:col-span-2">
-              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search title, subject or description"
-                className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+                className="w-full rounded-xl border border-slate-200/60 bg-white/80 py-3 pl-10 pr-4 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/50 focus:bg-white shadow-inner shadow-slate-100/50"
               />
             </div>
 
             <div className="relative">
-              <Filter size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Filter size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as "all" | TaskStatus)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+                className="w-full rounded-xl border border-slate-200/60 bg-white/80 py-3 pl-10 pr-4 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/50 focus:bg-white shadow-inner shadow-slate-100/50 appearance-none"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -598,11 +594,11 @@ export default function TasksPage() {
             </div>
 
             <div className="relative">
-              <Filter size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Filter size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value as "all" | TaskDifficulty)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+                className="w-full rounded-xl border border-slate-200/60 bg-white/80 py-3 pl-10 pr-4 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/50 focus:bg-white shadow-inner shadow-slate-100/50 appearance-none"
               >
                 <option value="all">All Difficulty</option>
                 <option value="easy">Easy</option>
@@ -621,61 +617,49 @@ export default function TasksPage() {
       )}
 
       {/* ── Section: Task List ── */}
-      <section>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="h-5 w-1 rounded-full bg-gradient-to-b from-blue-400 to-teal-600" />
-          <Activity size={14} className="text-blue-500" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            Active Tasks
-          </h2>
+      <section className="col-span-1 lg:col-span-3 eds-fade-up" style={{ animationDelay: "300ms" }}>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
+            <Activity size={14} className="text-blue-500" />
+            <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
+              Active Tasks
+            </h2>
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Loading Skeleton */}
           {loading && (
             <>
               {[...Array(3)].map((_, idx) => (
                 <div
                   key={idx}
-                  className="animate-pulse rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                  className="animate-pulse rounded-2xl border border-white/60 bg-white/60 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl overflow-hidden"
                 >
                   {/* Header skeleton */}
-                  <div className="border-b border-slate-100 px-6 py-4">
-                    <div className="flex items-start gap-3 justify-between">
-                      <div className="flex-1">
-                        <div className="h-6 w-3/4 rounded-lg bg-slate-200" />
-                        <div className="mt-3 h-4 w-20 rounded-lg bg-slate-100" />
-                        <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100" />
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="h-6 w-20 rounded-full bg-slate-200" />
-                        <div className="h-6 w-16 rounded-full bg-slate-200" />
+                  <div className="border-b border-slate-100/50 px-6 py-5">
+                    <div className="flex items-start gap-4 justify-between">
+                      <div className="flex-1 space-y-3">
+                        <div className="h-6 w-3/4 rounded-lg bg-slate-200/60" />
+                        <div className="flex gap-2">
+                          <div className="h-4 w-20 rounded-md bg-slate-100" />
+                          <div className="h-4 w-16 rounded-md bg-slate-100" />
+                        </div>
                       </div>
                     </div>
                   </div>
-
                   {/* Middle skeleton */}
-                  <div className="grid grid-cols-3 gap-4 px-6 py-4 bg-slate-50">
+                  <div className="grid grid-cols-3 gap-6 px-6 py-5 bg-gradient-to-r from-slate-50/30 to-transparent">
                     {[...Array(3)].map((_, i) => (
                       <div key={i} className="flex gap-3">
-                        <div className="h-5 w-5 rounded-lg bg-slate-200" />
-                        <div className="flex-1">
-                          <div className="h-3 w-16 rounded bg-slate-200" />
-                          <div className="mt-2 h-4 w-20 rounded bg-slate-200" />
-                          <div className="mt-2 h-3 w-12 rounded bg-slate-100" />
+                        <div className="h-8 w-8 rounded-full bg-slate-200/50" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-16 rounded bg-slate-200/50" />
+                          <div className="h-4 w-20 rounded bg-slate-200/80" />
                         </div>
                       </div>
                     ))}
-                  </div>
-
-                  {/* Footer skeleton */}
-                  <div className="flex gap-2 px-6 py-4 bg-slate-50">
-                    <div className="flex-1" />
-                    <div className="flex gap-2">
-                      {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-8 w-20 rounded-lg bg-slate-200" />
-                      ))}
-                    </div>
                   </div>
                 </div>
               ))}
@@ -683,39 +667,49 @@ export default function TasksPage() {
           )}
 
           {!loading && filteredTasks.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-              <p className="font-medium">No tasks match your filters</p>
-              <p className="mt-1 text-xs">Try adjusting your search or creating a new task</p>
+            <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-12 text-center text-sm text-slate-500 backdrop-blur-sm transition-all duration-300">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 shadow-inner">
+                <ListTodo size={28} />
+              </div>
+              <p className="text-base font-bold text-slate-700">No tasks found</p>
+              <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto">
+                You've cleared your filter or finished everything. Enjoy your free time or add a new task!
+              </p>
             </div>
           )}
 
-          {filteredTasks.map((task) => {
+          {filteredTasks.map((task, idx) => {
             const remaining = daysLeft(task.deadline);
             return (
               <article
                 key={task.id}
-                className="group rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300 overflow-hidden"
+                className="group relative rounded-2xl border border-white/60 bg-white/60 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_12px_40px_-4px_rgba(59,130,246,0.15)] hover:border-blue-300/40 hover:-translate-y-0.5 overflow-hidden eds-fade-up"
+                style={{ animationDelay: `${(idx % 10) * 50 + 300}ms` }}
               >
                 {/* Top section with title and badges */}
-                <div className="border-b border-slate-100 px-6 py-4">
-                  <div className="flex flex-wrap items-start gap-3 justify-between">
+                <div className="border-b border-slate-100/60 p-5 lg:px-6 z-10 relative bg-gradient-to-br from-white/40 to-transparent">
+                  <div className="flex flex-wrap items-start gap-4 justify-between">
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate">
+                      <h3 className="text-lg md:text-xl font-extrabold text-slate-800 group-hover:text-blue-700 transition-colors truncate">
                         {task.title}
                       </h3>
-                      <p className="mt-1.5 text-sm font-medium text-slate-600">{task.subject}</p>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {task.task_type} · {task.estimated_hours}h estimated
+                      <p className="mt-1.5 text-sm font-semibold text-slate-600 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                        {task.subject}
+                      </p>
+                      <p className="mt-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        {task.task_type} · <span className="text-slate-400 font-semibold">{task.estimated_hours}h estimated</span>
                       </p>
                       {task.description && (
-                        <p className="mt-2 line-clamp-1 text-sm text-slate-500">{task.description}</p>
+                        <p className="mt-2.5 line-clamp-2 text-sm text-slate-500 leading-relaxed font-medium">{task.description}</p>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold transition-all duration-200 ${statusClass(task.status)}`}>
-                        {task.status === "completed" ? "✓" : task.status === "in_progress" ? "⚙️" : "⏳"} {task.status.replace("_", " ")}
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${statusClass(task.status)}`}>
+                        {task.status === "completed" ? <CheckCircle2 size={14}/> : task.status === "in_progress" ? <Activity size={14}/> : <Circle size={14}/>} 
+                        {task.status.replace("_", " ")}
                       </span>
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold transition-all duration-200 ${difficultyClass(task.difficulty)}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${difficultyClass(task.difficulty)}`}>
                         {task.difficulty === "hard" ? "🔴" : task.difficulty === "medium" ? "🟡" : "🟢"} {task.difficulty}
                       </span>
                     </div>
@@ -723,15 +717,17 @@ export default function TasksPage() {
                 </div>
 
                 {/* Middle section with deadline and priority */}
-                <div className="grid grid-cols-3 gap-4 px-6 py-4 bg-gradient-to-r from-slate-50/50 to-slate-0">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-5 p-5 lg:px-6 bg-gradient-to-r from-slate-50/50 to-slate-50/10 z-10 relative">
                   {/* Deadline */}
-                  <div className="flex items-center gap-3">
-                    <CalendarClock size={20} className="text-slate-400" />
+                  <div className="flex items-start md:items-center gap-3">
+                    <div className="rounded-xl bg-white p-2 shadow-sm border border-slate-100">
+                      <CalendarClock size={20} className="text-blue-500" />
+                    </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500">Deadline</p>
-                      <p className="mt-0.5 text-sm font-bold text-slate-900">{formatDate(task.deadline)}</p>
-                      <p className={`mt-1 text-xs font-semibold ${
-                        remaining <= 1 ? "text-rose-600" : remaining <= 3 ? "text-amber-600" : "text-emerald-600"
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Deadline</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-slate-700">{formatDate(task.deadline)}</p>
+                      <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ${
+                        remaining <= 1 ? "bg-rose-100 text-rose-700" : remaining <= 3 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
                       }`}>
                         {remaining < 0 ? `Overdue ${Math.abs(remaining)}d` : `${remaining}d left`}
                       </p>
@@ -739,24 +735,28 @@ export default function TasksPage() {
                   </div>
 
                   {/* Priority Score */}
-                  <div className="flex items-center gap-3">
-                    <TrendingUp size={20} className="text-slate-400" />
+                  <div className="flex items-start md:items-center gap-3">
+                    <div className="rounded-xl bg-white p-2 shadow-sm border border-slate-100">
+                      <TrendingUp size={20} className="text-indigo-500" />
+                    </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500">Priority</p>
-                      <p className="mt-0.5 text-sm font-bold text-slate-900">{(task.priority_score || 0).toFixed(1)}/10</p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        {(task.priority_score || 0) >= 7 ? "High" : (task.priority_score || 0) >= 4 ? "Medium" : "Low"}
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Priority</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-slate-700">{(task.priority_score || 0).toFixed(1)}<span className="text-slate-400 text-xs"> /10</span></p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {((task.priority_score || 0) >= 7) ? <span className="text-rose-500">High Impact</span> : ((task.priority_score || 0) >= 4) ? <span className="text-amber-500">Medium</span> : <span className="text-emerald-500">Normal</span>}
                       </p>
                     </div>
                   </div>
 
                   {/* Creation/Updated */}
-                  <div className="flex items-center gap-3">
-                    <Clock3 size={20} className="text-slate-400" />
+                  <div className="hidden md:flex items-center gap-3">
+                    <div className="rounded-xl bg-white p-2 shadow-sm border border-slate-100">
+                      <Clock3 size={20} className="text-teal-500" />
+                    </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500">Updated</p>
-                      <p className="mt-0.5 text-sm font-bold text-slate-900">{formatDate(task.updated_at)}</p>
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Updated</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-slate-700">{formatDate(task.updated_at)}</p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500">
                         {new Date(task.updated_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
@@ -764,32 +764,33 @@ export default function TasksPage() {
                 </div>
 
                 {/* Bottom section with actions */}
-                <div className="flex items-center justify-between gap-2 px-6 py-4 bg-slate-50/50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 lg:px-6 bg-slate-50/40 border-t border-white/40">
                   <div className="flex-1" />
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2.5 w-full sm:w-auto">
                     <button
                       onClick={() => toggleTaskStatus(task)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-slate-300 text-slate-700 transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"
+                      className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold border border-slate-200/80 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-emerald-100"
                     >
                       {task.status === "completed" ? "Reopen" : "Complete"}
                     </button>
                     <button
                       onClick={() => openEdit(task)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-slate-300 text-slate-700 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+                      className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold border border-slate-200/80 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 hover:shadow-blue-100"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => router.push(`/planner?task_id=${task.id}`)}
-                      className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:bg-blue-700 hover:shadow-md"
+                      className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-[0_4px_14px_rgba(59,130,246,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)]"
                     >
-                      Plan Task
+                      <Sparkles size={14} /> Plan Task
                     </button>
                     <button
                       onClick={() => removeTask(task)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-rose-300 text-rose-700 transition-all duration-200 hover:bg-rose-50 hover:border-rose-400"
+                      className="flex-none justify-center inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold border border-transparent hover:border-rose-200 bg-transparent text-slate-400 transition-all duration-200 hover:bg-rose-50 hover:text-rose-600"
+                      title="Delete Task"
                     >
-                      Delete
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>

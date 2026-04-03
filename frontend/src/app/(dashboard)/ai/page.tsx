@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageCircle, FileText, Brain } from "lucide-react";
+import { MessageCircle, FileText, Brain, Sparkles, Upload } from "lucide-react";
 
 import Ai from "@/components/ai-coach/AiChat";
 import PdfSummarizer from "@/components/ai-coach/PdfSummarizer";

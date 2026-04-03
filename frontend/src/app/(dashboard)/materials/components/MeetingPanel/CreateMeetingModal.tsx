@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface CreateMeetingModalProps {
     isOpen: boolean;
@@ -57,129 +58,85 @@ export const CreateMeetingModal = ({
 
     if (!isOpen) return null;
 
-    return (
-        <>
-            {/* Modal Overlay */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 50,
-                }}
-                onClick={onClose}
-            >
-                {/* Modal Content */}
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[220] overflow-y-auto bg-slate-900/55 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <div className="flex min-h-full items-start justify-center p-4 md:p-6">
                 <div
-                    style={{
-                        background: 'white',
-                        borderRadius: '0.75rem',
-                        padding: '2rem',
-                        width: '90%',
-                        maxWidth: '28rem',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                    }}
+                    className="my-4 w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                        Start a Meeting
-                    </h2>
-                    <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '1.5rem' }}>
-                        Choose a platform to start a video meeting for your group.
-                    </p>
-
-                    {/* Platform Selection */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                        {/* Zoom Option */}
+                <div className="p-5 md:p-8">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-3xl font-extrabold tracking-tight text-slate-800">Start a Meeting</h2>
+                            <p className="mt-2 text-lg leading-snug text-slate-600">
+                                Choose a platform to start a video meeting for your group.
+                            </p>
+                        </div>
                         <button
-                            onClick={() => setSelectedPlatform('zoom_manual')}
-                            style={{
-                                padding: '1rem',
-                                border: selectedPlatform === 'zoom_manual' ? '2px solid #2563eb' : '1px solid #e5e7eb',
-                                borderRadius: '0.5rem',
-                                background:
-                                    selectedPlatform === 'zoom_manual' ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                transition: 'all 0.2s',
-                            }}
+                            type="button"
+                            onClick={onClose}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                            aria-label="Close modal"
                         >
-                            <div
-                                style={{
-                                    width: '2.5rem',
-                                    height: '2.5rem',
-                                    borderRadius: '0.5rem',
-                                    background: '#2D8CFF',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    fontSize: '1.25rem',
-                                    fontWeight: 700,
-                                }}
-                            >
-                                Z
-                            </div>
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ fontWeight: 600, color: '#1f2937' }}>Use Existing Zoom Link</div>
-                                <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                                    Paste a Zoom invite URL created by a group member.
+                            ×
+                        </button>
+                    </div>
+
+                    <div className="mt-8 space-y-4">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedPlatform('zoom_manual')}
+                            className={`w-full rounded-2xl border p-5 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-blue-200 ${
+                                selectedPlatform === 'zoom_manual'
+                                    ? 'border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.2)] ring-1 ring-blue-200'
+                                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                            }`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-3xl font-extrabold text-white">
+                                    Z
+                                </div>
+                                <div>
+                                    <p className="text-sm font-extrabold text-slate-800">Use Existing Zoom Link</p>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Paste a Zoom invite URL created by a group member.
+                                    </p>
                                 </div>
                             </div>
                         </button>
 
-                        {/* Teams Option */}
                         <button
+                            type="button"
                             onClick={() => setSelectedPlatform('teams_manual')}
-                            style={{
-                                padding: '1rem',
-                                border: selectedPlatform === 'teams_manual' ? '2px solid #2563eb' : '1px solid #e5e7eb',
-                                borderRadius: '0.5rem',
-                                background:
-                                    selectedPlatform === 'teams_manual' ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                transition: 'all 0.2s',
-                            }}
+                            className={`w-full rounded-2xl border p-5 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-blue-200 ${
+                                selectedPlatform === 'teams_manual'
+                                    ? 'border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.2)] ring-1 ring-blue-200'
+                                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                            }`}
                         >
-                            <div
-                                style={{
-                                    width: '2.5rem',
-                                    height: '2.5rem',
-                                    borderRadius: '0.5rem',
-                                    background: '#0f172a',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    fontSize: '1rem',
-                                    fontWeight: 700,
-                                }}
-                            >
-                                🔗
-                            </div>
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ fontWeight: 600, color: '#1f2937' }}>Use Existing Teams Link</div>
-                                <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                                    No Entra setup needed. Paste a Teams invite URL.
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-2xl font-bold text-white">
+                                    🔗
+                                </div>
+                                <div>
+                                    <p className="text-sm font-extrabold text-slate-800">Use Existing Teams Link</p>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        No Entra setup needed. Paste a Teams invite URL.
+                                    </p>
                                 </div>
                             </div>
                         </button>
                     </div>
 
                     {(selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual') && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#475569', marginBottom: '0.35rem' }}>
+                        <div className="mt-6">
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                                 {selectedPlatform === 'teams_manual' ? 'Teams Meeting Link' : 'Zoom Meeting Link'}
                             </label>
                             <input
@@ -189,79 +146,48 @@ export const CreateMeetingModal = ({
                                 placeholder={selectedPlatform === 'teams_manual'
                                     ? 'https://teams.microsoft.com/l/meetup-join/...'
                                     : 'https://zoom.us/j/...'}
-                                style={{
-                                    width: '100%',
-                                    border: manualLinkError ? '1px solid #ef4444' : '1px solid #cbd5e1',
-                                    borderRadius: '0.4rem',
-                                    padding: '0.65rem 0.75rem',
-                                    fontSize: '0.85rem',
-                                }}
+                                className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-700 outline-none transition-all ${
+                                    manualLinkError
+                                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                                        : 'border-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+                                }`}
                             />
                             {manualLinkError && (
-                                <p style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: '#b91c1c' }}>
-                                    {manualLinkError}
-                                </p>
+                                <p className="mt-2 text-xs text-rose-700">{manualLinkError}</p>
                             )}
-                            <p style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: '#64748b' }}>
+                            <p className="mt-2 text-xs text-slate-500">
                                 Only group members can add and share this session link.
                             </p>
                         </div>
                     )}
 
-                    {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <div className="mt-7 flex flex-col-reverse justify-end gap-3 border-t border-slate-100 pt-5 sm:flex-row">
                         <button
+                            type="button"
                             onClick={onClose}
                             disabled={loading}
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                background: '#f3f4f6',
-                                color: '#374151',
-                                border: 'none',
-                                borderRadius: '0.375rem',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                opacity: loading ? 0.6 : 1,
-                                fontWeight: 500,
-                                fontSize: '0.875rem',
-                            }}
+                            className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             Cancel
                         </button>
                         <button
+                            type="button"
                             onClick={handleStart}
                             disabled={
                                 !selectedPlatform ||
                                 loading ||
                                 ((selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual') && (trimmedLink === '' || manualLinkError !== ''))
                             }
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                background:
-                                    selectedPlatform && !loading && ((selectedPlatform !== 'teams_manual' && selectedPlatform !== 'zoom_manual') || (trimmedLink && !manualLinkError))
-                                        ? '#2563eb'
-                                        : '#9ca3af',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '0.375rem',
-                                cursor:
-                                    selectedPlatform && !loading && ((selectedPlatform !== 'teams_manual' && selectedPlatform !== 'zoom_manual') || (trimmedLink && !manualLinkError))
-                                        ? 'pointer'
-                                        : 'not-allowed',
-                                opacity:
-                                    !selectedPlatform ||
-                                    loading ||
-                                    ((selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual') && (trimmedLink === '' || manualLinkError !== ''))
-                                        ? 0.6
-                                        : 1,
-                                fontWeight: 500,
-                                fontSize: '0.875rem',
-                            }}
+                            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                         >
                             {loading ? 'Starting...' : 'Use Link & Start'}
                         </button>
                     </div>
                 </div>
             </div>
-        </>
+            </div>
+        </div>
+        ,
+        document.body
     );
 };

@@ -149,7 +149,7 @@ export function InviteMemberCard({
                         }}
                     />
                     {isValidEmail && !alreadyInvited && (
-                        <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#34D399", fontSize: "1rem" }}>âœ“</span>
+                        <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#34D399", fontSize: "1rem" }}>✓</span>
                     )}
                 </div>
                 <button
@@ -179,7 +179,7 @@ export function InviteMemberCard({
                             <div className="pc-invite-row-main">
                                 <div className="pc-invite-row-email">{invite.invitedEmail}</div>
                                 <div className="pc-invite-row-meta">
-                                    {invite.emailSent ? "Email sent" : "In-app invite saved"} Â· {invite.groupModule}
+                                    {invite.emailSent ? "Email sent" : "In-app invite saved"} · {invite.groupModule}
                                 </div>
                             </div>
                             <span className={`pc-invite-status pc-status-${invite.status}`}>{invite.status}</span>
@@ -351,7 +351,7 @@ export function UploadMaterialCard({
                 <p className="pc-upload-dropzone-text">
                     <span style={{ fontWeight: 700, color: moduleColor }}>{canUpload ? "Click to upload" : "Members only"}</span> {canUpload ? "or drag & drop" : "can upload files here"}
                 </p>
-                <p className="pc-upload-dropzone-hint">PDF, DOCX, PPTX Â· max {MAX_SIZE_MB} MB per file</p>
+                <p className="pc-upload-dropzone-hint">PDF, DOCX, PPTX · max {MAX_SIZE_MB} MB per file</p>
                 <input
                     id="pc-file-input"
                     type="file"

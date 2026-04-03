@@ -25,6 +25,8 @@ import {
   Minus,
   ArrowLeft,
   RotateCcw,
+  Settings,
+  ArrowRight,
 } from "lucide-react";
 import {
   attachTaskResource,
@@ -481,51 +483,93 @@ function PlannerPageContent() {
 
   /* ─── MAIN RENDER ────────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 p-4 md:p-6">
-      <div className="max-w-5xl mx-auto space-y-5">
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6 min-h-screen">
+      
+      {/* ── Page Header with Gradient (EDS) ── */}
+        <section className="eds-hero-card eds-fade-up" style={{ animationDelay: "100ms" }}>
+          {/* Ambient glow blobs */}
+          <div className="pointer-events-none absolute eds-hero-glow-right blur-3xl opacity-60" />
+          <div className="pointer-events-none absolute eds-hero-glow-left blur-3xl opacity-60" />
+          <div className="pointer-events-none absolute left-1/2 top-0 h-px w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-        {/* ── Page header ── */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-all shadow-sm"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Smart Study Planner</h1>
-            <p className="text-sm text-slate-500">Task-context scheduling pipeline</p>
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center justify-between z-10">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push("/tasks")}
+                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm shadow-inner shadow-white/10 text-white hover:bg-white/25 hover:-translate-x-1 transition-all"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100/90 mb-1">
+                  EduSense · AI Schedule Engine
+                </p>
+                <h1 className="text-2xl font-bold text-white lg:text-3xl drop-shadow-sm flex items-center gap-3">
+                  Smart Study Planner
+                </h1>
+              </div>
+            </div>
+            
+            {schedule ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-50 ring-1 ring-white/20 backdrop-blur-md shadow-sm">
+                  <Sparkles size={13} className="text-blue-200" />
+                  Groq Powered
+                </span>
+                <button
+                  onClick={handleRegenerate}
+                  disabled={generating}
+                  className="eds-hero-action !bg-white !text-indigo-700 hover:!bg-indigo-50"
+                >
+                  {generating ? (
+                    <Loader2 size={16} className="animate-spin text-indigo-400" />
+                  ) : (
+                    <RotateCcw size={16} />
+                  )}
+                  {generating ? "Regenerating..." : "Regenerate"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-blue-50 ring-1 ring-white/20 backdrop-blur-md shadow-sm">
+                  <Sparkles size={13} className="text-blue-200" />
+                  Groq Powered
+                </span>
+              </div>
+            )}
           </div>
-        </div>
+        </section>
+
+      <div className="max-w-5xl mx-auto space-y-6">
 
         {/* ── Task info card ── */}
         {task && (
-          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-5">
+          <div className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl eds-fade-up" style={{ animationDelay: "200ms" }}>
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Target size={16} className="text-indigo-500" />
-                  <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Target size={16} className="text-blue-500" />
+                  <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wide">
                     {task.subject}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
                       task.difficulty === "hard"
-                        ? "bg-rose-100 text-rose-700"
+                        ? "bg-rose-100 text-rose-700 shadow-sm"
                         : task.difficulty === "medium"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-emerald-100 text-emerald-700"
+                        ? "bg-amber-100 text-amber-700 shadow-sm"
+                        : "bg-emerald-100 text-emerald-700 shadow-sm"
                     }`}
                   >
                     {task.difficulty}
                   </span>
                 </div>
-                <h2 className="text-lg font-bold text-slate-800">{task.title}</h2>
+                <h2 className="text-xl font-extrabold text-slate-800">{task.title}</h2>
               </div>
               <div className="text-right text-sm">
-                <div className="flex items-center gap-1.5 text-slate-500">
-                  <Calendar size={13} />
-                  <span>Deadline: {formatDeadline(task.deadline)}</span>
+                <div className="flex items-center gap-1.5 text-slate-500 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-200/50 shadow-sm">
+                  <Calendar size={14} className="text-indigo-400" />
+                  <span className="font-semibold">Deadline: {formatDeadline(task.deadline)}</span>
                 </div>
               </div>
             </div>
@@ -536,33 +580,42 @@ function PlannerPageContent() {
             UPLOAD + GENERATE PANEL  (shown if no schedule yet)
         ══════════════════════════════════════════════════════════════ */}
         {!schedule && (
-          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 space-y-5">
-            <div>
-              <h3 className="font-bold text-slate-800 text-base mb-0.5 flex items-center gap-2">
-                <Sparkles size={16} className="text-purple-500" />
+          <div className="rounded-2xl border border-white/60 bg-white/60 p-6 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl space-y-6 eds-fade-up" style={{ animationDelay: "300ms" }}>
+            <div className="border-b border-slate-200/60 pb-5">
+              <h3 className="font-extrabold text-slate-800 text-lg mb-1 flex items-center gap-2">
+                <Sparkles size={18} className="text-blue-500" />
                 Generate AI Schedule
               </h3>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm font-medium text-slate-500">
                 Follow this flow: choose your task, upload material, then generate your study plan.
                 Materials are required before generating a plan.
               </p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
-                <p className="text-xs font-semibold text-indigo-700">Step 1</p>
-                <p className="mt-1 text-sm font-medium text-slate-700">Task selected</p>
-                <p className="mt-0.5 text-xs text-slate-500">You are planning for this task.</p>
+              <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 p-4 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:scale-110 transition-transform">
+                  <Target size={40} className="text-blue-500" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Step 1</p>
+                <p className="mt-1 text-sm font-extrabold text-slate-800">Task selected</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">You are planning for this task.</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-700">Step 2</p>
-                <p className="mt-1 text-sm font-medium text-slate-700">Upload PDF or docs</p>
-                <p className="mt-0.5 text-xs text-slate-500">PDF, PPTX, DOCX supported.</p>
+              <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                  <Upload size={40} className="text-slate-500" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Step 2</p>
+                <p className="mt-1 text-sm font-extrabold text-slate-800">Upload PDF or docs</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">PDF, PPTX, DOCX supported.</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-700">Step 3</p>
-                <p className="mt-1 text-sm font-medium text-slate-700">Create schedule</p>
-                <p className="mt-0.5 text-xs text-slate-500">Scheduler uses task type + workload.</p>
+              <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                  <Sparkles size={40} className="text-slate-500" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Step 3</p>
+                <p className="mt-1 text-sm font-extrabold text-slate-800">Create schedule</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">Scheduler uses task type + workload.</p>
               </div>
             </div>
 
@@ -574,8 +627,8 @@ function PlannerPageContent() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
                 dragging
-                  ? "border-indigo-400 bg-indigo-50"
-                  : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                  ? "border-blue-400 bg-blue-50/50"
+                  : "border-slate-300 hover:border-blue-300 hover:bg-white/60"
               }`}
             >
               <input
@@ -586,34 +639,38 @@ function PlannerPageContent() {
                 className="hidden"
                 onChange={(e) => addFiles(e.target.files)}
               />
-              <Upload size={28} className="text-indigo-400 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-slate-600">
-                Drop files here or <span className="text-indigo-600">browse</span>
+              <Upload size={28} className="text-blue-500 mx-auto mb-3" />
+              <p className="text-sm font-extrabold text-slate-700">
+                Drop files here or <span className="text-blue-600">browse</span>
               </p>
-              <p className="text-xs text-slate-400 mt-1">PDF · PPTX · DOCX · Max 5 files · 10MB each</p>
+              <p className="text-xs font-medium text-slate-400 mt-1">PDF · PPTX · DOCX · Max 5 files · 10MB each</p>
             </div>
 
             {/* File list */}
             {files.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <div className="space-y-2 mt-4">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">
                   {files.length} file{files.length > 1 ? "s" : ""} selected
                 </p>
                 {files.map((f) => (
                   <div
                     key={f.name}
-                    className="flex items-center gap-3 px-4 py-2.5 bg-indigo-50 rounded-xl border border-indigo-100"
+                    className="flex items-center gap-3 px-4 py-3 bg-white/60 backdrop-blur-md rounded-xl border border-blue-100 shadow-sm transition-all hover:shadow-md hover:border-blue-200"
                   >
-                    <FileText size={15} className="text-indigo-500 flex-shrink-0" />
-                    <span className="flex-1 text-sm text-slate-700 truncate">{f.name}</span>
-                    <span className="text-xs text-slate-400">
-                      {(f.size / 1024).toFixed(0)} KB
-                    </span>
+                    <div className="p-2 bg-blue-50 rounded-lg shrink-0">
+                      <FileText size={16} className="text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-700 truncate">{f.name}</p>
+                      <p className="text-xs font-medium text-slate-400">
+                        {(f.size / 1024).toFixed(0)} KB
+                      </p>
+                    </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); removeFile(f.name); }}
-                      className="text-slate-400 hover:text-rose-500 transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
                     >
-                      <X size={14} />
+                      <X size={16} />
                     </button>
                   </div>
                 ))}
@@ -622,8 +679,8 @@ function PlannerPageContent() {
 
             {/* Error */}
             {error && (
-              <div className="flex items-start gap-2 px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700">
-                <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2 px-4 py-3 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl text-sm font-medium text-red-700 shadow-sm">
+                <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
                 {error}
               </div>
             )}
@@ -632,15 +689,15 @@ function PlannerPageContent() {
             <button
               onClick={handleGenerate}
               disabled={!taskId || files.length === 0}
-              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 text-white rounded-xl font-bold text-sm bg-gradient-to-r from-blue-600 to-indigo-600 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] transition-all hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none mt-6"
             >
-              <Brain size={18} />
+              <Brain size={20} className={files.length > 0 ? "animate-pulse" : ""} />
               {files.length > 0
                 ? `Attach ${files.length} file${files.length > 1 ? "s" : ""} and Generate Plan`
                 : "Attach Materials to Generate Plan"}
             </button>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs font-semibold text-slate-400 text-center mt-4">
               Required: upload at least one material to generate a task-aware study plan.
             </p>
           </div>
@@ -652,54 +709,81 @@ function PlannerPageContent() {
         {schedule && (
           <>
             {/* ── Schedule header stats ── */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl shadow-lg p-6 text-white">
-              <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
-                <div>
-                  <p className="text-indigo-200 text-xs font-semibold uppercase tracking-wide mb-1">
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl shadow-[0_20px_40px_-15px_rgba(79,70,229,0.3)] p-8 text-white relative overflow-hidden eds-hero-card">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 scale-150 pointer-events-none">
+                 <Calendar size={120} />
+              </div>
+              <div className="absolute -bottom-8 -left-8 p-12 opacity-10 -rotate-12 scale-125 pointer-events-none">
+                 <Target size={100} />
+              </div>
+
+              <div className="flex flex-col md:flex-row items-start justify-between gap-6 relative z-10">
+                <div className="flex-1">
+                  <div className="inline-flex items-center justify-center rounded-lg bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-50 backdrop-blur-md mb-4 border border-white/10">
+                    <span className="mr-2 h-1.5 w-1.5 rounded-full bg-blue-300"></span>
                     {schedule.subject}
-                  </p>
-                  <h2 className="text-xl font-bold">{schedule.title}</h2>
-                  <p className="text-indigo-200 text-sm mt-1 flex items-center gap-1.5">
-                    <Calendar size={13} />
-                    {formatDate(schedule.start_date)} → {formatDate(schedule.end_date)}
-                    &nbsp;·&nbsp;Due {formatDeadline(schedule.deadline)}
-                  </p>
+                  </div>
+                  <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-2 drop-shadow-sm">{schedule.title}</h2>
+                  <div className="flex flex-wrap items-center gap-4 text-blue-100 text-sm font-medium mt-4 bg-black/10 w-fit px-4 py-2 rounded-xl backdrop-blur-sm border border-white/5">
+                    <p className="flex items-center gap-1.5">
+                      <Calendar size={14} className="text-blue-300" />
+                      {formatDate(schedule.start_date)} <ArrowRight size={12} className="text-blue-400 mx-1" /> {formatDate(schedule.end_date)}
+                    </p>
+                    <div className="w-1 h-1 rounded-full bg-blue-400/50 hidden sm:block"></div>
+                    <p className="flex items-center gap-1.5">
+                      <Clock size={14} className="text-purple-300" />
+                      Due {formatDeadline(schedule.deadline)}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={handleRegenerate}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-sm font-semibold transition-all"
+                  className="group flex flex-col md:flex-row items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white border border-white/20 hover:border-white rounded-xl text-sm font-bold text-white hover:text-blue-700 transition-all duration-300 shadow-sm hover:shadow-xl backdrop-blur-md shrink-0 w-full md:w-auto justify-center"
                 >
-                  <RotateCcw size={14} />
-                  Regenerate
+                  <RotateCcw size={18} className="group-hover:-rotate-90 transition-transform duration-500" />
+                  Regenerate Plan
                 </button>
               </div>
 
-              <div className="mb-4 flex items-end gap-3">
-                <label className="text-xs text-indigo-100 font-semibold uppercase tracking-wide">
-                  Max Minutes/Day
+              <div className="mt-8 pt-6 border-t border-white/20 flex flex-col sm:flex-row items-start sm:items-center gap-4 relative z-10">
+                <label className="text-xs text-blue-200 font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
+                  <Settings size={14} />
+                  Max Minutes / Day
                 </label>
-                <input
-                  type="number"
-                  min={60}
-                  max={600}
-                  value={maxMinutesPerDay}
-                  onChange={(e) => setMaxMinutesPerDay(Number(e.target.value) || 240)}
-                  className="w-28 rounded-lg border border-white/30 bg-white/20 px-2.5 py-1.5 text-sm text-white placeholder:text-indigo-100 outline-none"
-                />
+                <div className="relative max-w-[200px] w-full group">
+                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <Clock size={14} className="text-white/40 group-focus-within:text-blue-300 transition-colors" />
+                   </div>
+                   <input
+                    type="number"
+                    min={60}
+                    max={600}
+                    value={maxMinutesPerDay}
+                    onChange={(e) => setMaxMinutesPerDay(Number(e.target.value) || 240)}
+                    className="w-full bg-black/20 hover:bg-black/30 focus:bg-white focus:text-slate-800 text-white rounded-lg pl-9 pr-12 py-2 text-sm font-bold placeholder-white/40 border border-white/20 focus:border-white outline-none transition-all"
+                   />
+                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                     <span className="text-xs font-bold text-white/50 group-focus-within:text-slate-400">MIN</span>
+                   </div>
+                </div>
+                <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-white/20 hidden sm:block"></div>
+                <p className="text-xs text-blue-200/80 font-medium hidden sm:block">Controls workload distribution</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-4 mt-8 relative z-10 w-full pt-4 border-t border-white/10">
                 {[
-                  { label: "Sessions", value: schedule.sessions.length, icon: <LayoutList size={15} /> },
-                  { label: "Total Hours", value: `${totalHours.toFixed(1)}h`, icon: <Clock size={15} /> },
-                  { label: "Topics", value: schedule.extracted_topics.length, icon: <BookOpen size={15} /> },
+                  { label: "Sessions", value: schedule.sessions.length, icon: <LayoutList size={18} /> },
+                  { label: "Total Time", value: `${totalHours.toFixed(1)}h`, icon: <Clock size={18} /> },
+                  { label: "Topics", value: schedule.extracted_topics.length, icon: <BookOpen size={18} /> },
                 ].map((stat) => (
-                  <div key={stat.label} className="bg-white/15 rounded-xl p-3 text-center">
-                    <div className="flex items-center justify-center gap-1.5 text-indigo-200 mb-1">
+                  <div key={stat.label} className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/10 transition-all hover:scale-105 hover:-translate-y-1">
+                    <div className="flex items-center justify-center gap-1.5 text-blue-200/80 mb-2 font-bold uppercase tracking-wider">
                       {stat.icon}
-                      <span className="text-xs">{stat.label}</span>
+                      <span className="text-[10px]">{stat.label}</span>
                     </div>
-                    <p className="text-xl font-bold">{stat.value}</p>
+                    <p className="text-2xl font-black tracking-tight">{stat.value}</p>
                   </div>
                 ))}
               </div>
@@ -707,12 +791,17 @@ function PlannerPageContent() {
 
             {/* ── AI Summary ── */}
             {schedule.ai_summary && (
-              <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-5">
-                <h3 className="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
-                  <Brain size={15} className="text-indigo-500" />
-                  AI Study Overview
+              <div className="rounded-2xl border border-purple-200/60 bg-gradient-to-r from-purple-50/50 to-purple-100/30 p-6 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl relative overflow-hidden eds-fade-up">
+                 <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <Sparkles size={60} className="text-purple-600" />
+                 </div>
+                <h3 className="font-extrabold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 border border-purple-200/60">
+                     <Brain size={18} className="text-purple-600 drop-shadow-sm" />
+                  </span>
+                  AI Study Insights
                 </h3>
-                <p className="text-slate-600 text-sm leading-relaxed">{schedule.ai_summary}</p>
+                <p className="text-slate-600 text-sm leading-relaxed font-medium pl-10 relative z-10">{schedule.ai_summary}</p>
               </div>
             )}
 
