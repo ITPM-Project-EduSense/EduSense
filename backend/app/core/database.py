@@ -20,6 +20,7 @@ async def connect_db():
     from app.models.study_material import StudyMaterial, Concept, PdfVector
     from app.models.study_schedule import StudySchedule, SmartSchedule
     from app.models.study_group import StudyGroup
+    from app.models.study_group_invite import StudyGroupInvite
     from app.models.smart_scheduling import TaskResource, StudyPlan, StudySession
     from app.models.chat_history import ChatHistory
     from app.models.pdf_model import PdfMaterial, PdfConcept, PdfVectorCollection
@@ -35,6 +36,7 @@ async def connect_db():
             StudySchedule,
             SmartSchedule,
             StudyGroup,
+            StudyGroupInvite,
             TaskResource,
             StudyPlan,
             StudySession,

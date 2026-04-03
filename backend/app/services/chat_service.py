@@ -12,9 +12,57 @@ from app.services.embedding_service import generate_embedding, find_similar_conc
 from app.models.study_material import PdfVector
 from app.models.chat_history import ChatHistory
 
-# Configure Groq client
-groq_client = Groq(api_key=settings.GROQ_API_KEY) if settings.GROQ_API_KEY else None
+# Configure Groq client lazily so missing/invalid config does not crash requests.
+groq_client = None
 GROQ_MODEL = "llama-3.3-70b-versatile"
+
+
+def get_groq_client() -> Optional[Groq]:
+    """Return a reusable Groq client when configured, otherwise None."""
+    global groq_client
+    if groq_client is not None:
+        return groq_client
+
+    api_key = (settings.GROQ_API_KEY or "").strip()
+    if not api_key:
+        return None
+
+    try:
+        groq_client = Groq(api_key=api_key)
+        return groq_client
+    except Exception as e:
+        print(f"Groq client init failed: {e}")
+        return None
+
+
+def build_fallback_reply(message: str, context_text: str, student_level: str) -> str:
+    """Generate a deterministic markdown reply when external AI providers are unavailable."""
+    if context_text and context_text != "No additional context found.":
+        return (
+            f"## EduSense AI Coach\n\n"
+            f"I can still help while the AI provider is temporarily unavailable.\n\n"
+            f"### Your Question\n"
+            f"{message}\n\n"
+            f"### Related Study Context\n"
+            f"{context_text}\n\n"
+            f"### Next Steps\n"
+            f"1. Focus on the most relevant concept above and summarize it in your own words.\n"
+            f"2. Create 3 short practice questions from that concept.\n"
+            f"3. Tell me your answer attempts and I will help you refine them.\n\n"
+            f"_Student level detected: {student_level}_"
+        )
+
+    return (
+        f"## EduSense AI Coach\n\n"
+        f"I can answer your question, but I currently do not have enough processed study context or the AI provider is unavailable.\n\n"
+        f"### Your Question\n"
+        f"{message}\n\n"
+        f"### What To Do Next\n"
+        f"1. Upload a study material in the Materials page.\n"
+        f"2. Ask the same question again for context-grounded guidance.\n"
+        f"3. If this keeps happening, verify GROQ_API_KEY in backend/.env.\n\n"
+        f"_Student level detected: {student_level}_"
+    )
 
 
 async def get_recent_chat_history(user_id: str, subject: Optional[str] = None, limit: int = 6) -> List[Dict]:
@@ -65,13 +113,17 @@ async def chat_with_coach(user_id: str, message: str, subject: Optional[str] = N
     query_embedding = await generate_embedding(message)
     
     # 2. Find similar concepts (existing concept pipeline)
-    concepts = await find_similar_concepts(
-        query_embedding=query_embedding,
-        user_id=user_id,
-        subject=subject,
-        top_k=3,  # Top 3 most relevant concepts
-        min_similarity=0.3
-    )
+    try:
+        concepts = await find_similar_concepts(
+            query_embedding=query_embedding,
+            user_id=user_id,
+            subject=subject,
+            top_k=3,  # Top 3 most relevant concepts
+            min_similarity=0.3
+        )
+    except Exception as e:
+        print(f"Concept retrieval failed: {e}")
+        concepts = []
     
     # 3. Retrieve closest PDF vector chunks stored in MongoDB
     vector_contexts = []
@@ -167,14 +219,20 @@ Now, answer the student's question accurately and in rich markdown format:"""
 
 
     # 7. Get answer from Groq
-    if not groq_client:
-        raise HTTPException(
-            status_code=500,
-            detail="GROQ_API_KEY is not configured on the server."
+    client = get_groq_client()
+    if not client:
+        reply = build_fallback_reply(message=message, context_text=context_text, student_level=student_level)
+        await save_chat_history(
+            user_id=user_id,
+            user_message=message,
+            ai_reply=reply,
+            subject=subject,
+            context_used=context_text,
         )
+        return reply
 
     try:
-        response = groq_client.chat.completions.create(
+        response = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -197,4 +255,12 @@ Now, answer the student's question accurately and in rich markdown format:"""
         return reply
     except Exception as e:
         print(f"Chat generation failed (Groq): {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate AI response.")
+        fallback_reply = build_fallback_reply(message=message, context_text=context_text, student_level=student_level)
+        await save_chat_history(
+            user_id=user_id,
+            user_message=message,
+            ai_reply=fallback_reply,
+            subject=subject,
+            context_used=context_text,
+        )
+        return fallback_reply

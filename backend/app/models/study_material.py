@@ -37,7 +37,7 @@ class Concept(Document):
 
     user_id: str = Field(..., description="ID of the user who owns this concept")
     material_id: str = Field(..., description="Reference to the StudyMaterial document this concept was extracted from")
-    subject: str = Field(..., min_length=1, max_length=100, description="Subject/course this concept belongs to")
+    subject: Optional[str] = Field(default=None, min_length=1, max_length=100, description="Subject/course this concept belongs to")
     title: str = Field(..., min_length=1, max_length=200, description="Concept title or heading")
     summary: str = Field(..., description="AI-generated summary of the concept")
     difficulty: Literal["easy", "medium", "hard"] = Field(..., description="Difficulty level of the concept")
