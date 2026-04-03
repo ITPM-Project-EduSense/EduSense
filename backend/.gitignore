@@ -47,6 +47,11 @@ temp/
 # Cache
 .cache/
 .eslintcache
+__pycache__/
+*.py[cod]
+
+# Uploaded artifacts
+backend/uploads/study_materials/
 
 # Coverage
 coverage/
