@@ -119,7 +119,7 @@ export default function Sidebar({ open, onClose, user, theme = "light" }: Sideba
               const Icon = item.icon;
               const active = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} className={itemClass(active)} onClick={onClose}>
+                <Link key={`${item.href}-${item.name}`} href={item.href} className={itemClass(active)} onClick={onClose}>
                   <Icon size={18} />
                   <span>{item.name}</span>
                 </Link>

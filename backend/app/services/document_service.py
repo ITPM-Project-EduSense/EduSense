@@ -6,6 +6,7 @@ Extracts text from various file formats and saves to MongoDB as StudyMaterial do
 """
 
 import io
+import uuid
 from pathlib import Path
 from typing import Optional
 from fastapi import HTTPException, UploadFile
@@ -104,7 +105,13 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
     return "\n\n".join(text_parts) if text_parts else "No readable text found in document."
 
 
-async def process_uploaded_document(file: UploadFile, user_id: str, subject: str) -> str:
+async def process_uploaded_document(
+    file: UploadFile,
+    user_id: str,
+    subject: str,
+    group_id: Optional[str] = None,
+    uploaded_by_name: Optional[str] = None,
+) -> str:
     """
     Process an uploaded document: detect file type, extract text, and save to database.
     
@@ -143,7 +150,13 @@ async def process_uploaded_document(file: UploadFile, user_id: str, subject: str
     try:
         # Read file bytes
         file_bytes = await file.read()
-        
+        uploads_dir = Path("backend/uploads/study_materials")
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        stored_file_path = uploads_dir / f"{uuid.uuid4().hex}{file_ext}"
+        stored_file_path.write_bytes(file_bytes)
+
+        file_size_bytes = len(file_bytes)
+
         # Extract text using the appropriate extractor
         extractor = extractors[file_ext]
         extracted_text = extractor(file_bytes)
@@ -157,6 +170,12 @@ async def process_uploaded_document(file: UploadFile, user_id: str, subject: str
             user_id=user_id,
             subject=subject,
             filename=file.filename,
+            file_type=file_ext.replace(".", "").upper(),
+            content_type=file.content_type or "",
+            file_size_bytes=file_size_bytes,
+            file_path=str(stored_file_path.resolve()),
+            group_id=group_id,
+            uploaded_by_name=uploaded_by_name,
             extracted_text=extracted_text
         )
         
@@ -190,9 +209,20 @@ async def get_user_materials(user_id: str, limit: int = 50) -> list:
     from app.models.study_material import StudyMaterial
     
     materials = await StudyMaterial.find(
-        StudyMaterial.user_id == user_id
+        StudyMaterial.user_id == user_id,
+        StudyMaterial.group_id == None
     ).sort("-created_at").limit(limit).to_list()
     
+    return materials
+
+
+async def get_group_materials(group_id: str, limit: int = 100) -> list:
+    from app.models.study_material import StudyMaterial
+
+    materials = await StudyMaterial.find(
+        StudyMaterial.group_id == group_id
+    ).sort("-created_at").limit(limit).to_list()
+
     return materials
 
 
