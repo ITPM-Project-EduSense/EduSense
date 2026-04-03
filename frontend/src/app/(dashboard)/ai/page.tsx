@@ -7,6 +7,7 @@ import Ai from "@/components/ai-coach/AiChat";
 import PdfSummarizer from "@/components/ai-coach/PdfSummarizer";
 import SmartQuiz from "@/components/ai-coach/SmartQuiz";
 import PdfUploaderModal from "@/components/ai-coach/PdfUploaderModal";
+import PdfViewer from "@/components/ai-coach/PdfViewer";
 import { UploadedPdf } from "@/components/ai-coach/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
@@ -20,7 +21,7 @@ export default function AiPage() {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const res = await fetch(`${API_BASE}/documents/materials`, {
+        const res = await fetch(`${API_BASE}/pdf/materials`, {
           credentials: "include",
         });
         if (!res.ok) return;
@@ -49,6 +50,7 @@ export default function AiPage() {
     { id: "chat", label: "Chat", icon: MessageCircle },
     { id: "summary", label: "Summary", icon: FileText },
     { id: "quiz", label: "Quiz", icon: Brain },
+    { id: "pdf", label: "PDF", icon: FileText },
   ];
 
   return (
@@ -94,6 +96,9 @@ export default function AiPage() {
         )}
         {activeTab === "quiz" && (
           <SmartQuiz uploadedPdfs={uploadedPdfs} />
+        )}
+        {activeTab === "pdf" && (
+          <PdfViewer uploadedPdfs={uploadedPdfs} />
         )}
       </div>
 

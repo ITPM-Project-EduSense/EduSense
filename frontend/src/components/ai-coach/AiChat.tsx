@@ -6,10 +6,9 @@ import {
   PanelRightOpen, FileText, Loader2, Bot, User, PlusCircle, Trash2 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
-/**
- * Interface for standard chat messages
- */
 interface ChatMessage {
   id: string;
   sender: "user" | "ai";
@@ -17,9 +16,6 @@ interface ChatMessage {
   timestamp: number;
 }
 
-/**
- * Interface to store distinct chat sessions
- */
 interface ChatSession {
   id: string;
   title: string;
@@ -29,19 +25,18 @@ interface ChatSession {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
-export default function AICoachPage() {
+export default function AiChat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   
-  // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load from LocalStorage on mount
+  // Load sessions from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("edu_coach_sessions");
     if (stored) {
@@ -61,14 +56,14 @@ export default function AICoachPage() {
     }
   }, []);
 
-  // Save to LocalStorage whenever sessions change
+  // Save to localStorage
   useEffect(() => {
     if (sessions.length > 0) {
       localStorage.setItem("edu_coach_sessions", JSON.stringify(sessions));
     }
   }, [sessions]);
 
-  // Scroll to bottom when messages change
+  // Auto scroll to bottom
   const currentSession = sessions.find((s) => s.id === currentSessionId);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,7 +84,8 @@ export default function AICoachPage() {
     e.stopPropagation();
     setSessions((prev) => prev.filter((s) => s.id !== id));
     if (currentSessionId === id) {
-      setCurrentSessionId(sessions.find((s) => s.id !== id)?.id || null);
+      const remaining = sessions.filter((s) => s.id !== id);
+      setCurrentSessionId(remaining.length > 0 ? remaining[0].id : null);
     }
   };
 
@@ -100,7 +96,6 @@ export default function AICoachPage() {
     setInputValue("");
     setLoading(true);
 
-    // 1. Instantly update UI with User message
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       sender: "user",
@@ -115,7 +110,9 @@ export default function AICoachPage() {
           return {
             ...s,
             messages: updatedMessages,
-            title: s.messages.length === 0 ? userMessageText.substring(0, 30) + "..." : s.title,
+            title: s.messages.length === 0 
+              ? userMessageText.substring(0, 40) + "..." 
+              : s.title,
             updatedAt: Date.now(),
           };
         }
@@ -124,14 +121,12 @@ export default function AICoachPage() {
     );
 
     try {
-      // Get student level from local storage or default
       const studentLevel = localStorage.getItem("edu_student_level") || "Intermediate";
 
-      // 2. Transmit to backend
       const res = await fetch(`${API_BASE}/chat/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", 
+        credentials: "include",
         body: JSON.stringify({ 
           message: userMessageText, 
           subject: null,
@@ -139,14 +134,11 @@ export default function AICoachPage() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Unable to reach AI Coach");
-      }
+      if (!res.ok) throw new Error("Failed to get response from AI Coach");
 
       const data = await res.json();
-      const replyText = data.reply || "No reply was generated.";
+      const replyText = data.reply || "Sorry, I couldn't generate a response.";
 
-      // 3. Update Session with AI Response
       setSessions((prev) =>
         prev.map((s) =>
           s.id === currentSessionId
@@ -177,7 +169,7 @@ export default function AICoachPage() {
                   {
                     id: Date.now().toString(),
                     sender: "ai",
-                    text: `⚠️ **Error connecting to AI Coach:** ${error.message}`,
+                    text: `⚠️ **Error:** Unable to connect to AI Coach. Please try again.`,
                     timestamp: Date.now(),
                   },
                 ],
@@ -199,22 +191,18 @@ export default function AICoachPage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      // Backend requires a subject. We auto-generate a subject for the context.
       formData.append("subject", `Study Material: ${file.name.replace(/\.[^/.]+$/, "")}`);
 
       const res = await fetch(`${API_BASE}/documents/upload`, {
         method: "POST",
-        credentials: "include", 
+        credentials: "include",
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error("PDF processing failed.");
-      }
+      if (!res.ok) throw new Error("PDF processing failed.");
 
       const data = await res.json();
-      
-      // Inject system message notifying user of success
+
       setSessions((prev) =>
         prev.map((s) =>
           s.id === currentSessionId
@@ -225,7 +213,7 @@ export default function AICoachPage() {
                   {
                     id: Date.now().toString(),
                     sender: "ai",
-                    text: `✅ Automatically processed **${file.name}**! Extracted ${data.concepts_extracted} learning concepts. You can now ask me questions about it, and I will strictly coach you through the material.`,
+                    text: `✅ **File Processed Successfully!**\n\nI have analyzed **${file.name}** and extracted ${data.concepts_extracted || 0} key learning concepts.\n\nYou can now ask me questions about this material. I'll guide you step by step using the content from your PDF.`,
                     timestamp: Date.now(),
                   },
                 ],
@@ -247,113 +235,149 @@ export default function AICoachPage() {
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 transition-all duration-300">
         
-        {/* Chat Header */}
-        <header className="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white/50 backdrop-blur-sm z-10">
+        {/* Header */}
+        <header className="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white/90 backdrop-blur-sm z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
               <Bot size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-800 leading-tight">EduSense AI Coach</h1>
-              <p className="text-xs text-indigo-500 font-medium">Powered by Semantic Context Search</p>
+              <h1 className="text-lg font-bold text-gray-800">EduSense AI Coach</h1>
+              <p className="text-xs text-indigo-500 font-medium">Your Personal Academic Tutor</p>
             </div>
           </div>
           
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
-            title="Toggle previous chats"
+            title="Toggle chat history"
           >
             {isSidebarOpen ? <PanelRightClose size={22} /> : <PanelRightOpen size={22} />}
           </button>
         </header>
 
-        {/* Messages List */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-gray-50">
           {!currentSession || currentSession.messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-70 px-4">
-              <div className="bg-indigo-50 p-6 rounded-3xl mb-4 border border-indigo-100">
-                <FileText size={48} className="text-indigo-400 mx-auto" strokeWidth={1.5} />
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-75 px-4">
+              <div className="bg-indigo-50 p-8 rounded-3xl mb-6 border border-indigo-100">
+                <FileText size={64} className="text-indigo-400 mx-auto" strokeWidth={1.2} />
               </div>
-              <h2 className="text-2xl font-semibold mb-2 text-gray-700">I am your strictly-guided AI Coach</h2>
-              <p className="max-w-md text-gray-500 mb-8 leading-relaxed">
-                Upload your course PDF by clicking the paperclip below. I will digest the concepts automatically, allowing you to ask questions. I won't give direct answers, but I'll guide you so you truly learn!
+              <h2 className="text-3xl font-semibold mb-3 text-gray-700">Ready to Learn?</h2>
+              <p className="max-w-md text-gray-500 text-lg leading-relaxed">
+                Upload your lecture PDF using the paperclip icon below.<br />
+                I'll extract the concepts and guide you through the material step by step.
               </p>
             </div>
           ) : (
             currentSession.messages.map((msg) => (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 key={msg.id}
-                className={`flex gap-4 ${msg.sender === "user" ? "flex-row-reverse" : "flex-row"} max-w-4xl mx-auto`}
+                className={`flex gap-4 ${msg.sender === "user" ? "justify-end" : "justify-start"} max-w-4xl mx-auto`}
               >
-                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center mt-1 ${
-                  msg.sender === "ai" ? "bg-indigo-100 text-indigo-600" : "bg-gray-800 text-white"
+                <div className={`w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center mt-1 ${
+                  msg.sender === "ai" 
+                    ? "bg-indigo-100 text-indigo-600" 
+                    : "bg-gray-800 text-white"
                 }`}>
-                  {msg.sender === "ai" ? <Bot size={18} /> : <User size={18} />}
+                  {msg.sender === "ai" ? <Bot size={20} /> : <User size={20} />}
                 </div>
-                
-                <div className={`p-4 rounded-2xl max-w-[85%] text-[15px] leading-relaxed relative ${
+
+                <div className={`p-5 rounded-3xl max-w-[80%] text-[15.2px] leading-relaxed ${
                   msg.sender === "user" 
-                    ? "bg-gray-800 text-white rounded-tr-sm" 
-                    : "bg-white border border-gray-200 shadow-sm text-gray-700 rounded-tl-sm prose prose-indigo max-w-none"
+                    ? "bg-gray-800 text-white rounded-tr-none" 
+                    : "bg-white border border-gray-200 shadow-sm text-gray-700 rounded-tl-none"
                 }`}>
-                  {msg.text}
+                  {msg.sender === "user" ? (
+                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                  ) : (
+                    <div className="prose prose-indigo prose-base max-w-none">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: (props) => <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-800" {...props} />,
+                          h2: (props) => <h2 className="text-xl font-semibold mt-5 mb-3 text-indigo-700" {...props} />,
+                          h3: (props) => <h3 className="text-lg font-medium mt-4 mb-2 text-gray-700" {...props} />,
+                          strong: (props) => <strong className="font-semibold text-indigo-700" {...props} />,
+                          ul: (props) => <ul className="list-disc pl-6 my-4 space-y-2" {...props} />,
+                          ol: (props) => <ol className="list-decimal pl-6 my-4 space-y-2" {...props} />,
+                          li: (props) => <li className="text-gray-700 leading-relaxed" {...props} />,
+                          p: (props) => <p className="my-3 leading-relaxed text-gray-700" {...props} />,
+                          blockquote: (props) => (
+                            <blockquote className="border-l-4 border-indigo-300 pl-4 italic my-4 text-gray-600" {...props} />
+                          ),
+                          code: ({ inline, ...props }: any) =>
+                            inline ? (
+                              <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-sm" {...props} />
+                            ) : (
+                              <code className="block bg-gray-900 text-gray-100 p-4 rounded-2xl my-4 overflow-x-auto font-mono text-sm" {...props} />
+                            ),
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))
           )}
 
+          {/* Upload & Loading Indicators */}
           {uploading && (
-            <div className="flex gap-4 max-w-4xl mx-auto opacity-70">
-               <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mt-1">
-                 <Bot size={18} />
-               </div>
-               <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center gap-3">
-                 <Loader2 className="animate-spin text-indigo-500" size={18} />
-                 <span>Reading and compiling concept vectors from PDF...</span>
-               </div>
+            <div className="flex gap-4 max-w-4xl mx-auto">
+              <div className="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                <Bot size={20} />
+              </div>
+              <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm flex items-center gap-3">
+                <Loader2 className="animate-spin text-indigo-500" size={22} />
+                <span className="text-gray-600">Processing PDF and extracting concepts...</span>
+              </div>
             </div>
           )}
 
           {loading && (
-            <div className="flex gap-4 max-w-4xl mx-auto opacity-70">
-               <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mt-1">
-                 <Bot size={18} />
-               </div>
-               <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center gap-2">
-                 <span className="flex space-x-1">
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></span>
-                 </span>
-               </div>
+            <div className="flex gap-4 max-w-4xl mx-auto">
+              <div className="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                <Bot size={20} />
+              </div>
+              <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">AI Coach is thinking</span>
+                  <div className="flex space-x-1">
+                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: "0ms"}}></span>
+                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: "150ms"}}></span>
+                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: "300ms"}}></span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-          <div ref={messagesEndRef} className="h-4" />
+
+          <div ref={messagesEndRef} className="h-8" />
         </div>
 
-        {/* Input Bar */}
+        {/* Input Area */}
         <div className="p-4 bg-white border-t border-gray-100">
-          <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-3xl p-2 px-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-300 transition-all">
+          <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-3xl p-2 px-4 shadow-sm focus-within:ring-2 focus-within:ring-indigo-200 focus-within:border-indigo-300 transition-all">
             
-            {/* Hidden File Input */}
             <input 
-               type="file" 
-               accept=".pdf,.docx,.pptx" 
-               className="hidden" 
-               ref={fileInputRef} 
-               onChange={handleFileUpload} 
+              type="file" 
+              accept=".pdf,.docx,.pptx" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
             />
 
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={loading || uploading}
-              className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-full transition-colors disabled:opacity-50 shrink-0 mb-0.5"
-              title="Upload PDF material"
+              className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-2xl transition-all disabled:opacity-50"
+              title="Upload study material (PDF)"
             >
-              <Paperclip size={20} />
+              <Paperclip size={22} />
             </button>
             
             <textarea
@@ -365,77 +389,78 @@ export default function AICoachPage() {
                   handleSendMessage();
                 }
               }}
-              placeholder="Ask your coach anything about the reading..."
-              className="w-full max-h-32 min-h-[44px] bg-transparent resize-none outline-none py-3 text-gray-700 leading-normal"
+              placeholder="Ask anything about your study material..."
+              className="flex-1 max-h-32 min-h-[52px] bg-transparent resize-y outline-none py-3 px-2 text-gray-700 leading-relaxed"
               rows={1}
             />
             
             <button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || loading || uploading}
-              className={`p-3 rounded-full shrink-0 mb-0.5 transition-colors ${
+              className={`p-3.5 rounded-2xl shrink-0 transition-all ${
                 inputValue.trim() 
                   ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" 
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
-              <Send size={18} className={inputValue.trim() ? "translate-x-0.5 translate-y-[0px]" : ""} />
+              <Send size={20} className={inputValue.trim() ? "translate-x-0.5" : ""} />
             </button>
           </div>
-          <div className="text-center mt-2 text-xs text-gray-400">
-             The AI Coach pulls from your latest uploaded PDFs using semantic similarity.
-          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-3">
+            AI Coach uses semantic search from your uploaded PDFs • Answers are based only on your material
+          </p>
         </div>
       </div>
 
-      {/* Right Sidebar (Previous Chats) */}
+      {/* Sidebar - Chat History */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            className="border-l border-gray-200 bg-gray-50 flex flex-col shrink-0 z-20 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.03)]"
+            className="border-l border-gray-200 bg-gray-50 flex flex-col shrink-0 z-20 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)]"
           >
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
+            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2 text-gray-700">
                 <MessageSquare size={18} className="text-indigo-500" />
-                Previous Chats
+                Previous Sessions
               </h3>
               <button 
                 onClick={createNewSession}
-                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
                 title="New Chat"
               >
-                <PlusCircle size={20} />
+                <PlusCircle size={22} />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
               {sessions.map((session) => (
                 <div
                   key={session.id}
                   onClick={() => setCurrentSessionId(session.id)}
-                  className={`group w-full text-left p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between ${
+                  className={`group w-full text-left p-4 rounded-2xl cursor-pointer transition-all flex items-center justify-between ${
                     currentSessionId === session.id
                       ? "bg-indigo-100 text-indigo-900 shadow-sm"
-                      : "hover:bg-gray-200/60 text-gray-600"
+                      : "hover:bg-gray-100 text-gray-600"
                   }`}
                 >
-                  <div className="truncate text-sm font-medium mr-2">
-                    {session.title || "Empty Chat"}
+                  <div className="truncate text-sm font-medium pr-2">
+                    {session.title || "Untitled Session"}
                   </div>
                   <button 
                     onClick={(e) => deleteSession(e, session.id)}
-                    className="p-1.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 bg-white rounded-md shadow-sm transition-all"
+                    className="p-1.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
               ))}
               
               {sessions.length === 0 && (
-                <p className="text-xs text-gray-400 text-center mt-10">No chat history yet.</p>
+                <p className="text-sm text-gray-400 text-center mt-12">No previous chats yet</p>
               )}
             </div>
           </motion.div>

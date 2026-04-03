@@ -33,7 +33,7 @@ export default function PdfUploaderModal({ isOpen, onClose, onUploadSuccess }: P
     formData.append("subject", `Study Material: ${file.name.replace(/\.[^/.]+$/, "")}`);
 
     try {
-      const res = await fetch(`${API_BASE}/documents/upload`, {
+      const res = await fetch(`${API_BASE}/pdf/upload`, {
         method: "POST",
         credentials: "include",
         body: formData,

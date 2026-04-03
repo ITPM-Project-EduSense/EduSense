@@ -76,7 +76,7 @@ def _get_client() -> Optional[GroqClient]:
     except Exception as e:
         print(f"[groq_service] Groq client init failed: {e}")
         return None
-MODEL = "llama-3.3-70b-versatile"  # Free tier model
+MODEL = "llama-3.1-8b-instant"  # Free tier model
 
 
 # ==============================================================================

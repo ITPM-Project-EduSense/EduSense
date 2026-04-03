@@ -17,10 +17,12 @@ async def connect_db():
     # 🔥 Import ALL document models here
     from app.models.task import Task
     from app.models.user_model import User
-    from app.models.study_material import StudyMaterial, Concept
+    from app.models.study_material import StudyMaterial, Concept, PdfVector
     from app.models.study_schedule import StudySchedule, SmartSchedule
     from app.models.study_group import StudyGroup
     from app.models.smart_scheduling import TaskResource, StudyPlan, StudySession
+    from app.models.chat_history import ChatHistory
+    from app.models.pdf_model import PdfMaterial, PdfConcept, PdfVectorCollection
 
     await init_beanie(
         database=db,
@@ -29,13 +31,18 @@ async def connect_db():
             User,
             StudyMaterial,
             Concept,
+            PdfVector,
             StudySchedule,
             SmartSchedule,
             StudyGroup,
             TaskResource,
             StudyPlan,
             StudySession,
-        ]
+            ChatHistory,
+            PdfVectorCollection,
+            PdfMaterial,
+            PdfConcept
+        ],
     )
 
     print(f"✅ Connected to MongoDB: {settings.DATABASE_NAME}")
