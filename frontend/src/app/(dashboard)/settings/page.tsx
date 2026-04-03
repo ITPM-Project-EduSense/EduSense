@@ -47,7 +47,7 @@ function applyTheme(mode: ThemeMode) {
 }
 
 const defaultSettings: SettingsState = {
-  theme: "system",
+  theme: "light",
   reminderEmails: true,
   pushNotifications: true,
   weeklyDigest: false,

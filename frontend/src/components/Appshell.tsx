@@ -64,7 +64,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isPublicRoute) return;
 
-    let mode: ThemeMode = "system";
+    let mode: ThemeMode = "light";
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) {
@@ -74,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
-      mode = "system";
+      mode = "light";
     }
 
     const initialTheme = resolveTheme(mode);
