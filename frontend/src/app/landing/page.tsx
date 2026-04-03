@@ -27,6 +27,57 @@ import {
   LogOut,
 } from "lucide-react";
 
+/* ─── Interactive 3D Tilt Wrapper ─── */
+function InteractiveTiltCard({
+  children,
+  className,
+  maxTilt = 10,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  maxTilt?: number;
+}) {
+  const [tilt, setTilt] = useState({ x: 0, y: 0, glowX: 50, glowY: 50 });
+
+  const handleMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / rect.width;
+    const py = (event.clientY - rect.top) / rect.height;
+    const rotateY = (px - 0.5) * (maxTilt * 2);
+    const rotateX = (0.5 - py) * (maxTilt * 2);
+
+    setTilt({
+      x: rotateX,
+      y: rotateY,
+      glowX: px * 100,
+      glowY: py * 100,
+    });
+  };
+
+  const resetTilt = () => {
+    setTilt({ x: 0, y: 0, glowX: 50, glowY: 50 });
+  };
+
+  return (
+    <div
+      className={`relative [transform-style:preserve-3d] transition-transform duration-300 ${className || ""}`}
+      style={{
+        transform: `perspective(1400px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+      }}
+      onMouseMove={handleMove}
+      onMouseLeave={resetTilt}
+    >
+      <div
+        className="pointer-events-none absolute -inset-1 rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          background: `radial-gradient(circle at ${tilt.glowX}% ${tilt.glowY}%, rgba(99,102,241,0.22), transparent 45%)`,
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
 /* ─── Intersection Observer Hook ─── */
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -91,6 +142,31 @@ function FloatingParticles() {
             animationDelay: particle.animationDelay,
           }}
         />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Playful Orbiting Stickers ─── */
+function OrbitingStickers() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {[
+        { label: "AI", tone: "from-indigo-500 to-blue-500", pos: "top-[12%] left-[54%]", delay: "0s" },
+        { label: "Plan", tone: "from-violet-500 to-fuchsia-500", pos: "top-[28%] right-[14%]", delay: "1.2s" },
+        { label: "Focus", tone: "from-emerald-500 to-cyan-500", pos: "bottom-[18%] right-[24%]", delay: "0.7s" },
+      ].map((sticker) => (
+        <div
+          key={sticker.label}
+          className={`absolute ${sticker.pos} hidden md:flex items-center justify-center px-3 py-1.5 rounded-full text-[11px] font-bold text-white bg-gradient-to-r ${sticker.tone} shadow-[0_10px_30px_rgba(15,23,42,0.25)]`}
+          style={{
+            animation: "stickerDrift 8s ease-in-out infinite",
+            animationDelay: sticker.delay,
+            transform: "translateZ(0)",
+          }}
+        >
+          {sticker.label}
+        </div>
       ))}
     </div>
   );
@@ -594,54 +670,72 @@ export default function LandingPage() {
       )}
 
       {/* ─── HERO SECTION ─── */}
-      <section ref={hero.ref} className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
+      <section ref={hero.ref} className="relative pt-24 pb-18 md:pt-32 md:pb-24 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-[920px] h-[620px] bg-gradient-to-b from-indigo-100/60 via-violet-100/30 to-transparent rounded-full blur-3xl" />
         <div className="absolute top-16 right-[4%] w-[420px] h-[420px] bg-gradient-to-br from-violet-200/35 to-indigo-100/5 rounded-full blur-3xl" />
         <div className="absolute top-44 left-[2%] w-[320px] h-[320px] bg-gradient-to-tr from-sky-200/25 to-transparent rounded-full blur-3xl" />
+        <div className="absolute left-1/2 top-[8%] -translate-x-1/2 w-[760px] h-[220px] opacity-60 blur-2xl"
+          style={{
+            background: "conic-gradient(from 90deg, rgba(99,102,241,0.28), rgba(14,165,233,0.2), rgba(168,85,247,0.2), rgba(99,102,241,0.28))",
+            animation: "auroraSweep 14s linear infinite",
+          }}
+        />
+        <div
+          className="absolute top-[18%] left-[12%] w-44 h-44 rounded-[36px] border border-indigo-200/40"
+          style={{
+            background: "linear-gradient(145deg, rgba(255,255,255,0.45), rgba(129,140,248,0.12))",
+            transform: "rotate3d(1,1,0,35deg)",
+            animation: "float 10s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute bottom-[12%] right-[8%] w-36 h-36 rounded-[28px] border border-violet-200/40"
+          style={{
+            background: "linear-gradient(145deg, rgba(255,255,255,0.4), rgba(167,139,250,0.15))",
+            transform: "rotate3d(1,-1,0,30deg)",
+            animation: "float 12s ease-in-out infinite",
+            animationDelay: "1.2s",
+          }}
+        />
         <FloatingParticles />
 
-        {/* Floating UI Decorations */}
-        <div className="hidden lg:block">
-          <AnimatedTaskCard delay="0s" className="w-[200px] top-[140px] left-[6%]" />
-          <AnimatedPriorityRing delay="1s" className="top-[120px] right-[7%]" />
-          <AnimatedScheduleCard delay="2s" className="w-[180px] bottom-[60px] left-[8%]" />
-          <AnimatedNotification delay="0.5s" className="bottom-[80px] right-[6%]" />
-        </div>
+        {/* Floating UI Decorations intentionally disabled for cleaner centered hero */}
 
-        <div className="relative max-w-6xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-14 items-center">
-            <div>
+        <div className="relative max-w-7xl mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-8 xl:gap-10 items-center">
+            <div className="max-w-[580px] mx-auto text-center lg:text-center lg:justify-self-center">
               <div
-                className={`inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-[12px] font-medium text-indigo-600 mb-7 transition-all duration-700 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+                className={`inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-[12px] font-medium text-indigo-600 mb-7 mx-auto transition-all duration-700 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               >
                 <Sparkles size={13} />
-                AI-Powered Student Productivity Platform
+                Built for Ambitious University Students
               </div>
 
               <h1
-                className={`text-5xl sm:text-6xl md:text-[66px] font-semibold leading-tight tracking-tight mb-6 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 bg-clip-text text-transparent transition-all duration-700 delay-100 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                className={`text-4xl sm:text-5xl md:text-[60px] font-semibold leading-[1.08] tracking-[0.005em] mb-6 text-center bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 bg-clip-text text-transparent bg-[length:200%_200%] transition-all duration-700 delay-100 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                style={{ animation: "gradientFlow 7s ease-in-out infinite" }}
               >
-                Study Smarter,
+                Design Your
                 <br />
-                <span>Not Harder</span>
+                <span>Best Semester</span>
               </h1>
 
               <p
-                className={`text-[17px] md:text-xl text-slate-600 max-w-xl mb-9 leading-relaxed transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                className={`text-[17px] md:text-[19px] text-slate-600 max-w-xl mx-auto mb-9 leading-[1.75] text-center transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
               >
-                EduSense gives university students an AI command center for academic success, combining
-                intelligent task prioritization, adaptive schedules, and productivity coaching in one modern platform.
+                EduSense brings planning, focus coaching, and smart scheduling into one elegant workspace.
+                Manage assignments, priorities, and progress with a dashboard designed for calm clarity.
               </p>
 
               <div
-                className={`flex flex-wrap items-center gap-4 transition-all duration-700 delay-300 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                className={`flex flex-wrap items-center justify-center gap-4 transition-all duration-700 delay-300 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
               >
                 <button
                   onClick={() => router.push("/dashboard")}
                   className="group inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-[15px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
                 >
-                  Explore Dashboard
+                  Open Dashboard
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
                 <a
@@ -653,43 +747,48 @@ export default function LandingPage() {
               </div>
 
               <div
-                className={`flex flex-wrap items-center gap-2.5 mt-10 transition-all duration-700 delay-500 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+                className={`flex flex-wrap items-center justify-center gap-2.5 mt-10 transition-all duration-700 delay-500 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               >
                 {["Next.js", "FastAPI", "MongoDB", "Gemini AI", "Tailwind"].map((tech) => (
-                  <span key={tech} className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[11px] font-medium text-slate-500 shadow-sm">
+                  <span
+                    key={tech}
+                    className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-[11px] font-medium text-slate-500 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
+                    style={{ animation: "chipFloat 6s ease-in-out infinite" }}
+                  >
                     {tech}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className={`relative transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-              <div className="absolute -inset-3 bg-gradient-to-br from-indigo-500/15 to-violet-500/10 blur-2xl rounded-[28px]" />
-              <div className="relative rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md shadow-[0_24px_80px_rgba(15,23,42,0.15)] hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/90 flex items-center justify-between">
+            <div className={`relative mx-auto lg:mx-0 lg:justify-self-start transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
+              <div className="absolute -inset-3 bg-gradient-to-br from-indigo-500/16 via-violet-400/9 to-cyan-400/8 blur-2xl rounded-[28px]" />
+              <InteractiveTiltCard className="group" maxTilt={9}>
+                <div className="relative max-w-[560px] rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md shadow-[0_20px_70px_rgba(15,23,42,0.14)] hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/90 flex items-center justify-between">
                   <div>
-                    <div className="text-[13px] font-semibold text-slate-800">EduSense Dashboard Preview</div>
-                    <div className="text-[11px] text-slate-500">Realtime AI planning insights</div>
+                    <div className="text-[14px] font-semibold text-slate-800">Modern Study Dashboard</div>
+                    <div className="text-[12px] text-slate-500">Clear priorities, progress, and schedule flow</div>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
                     <CheckCircle size={11} /> Online
                   </span>
                 </div>
 
-                <div className="p-5 space-y-5">
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                <div className="p-6 space-y-6">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-[12px] font-semibold text-slate-700">Study Plan Tasks</div>
-                      <span className="text-[10px] text-slate-400">Today</span>
+                      <div className="text-[13px] font-semibold text-slate-700">Today&apos;s Priorities</div>
+                      <span className="text-[11px] text-slate-400">Monday</span>
                     </div>
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {[
-                        { task: "DSA Assignment", badge: "High", tone: "bg-rose-50 text-rose-600" },
-                        { task: "Database Revision", badge: "Medium", tone: "bg-amber-50 text-amber-600" },
-                        { task: "UI Prototype Review", badge: "Low", tone: "bg-emerald-50 text-emerald-600" },
+                        { task: "Machine Learning Assignment", badge: "High", tone: "bg-rose-50 text-rose-600" },
+                        { task: "Database Revision Sprint", badge: "Medium", tone: "bg-amber-50 text-amber-600" },
+                        { task: "UI Prototype Feedback", badge: "Low", tone: "bg-emerald-50 text-emerald-600" },
                       ].map((row) => (
-                        <div key={row.task} className="flex items-center justify-between text-[12px]">
-                          <span className="text-slate-600">{row.task}</span>
+                        <div key={row.task} className="flex items-center justify-between text-[12px] py-1">
+                          <span className="text-slate-600 font-medium">{row.task}</span>
                           <span className={`px-2 py-0.5 rounded-full font-semibold ${row.tone}`}>{row.badge}</span>
                         </div>
                       ))}
@@ -697,28 +796,28 @@ export default function LandingPage() {
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                       <div className="flex items-center gap-2 mb-2 text-[12px] font-semibold text-slate-700">
                         <TrendingUp size={14} className="text-indigo-500" /> Productivity Score
                       </div>
                       <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
                         <div className="h-full w-[78%] bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-1000" />
                       </div>
-                      <div className="text-[11px] text-slate-500">78% this week</div>
+                      <div className="text-[11px] text-slate-500">78% consistency this week</div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                       <div className="flex items-center gap-2 mb-2 text-[12px] font-semibold text-slate-700">
                         <Target size={14} className="text-violet-500" /> Priority Indicator
                       </div>
                       <div className="text-2xl font-bold text-slate-800 leading-none">7.8</div>
-                      <div className="text-[11px] text-rose-500 mt-1">High Focus Required</div>
+                      <div className="text-[11px] text-rose-500 mt-1">Focus Block Suggested</div>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center gap-2 mb-3 text-[12px] font-semibold text-slate-700">
-                      <Calendar size={14} className="text-indigo-500" /> AI Schedule Items
+                      <Calendar size={14} className="text-indigo-500" /> Smart Schedule Timeline
                     </div>
                     <div className="space-y-2">
                       {[
@@ -735,7 +834,8 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
+              </InteractiveTiltCard>
             </div>
           </div>
         </div>
@@ -778,7 +878,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-full text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mb-4">
               <Target size={12} /> Core Modules
             </div>
-            <h2 className="text-4xl md:text-[44px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
+            <h2 className="text-3xl md:text-[38px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
               Four Intelligent Modules
             </h2>
             <p className="text-lg text-slate-600 max-w-xl mx-auto">
@@ -826,10 +926,10 @@ export default function LandingPage() {
                 gradient: "from-amber-500 to-orange-500",
               },
             ].map((feature, i) => (
-              <div
+              <InteractiveTiltCard
                 key={feature.title}
                 className={`group relative bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl p-7 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-                style={{ transitionDelay: `${i * 120}ms` }}
+                maxTilt={6}
               >
                 {/* Top gradient line */}
                 <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
@@ -863,7 +963,7 @@ export default function LandingPage() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </InteractiveTiltCard>
             ))}
           </div>
         </div>
@@ -879,7 +979,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[11px] font-semibold text-indigo-300 uppercase tracking-wider mb-4">
               <Zap size={12} /> AI Workflow
             </div>
-            <h2 className="text-4xl md:text-[44px] font-semibold text-white tracking-tight leading-tight mb-4">
+            <h2 className="text-3xl md:text-[38px] font-semibold text-white tracking-tight leading-tight mb-4">
               How EduSense Works
             </h2>
             <p className="text-slate-300 max-w-2xl mx-auto text-[16px]">
@@ -914,17 +1014,29 @@ export default function LandingPage() {
                 icon: <BarChart3 size={18} />,
               },
             ].map((item, i) => (
-              <div
-                key={item.title}
-                className={`rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 hover:-translate-y-1 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(6,182,212,0.22)] transition-all duration-300 ${workflow.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-                style={{ transitionDelay: `${i * 120}ms` }}
-              >
-                <div className="inline-flex w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white items-center justify-center mb-4 shadow-lg">
-                  {item.icon}
+              <div key={item.title} className="relative">
+                <div
+                  className={`rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 hover:-translate-y-1 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(6,182,212,0.22)] transition-all duration-300 ${workflow.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                  style={{ transitionDelay: `${i * 120}ms` }}
+                >
+                  <div className="inline-flex w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white items-center justify-center mb-4 shadow-lg">
+                    {item.icon}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-2">{item.step}</div>
+                  <h3 className="text-[17px] font-semibold text-white mb-2 leading-snug">{item.title}</h3>
+                  <p className="text-[13px] text-slate-300 leading-relaxed">{item.desc}</p>
                 </div>
-                <div className="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-2">{item.step}</div>
-                <h3 className="text-[17px] font-semibold text-white mb-2 leading-snug">{item.title}</h3>
-                <p className="text-[13px] text-slate-300 leading-relaxed">{item.desc}</p>
+
+                {i < 3 && (
+                  <div
+                    className="pointer-events-none hidden lg:block absolute top-1/2 -right-4 w-8 h-[2px] rounded-full"
+                    style={{
+                      background: "linear-gradient(90deg, rgba(129,140,248,0.2), rgba(34,211,238,0.95), rgba(129,140,248,0.2))",
+                      animation: "beamPulse 2.2s ease-in-out infinite",
+                      animationDelay: `${i * 0.35}s`,
+                    }}
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -944,7 +1056,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[11px] font-semibold text-indigo-400 uppercase tracking-wider mb-5">
                 <Globe size={12} /> Our Vision
               </div>
-              <h2 className="text-4xl md:text-[42px] font-semibold text-white leading-tight tracking-tight mb-6">
+              <h2 className="text-3xl md:text-[38px] font-semibold text-white leading-tight tracking-tight mb-6">
                 Transforming Student
                 <br />
                 <span className="text-indigo-400">Productivity</span> with AI
@@ -982,7 +1094,10 @@ export default function LandingPage() {
             <div className={`relative transition-all duration-700 delay-200 ${vision.inView ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"}`}>
               <div className="relative w-full aspect-square max-w-[420px] mx-auto">
                 {/* Central orb */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl shadow-[0_0_90px_rgba(99,102,241,0.45)] flex items-center justify-center animate-[pulse_3s_ease-in-out_infinite]">
+                <div
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl shadow-[0_0_90px_rgba(99,102,241,0.45)] flex items-center justify-center animate-[pulse_3s_ease-in-out_infinite]"
+                  style={{ transform: "translate(-50%, -50%) rotateX(14deg) rotateY(-12deg)" }}
+                >
                   <Brain size={48} className="text-white" />
                 </div>
 
@@ -1038,7 +1153,7 @@ export default function LandingPage() {
               <Star key={i} size={18} className="text-amber-400 fill-amber-400" />
             ))}
           </div>
-          <h2 className="text-4xl md:text-[44px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
+          <h2 className="text-3xl md:text-[38px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
             Ready to Boost Your <span className="text-indigo-500">Productivity?</span>
           </h2>
           <p className="text-lg text-slate-600 mb-10 max-w-lg mx-auto">
@@ -1114,6 +1229,39 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <style jsx global>{`
+        @keyframes auroraSweep {
+          0% { transform: translateX(-4%) rotate(0deg); filter: hue-rotate(0deg); }
+          50% { transform: translateX(4%) rotate(10deg); filter: hue-rotate(18deg); }
+          100% { transform: translateX(-4%) rotate(0deg); filter: hue-rotate(0deg); }
+        }
+
+        @keyframes stickerDrift {
+          0% { transform: translateY(0px) rotate(-5deg); }
+          35% { transform: translateY(-10px) rotate(4deg); }
+          70% { transform: translateY(4px) rotate(-3deg); }
+          100% { transform: translateY(0px) rotate(-5deg); }
+        }
+
+        @keyframes gradientFlow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        @keyframes chipFloat {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-3px); }
+          100% { transform: translateY(0px); }
+        }
+
+        @keyframes beamPulse {
+          0% { opacity: 0.35; transform: scaleX(0.7); }
+          50% { opacity: 1; transform: scaleX(1.05); }
+          100% { opacity: 0.35; transform: scaleX(0.7); }
+        }
+      `}</style>
     </div>
   );
 }

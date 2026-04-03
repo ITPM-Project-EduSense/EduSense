@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
+import SinhalaTitle from "@/components/SinhalaTitle";
 
 const MOCK_SESSIONS: Record<string, { label: string; url: string; platform: string }[]> = {
     default: [
@@ -369,24 +370,111 @@ export default function PeerConnectHome() {
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
-        .pc-wrap {
-          width: 100%;
-          background: #D4D7DE;
-        }
+                .pc-wrap {
+                    width: 100%;
+                    background:
+                        radial-gradient(circle at 6% 8%, rgba(59,130,246,0.07), transparent 24%),
+                        radial-gradient(circle at 88% 10%, rgba(16,185,129,0.07), transparent 24%),
+                        linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+                }
 
-        .pc-main {
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 2.5rem 2rem 6rem;
-        }
+                .pc-main {
+                    max-width: 1240px;
+                    margin: 0 auto;
+                    padding: 1.5rem 1rem 5rem;
+                }
 
-        .pc-hero { margin-bottom: 2.5rem; }
+                @media (min-width: 768px) {
+                    .pc-main { padding: 2rem 1.5rem 5.5rem; }
+                }
+
+                @media (min-width: 1280px) {
+                    .pc-main { padding: 2.3rem 2rem 6rem; }
+                }
+
+                .pc-hero {
+                    margin-bottom: 1.4rem;
+                    border: 1px solid rgba(226,232,240,0.95);
+                    border-radius: 24px;
+                    background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(248,250,252,0.96));
+                    box-shadow: 0 20px 44px -34px rgba(15,23,42,0.42);
+                    padding: 1.2rem;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .pc-hero::after {
+                    content: '';
+                    position: absolute;
+                    inset: -1px;
+                    pointer-events: none;
+                    background: linear-gradient(120deg, rgba(37,99,235,0.12), transparent 48%, rgba(124,58,237,0.12));
+                    opacity: 0.7;
+                    mask: linear-gradient(#000, transparent 72%);
+                }
+
+                .pc-hero-top {
+                    position: relative;
+                    z-index: 1;
+                    display: grid;
+                    grid-template-columns: 1.2fr 0.8fr;
+                    gap: 1.2rem;
+                    align-items: start;
+                }
+
+                @media (max-width: 1024px) {
+                    .pc-hero-top { grid-template-columns: 1fr; }
+                }
+
+                .pc-hero-stats {
+                    display: grid;
+                    gap: 0.8rem;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                }
+
+                @media (max-width: 640px) {
+                    .pc-hero-stats { grid-template-columns: 1fr; }
+                }
+
+                .pc-hero-stat {
+                    border: 1px solid rgba(226,232,240,0.95);
+                    border-radius: 16px;
+                    background: linear-gradient(180deg, #ffffff, #f8fbff);
+                    padding: 0.9rem 0.95rem;
+                    box-shadow: 0 10px 24px -22px rgba(15,23,42,0.4);
+                }
+
+                .pc-hero-stat-label {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 0.66rem;
+                    font-weight: 700;
+                    color: #64748b;
+                    letter-spacing: 0.11em;
+                    text-transform: uppercase;
+                    margin-bottom: 0.3rem;
+                }
+
+                .pc-hero-stat-value {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 1.3rem;
+                    font-weight: 800;
+                    line-height: 1;
+                    color: #0f172a;
+                }
+
+                .pc-hero-stat-accent {
+                    height: 3px;
+                    border-radius: 999px;
+                    margin-top: 0.7rem;
+                    background: linear-gradient(90deg, #2563eb, #7c3aed, #14b8a6);
+                }
+
         .pc-hero-label {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          background: rgba(37,99,235,0.10);
-          border: 1px solid rgba(37,99,235,0.22);
+                    background: rgba(37,99,235,0.09);
+                    border: 1px solid rgba(37,99,235,0.18);
           border-radius: 100px;
           padding: 0.3rem 0.9rem;
           font-size: 0.73rem;
@@ -402,7 +490,7 @@ export default function PeerConnectHome() {
           width: 5px; height: 5px;
           border-radius: 50%;
           background: #2563EB;
-          animation: pc-pulse 2s ease-in-out infinite;
+                    animation: pc-pulse 2s ease-in-out infinite;
         }
         @keyframes pc-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
@@ -411,34 +499,35 @@ export default function PeerConnectHome() {
         .pc-wrap h1 {
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-weight: 800;
-          font-size: clamp(1.8rem, 4vw, 3rem);
+                    font-size: clamp(2rem, 4.1vw, 3.2rem);
           line-height: 1.1;
           letter-spacing: -0.025em;
           margin-bottom: 0.9rem;
-          color: #1E40AF;
+                    color: #0f172a;
         }
         .pc-wrap h1 em {
           font-style: normal;
           color: #ffffff;
-          background: #2563EB;
-          padding: 0 0.25em;
-          border-radius: 6px;
+                    background: linear-gradient(135deg, #2563eb, #8b5cf6);
+                    padding: 0 0.32em;
+                    border-radius: 10px;
+                    box-shadow: 0 10px 28px -16px rgba(37,99,235,0.55);
         }
         .pc-hero p {
-          font-size: 0.95rem;
-          color: #5A5A72;
-          max-width: 440px;
+                    font-size: 0.98rem;
+                    color: #475569;
+                    max-width: 48rem;
           line-height: 1.7;
           font-weight: 400;
           font-family: 'DM Sans', sans-serif;
         }
 
         .pc-create-btn {
-          margin-top: 1.75rem;
+          margin-top: 1.15rem;
           display: inline-flex;
           align-items: center;
           gap: 0.6rem;
-          background: #2563EB;
+          background: linear-gradient(135deg, #2563eb, #8b5cf6);
           color: #ffffff;
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-weight: 700;
@@ -447,22 +536,22 @@ export default function PeerConnectHome() {
           border-radius: 10px;
           border: none;
           cursor: pointer;
-          transition: all 0.2s ease;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
         }
         .pc-create-btn:hover {
-          background: #1D4ED8;
           transform: translateY(-2px);
-          box-shadow: 0 12px 40px rgba(37,99,235,0.3);
+                    box-shadow: 0 18px 40px rgba(37,99,235,0.28);
+                    filter: saturate(1.02);
         }
 
         /* --- GRAPH STYLES --- */
         .pc-activity-card {
-            background: #FFFFFF;
-            border-radius: 18px;
-            padding: 1.5rem;
-            margin-bottom: 3rem;
-            border: 1px solid rgba(0,0,0,0.08);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+                        background: linear-gradient(180deg, #ffffff, #fbfdff);
+                        border-radius: 22px;
+                        padding: 1.5rem;
+                        margin-bottom: 2rem;
+                        border: 1px solid rgba(226,232,240,0.9);
+                        box-shadow: 0 18px 46px -34px rgba(15,23,42,0.35);
         }
         .pc-activity-header {
             display: flex;
@@ -474,11 +563,11 @@ export default function PeerConnectHome() {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.75rem;
             font-weight: 700;
-            color: #34A853;
+            color: #10B981;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: rgba(52, 168, 83, 0.1);
+            background: rgba(16, 185, 129, 0.1);
             padding: 0.4rem 0.8rem;
             border-radius: 100px;
         }
@@ -509,7 +598,7 @@ export default function PeerConnectHome() {
           display: flex;
           align-items: center;
           gap: 0.65rem;
-          color: #1E40AF;
+                    color: #0f172a;
         }
         /* (Remaining styles unchanged below) */
         .pc-count {
@@ -530,14 +619,14 @@ export default function PeerConnectHome() {
         }
         .pc-module-card {
           background: #FFFFFF;
-          border: 1px solid rgba(0,0,0,0.07);
-          border-radius: 13px;
+                    border: 1px solid rgba(226,232,240,0.95);
+                    border-radius: 18px;
           padding: 1rem 1.15rem;
           cursor: pointer;
           transition: all 0.2s ease;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+                    box-shadow: 0 10px 28px -22px rgba(15,23,42,0.42);
         }
         .pc-module-card::before {
           content: '';
@@ -548,9 +637,12 @@ export default function PeerConnectHome() {
           transition: opacity 0.2s ease;
           border-radius: 13px;
         }
-        .pc-module-card:hover::before,
-        .pc-module-card.pc-active::before { opacity: 0.08; }
-        .pc-module-card.pc-active { border-color: var(--card-color); }
+                .pc-module-card:hover::before,
+                .pc-module-card.pc-active::before { opacity: 0.12; }
+                .pc-module-card.pc-active {
+                    border-color: var(--card-color);
+                    box-shadow: 0 18px 40px -26px color-mix(in srgb, var(--card-color) 50%, transparent);
+                }
         .pc-module-dot {
           width: 7px; height: 7px;
           border-radius: 50%;
@@ -581,22 +673,24 @@ export default function PeerConnectHome() {
         }
 
         .pc-section-divider { height: 1px; background: rgba(0,0,0,0.08); margin: 2.5rem 0; }
+        .pc-section-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(148,163,184,0.5), transparent); margin: 2.25rem 0; }
 
         .pc-filter-bar { display: flex; gap: 0.45rem; margin-bottom: 1.35rem; flex-wrap: wrap; }
         .pc-filter-chip {
           padding: 0.35rem 0.9rem;
           border-radius: 100px;
-          border: 1px solid rgba(0,0,0,0.12);
-          background: #FFFFFF;
-          color: #6B6B8A;
+                    border: 1px solid rgba(226,232,240,1);
+                    background: #FFFFFF;
+                    color: #475569;
           font-size: 0.75rem;
           font-family: 'DM Sans', sans-serif;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.15s ease;
+                    transition: all 0.15s ease;
+                    box-shadow: 0 6px 18px -14px rgba(15,23,42,0.35);
         }
-        .pc-filter-chip:hover { border-color: rgba(0,0,0,0.22); color: #1A1A2E; }
-        .pc-filter-chip.pc-active { background: #2563EB; border-color: #2563EB; color: #FFFFFF; }
+                .pc-filter-chip:hover { border-color: rgba(59,130,246,0.3); color: #0f172a; transform: translateY(-1px); }
+                .pc-filter-chip.pc-active { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; color: #FFFFFF; }
 
         .pc-groups-grid {
           display: grid;
@@ -605,14 +699,14 @@ export default function PeerConnectHome() {
         }
         .pc-group-card {
           background: #FFFFFF;
-          border: 1px solid rgba(0,0,0,0.07);
-          border-radius: 15px;
+                    border: 1px solid rgba(226,232,240,0.95);
+                    border-radius: 20px;
           padding: 1.25rem;
           transition: all 0.2s ease;
           cursor: pointer;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+                    box-shadow: 0 14px 34px -28px rgba(15,23,42,0.45);
         }
-        .pc-group-card:hover { border-color: rgba(0,0,0,0.15); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.09); }
+                .pc-group-card:hover { border-color: rgba(59,130,246,0.18); transform: translateY(-3px); box-shadow: 0 18px 40px -30px rgba(37,99,235,0.28); }
         .pc-group-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.85rem; }
         .pc-group-module-badge {
           display: inline-flex; align-items: center; gap: 0.4rem;
@@ -620,28 +714,28 @@ export default function PeerConnectHome() {
           font-size: 0.68rem; font-weight: 600;
           font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0.03em;
         }
-        .pc-group-name { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.92rem; margin-bottom: 0.4rem; letter-spacing: -0.01em; color: #1E40AF; }
+        .pc-group-name { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.92rem; margin-bottom: 0.4rem; letter-spacing: -0.01em; color: #0f172a; }
         .pc-group-schedule { font-size: 0.76rem; color: #7A7A96; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
         .pc-group-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
-        .pc-tag { padding: 0.18rem 0.6rem; background: rgba(0,0,0,0.06); border-radius: 100px; font-size: 0.68rem; color: #5A5A72; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+        .pc-tag { padding: 0.18rem 0.6rem; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.12); border-radius: 100px; font-size: 0.68rem; color: #475569; font-weight: 500; font-family: 'DM Sans', sans-serif; }
         .pc-group-footer { display: flex; align-items: center; justify-content: space-between; }
         .pc-member-bar-wrap { flex: 1; margin-right: 1rem; }
         .pc-member-bar-label { font-size: 0.68rem; color: #8A8AAA; margin-bottom: 0.3rem; font-family: 'DM Sans', sans-serif; }
-        .pc-member-bar { height: 3px; background: rgba(0,0,0,0.1); border-radius: 100px; overflow: hidden; }
+        .pc-member-bar { height: 3px; background: rgba(148,163,184,0.18); border-radius: 100px; overflow: hidden; }
         .pc-member-bar-fill { height: 100%; border-radius: 100px; transition: width 0.4s ease; }
-        .pc-join-btn { padding: 0.45rem 1.1rem; border-radius: 8px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+        .pc-join-btn { padding: 0.45rem 1.1rem; border-radius: 10px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
         .pc-join-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .pc-join-btn.pc-default { background: rgba(0,0,0,0.06); color: #1A1A2E; border: 1px solid rgba(0,0,0,0.1); }
-        .pc-join-btn.pc-default:hover:not(:disabled) { background: rgba(0,0,0,0.11); }
-        .pc-join-btn.pc-joined { background: rgba(52,211,153,0.15); color: #34D399; border: 1px solid rgba(52,211,153,0.3); }
+        .pc-join-btn.pc-default { background: linear-gradient(135deg, #eff6ff, #ffffff); color: #1d4ed8; border: 1px solid rgba(59,130,246,0.16); }
+        .pc-join-btn.pc-default:hover:not(:disabled) { background: linear-gradient(135deg, #dbeafe, #eff6ff); }
+        .pc-join-btn.pc-joined { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.28); }
 
-        .pc-empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; color: #8A8AAA; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
+        .pc-empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; color: #64748b; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
 
         .pc-modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.7);
-          backdrop-filter: blur(8px);
+                    background: rgba(15,23,42,0.58);
+                    backdrop-filter: blur(16px);
           z-index: 200;
           display: flex; align-items: center; justify-content: center;
           padding: 1.5rem;
@@ -649,75 +743,79 @@ export default function PeerConnectHome() {
         }
         @keyframes pc-fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .pc-modal {
-          background: #FFFFFF; border: 1px solid rgba(0,0,0,0.1); border-radius: 18px;
+                    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+                    border: 1px solid rgba(226,232,240,0.95); border-radius: 22px;
           padding: 1.75rem; width: 100%; max-width: 420px;
-          animation: pc-slideUp 0.25s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+                    animation: pc-slideUp 0.25s ease; box-shadow: 0 30px 80px -32px rgba(15,23,42,0.55);
         }
         @keyframes pc-slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .pc-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .pc-modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; color: #1E40AF; }
-        .pc-modal-close { width: 30px; height: 30px; border-radius: 7px; background: rgba(0,0,0,0.06); border: none; cursor: pointer; color: #6B6B8A; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-        .pc-modal-close:hover { background: rgba(0,0,0,0.11); color: #1A1A2E; }
+        .pc-modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; color: #0f172a; }
+        .pc-modal-close { width: 30px; height: 30px; border-radius: 9px; background: rgba(15,23,42,0.06); border: none; cursor: pointer; color: #64748b; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .pc-modal-close:hover { background: rgba(37,99,235,0.08); color: #0f172a; }
         .pc-form-group { margin-bottom: 1.1rem; }
-        .pc-form-label { display: block; font-size: 0.72rem; font-weight: 600; color: #6B6B8A; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .pc-form-input, .pc-form-select { width: 100%; background: #F5F5F8; border: 1px solid rgba(0,0,0,0.12); border-radius: 9px; padding: 0.65rem 0.9rem; color: #1A1A2E; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s; }
-        .pc-form-input:focus, .pc-form-select:focus { border-color: rgba(37,99,235,0.55); }
-        .pc-form-select option { background: #FFFFFF; color: #1A1A2E; }
-        .pc-form-hint { margin-top: 0.3rem; font-size: 0.72rem; color: #9A9AB0; font-family: 'DM Sans', sans-serif; }
-        .pc-form-error { margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 7px; color: #EF4444; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; }
-        .pc-modal-submit { width: 100%; padding: 0.78rem; background: #2563EB; color: #ffffff; border: none; border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: all 0.2s ease; margin-top: 0.4rem; }
-        .pc-modal-submit:hover:not(:disabled) { background: #1D4ED8; box-shadow: 0 8px 30px rgba(37,99,235,0.28); }
+        .pc-form-label { display: block; font-size: 0.72rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pc-form-input, .pc-form-select { width: 100%; background: #ffffff; border: 1px solid rgba(226,232,240,1); border-radius: 12px; padding: 0.75rem 0.95rem; color: #0f172a; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: 0 8px 18px -18px rgba(15,23,42,0.45); }
+        .pc-form-input:focus, .pc-form-select:focus { border-color: rgba(59,130,246,0.5); box-shadow: 0 0 0 4px rgba(59,130,246,0.12); }
+        .pc-form-select option { background: #FFFFFF; color: #0f172a; }
+        .pc-form-hint { margin-top: 0.3rem; font-size: 0.72rem; color: #94a3b8; font-family: 'DM Sans', sans-serif; }
+        .pc-form-error { margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.16); border-radius: 9px; color: #dc2626; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; }
+        .pc-modal-submit { width: 100%; padding: 0.82rem; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #ffffff; border: none; border-radius: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: all 0.2s ease; margin-top: 0.4rem; }
+        .pc-modal-submit:hover:not(:disabled) { box-shadow: 0 14px 34px rgba(37,99,235,0.28); transform: translateY(-1px); }
         .pc-modal-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* DETAIL VIEW */
-        .pc-back-btn { display: inline-flex; align-items: center; gap: 0.45rem; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.1); border-radius: 9px; padding: 0.48rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.8rem; color: #5A5A72; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-        .pc-back-btn:hover { background: #F5F5F8; color: #1A1A2E; border-color: rgba(0,0,0,0.18); }
+                .pc-back-btn { display: inline-flex; align-items: center; gap: 0.45rem; background: #FFFFFF; border: 1px solid rgba(226,232,240,0.95); border-radius: 12px; padding: 0.52rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.8rem; color: #475569; cursor: pointer; transition: all 0.15s ease; margin-bottom: 1.5rem; box-shadow: 0 10px 24px -22px rgba(15,23,42,0.5); }
+                .pc-back-btn:hover { background: #f8fafc; color: #0f172a; border-color: rgba(59,130,246,0.18); transform: translateY(-1px); }
 
-        .pc-mat-group-hero { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+                .pc-mat-group-hero { background: linear-gradient(180deg, #ffffff, #f8fbff); border: 1px solid rgba(226,232,240,0.95); border-radius: 24px; padding: 1.75rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 18px 44px -34px rgba(15,23,42,0.42); display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+                @media (min-width: 640px) {
+                    .pc-mat-group-hero { padding: 1.85rem 2rem; }
+                }
         .pc-mat-group-hero-left { flex: 1; min-width: 0; }
-        .pc-mat-group-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.025em; color: #1E40AF; margin-bottom: 0.65rem; }
+                .pc-mat-group-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.025em; color: #0f172a; margin-bottom: 0.65rem; }
         .pc-mat-group-meta { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
         .pc-mat-module-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.7rem; border-radius: 100px; font-size: 0.7rem; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0.03em; }
-        .pc-mat-schedule { font-size: 0.8rem; color: #7A7A96; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
-        .pc-mat-members-text { font-size: 0.77rem; color: #9A9AB0; font-family: 'DM Sans', sans-serif; }
+                .pc-mat-schedule { font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Sans', sans-serif; }
+                .pc-mat-members-text { font-size: 0.77rem; color: #94a3b8; font-family: 'DM Sans', sans-serif; }
         .pc-mat-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-        .pc-mat-join-btn { padding: 0.65rem 1.5rem; border-radius: 10px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; align-self: flex-start; }
-        .pc-mat-join-btn.pc-not-joined { background: #2563EB; color: #ffffff; }
-        .pc-mat-join-btn.pc-not-joined:hover:not(:disabled) { background: #1D4ED8; box-shadow: 0 8px 30px rgba(37,99,235,0.28); }
-        .pc-mat-join-btn.pc-is-joined { background: rgba(52,211,153,0.12); color: #34D399; border: 1px solid rgba(52,211,153,0.3); }
-        .pc-mat-join-btn.pc-is-joined:hover:not(:disabled) { background: rgba(52,211,153,0.2); }
-        .pc-mat-join-btn.pc-is-full { background: rgba(0,0,0,0.06); color: #9A9AB0; cursor: not-allowed; }
+                .pc-mat-join-btn { padding: 0.65rem 1.5rem; border-radius: 12px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; align-self: flex-start; }
+                .pc-mat-join-btn.pc-not-joined { background: linear-gradient(135deg, #2563eb, #8b5cf6); color: #ffffff; }
+                .pc-mat-join-btn.pc-not-joined:hover:not(:disabled) { box-shadow: 0 14px 34px rgba(37,99,235,0.28); transform: translateY(-1px); }
+                .pc-mat-join-btn.pc-is-joined { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.28); }
+                .pc-mat-join-btn.pc-is-joined:hover:not(:disabled) { background: rgba(16,185,129,0.18); }
+                .pc-mat-join-btn.pc-is-full { background: rgba(148,163,184,0.12); color: #64748b; cursor: not-allowed; }
         .pc-mat-join-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
         .pc-mat-content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.35rem; }
         @media (max-width: 640px) { .pc-mat-content-grid { grid-template-columns: 1fr; } }
-        .pc-mat-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 1.35rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .pc-mat-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background: #2563EB; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.28rem 0.75rem; border-radius: 100px; margin-bottom: 1rem; }
+                .pc-mat-card { background: #FFFFFF; border: 1px solid rgba(226,232,240,0.95); border-radius: 20px; padding: 1.35rem; box-shadow: 0 14px 34px -28px rgba(15,23,42,0.42); }
+                .pc-mat-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background: linear-gradient(135deg, #2563eb, #8b5cf6); display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.28rem 0.75rem; border-radius: 100px; margin-bottom: 1rem; box-shadow: 0 10px 22px -16px rgba(37,99,235,0.5); }
         .pc-session-list { display: flex; flex-direction: column; gap: 0.55rem; }
-        .pc-session-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: #F7F7FA; border: 1px solid rgba(0,0,0,0.07); border-radius: 11px; text-decoration: none; transition: all 0.15s ease; cursor: pointer; }
-        .pc-session-item:hover { background: #F0F0F5; border-color: rgba(0,0,0,0.13); transform: translateX(2px); }
+                .pc-session-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 0.95rem; background: linear-gradient(180deg, #f8fafc, #ffffff); border: 1px solid rgba(226,232,240,0.95); border-radius: 14px; text-decoration: none; transition: all 0.15s ease; cursor: pointer; }
+                .pc-session-item:hover { background: #ffffff; border-color: rgba(59,130,246,0.16); transform: translateX(2px); box-shadow: 0 10px 26px -22px rgba(37,99,235,0.35); }
         .pc-session-platform-dot { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.6rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #fff; }
-        .pc-session-label { flex: 1; font-size: 0.82rem; font-weight: 500; color: #1A1A2E; font-family: 'DM Sans', sans-serif; }
-        .pc-session-arrow { color: #B0B0C8; font-size: 0.95rem; }
+                .pc-session-label { flex: 1; font-size: 0.82rem; font-weight: 500; color: #0f172a; font-family: 'DM Sans', sans-serif; }
+                .pc-session-arrow { color: #94a3b8; font-size: 0.95rem; }
         .pc-material-list { display: flex; flex-direction: column; gap: 0.55rem; }
-        .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; background: #F7F7FA; border: 1px solid rgba(0,0,0,0.07); border-radius: 11px; cursor: pointer; transition: all 0.15s ease; }
-        .pc-material-item:hover { background: #F0F0F5; border-color: rgba(0,0,0,0.13); transform: translateX(2px); }
+                .pc-material-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 0.95rem; background: linear-gradient(180deg, #f8fafc, #ffffff); border: 1px solid rgba(226,232,240,0.95); border-radius: 14px; cursor: pointer; transition: all 0.15s ease; }
+                .pc-material-item:hover { background: #ffffff; border-color: rgba(59,130,246,0.16); transform: translateX(2px); box-shadow: 0 10px 26px -22px rgba(37,99,235,0.35); }
         .pc-material-type-badge { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.56rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #fff; }
         .pc-material-info { flex: 1; min-width: 0; }
-        .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #1A1A2E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
-        .pc-material-size { font-size: 0.7rem; color: #9A9AB0; margin-top: 0.12rem; font-family: 'DM Sans', sans-serif; }
-        .pc-material-dl { color: #B0B0C8; font-size: 0.95rem; }
+                .pc-material-title { font-size: 0.82rem; font-weight: 500; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
+                .pc-material-size { font-size: 0.7rem; color: #94a3b8; margin-top: 0.12rem; font-family: 'DM Sans', sans-serif; }
+                .pc-material-dl { color: #94a3b8; font-size: 0.95rem; }
 
         /* ── NEW: Invite card styles ── */
-        .pc-invite-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 1.35rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-top: 1.35rem; }
+                .pc-invite-card { background: #FFFFFF; border: 1px solid rgba(226,232,240,0.95); border-radius: 20px; padding: 1.35rem; box-shadow: 0 14px 34px -28px rgba(15,23,42,0.42); margin-top: 1.35rem; }
         .pc-invite-input-row { display: flex; gap: 0.65rem; align-items: flex-start; }
-        .pc-invite-btn { padding: 0.65rem 1.15rem; border-radius: 9px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; opacity: 1; flex-shrink: 0; }
+                .pc-invite-btn { padding: 0.65rem 1.15rem; border-radius: 10px; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; opacity: 1; flex-shrink: 0; background: linear-gradient(135deg, #10b981, #06b6d4); }
         .pc-invite-btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .pc-invite-btn:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
         .pc-invite-hint { font-size: 0.72rem; font-family: 'DM Sans', sans-serif; margin-top: 0.45rem; }
         .pc-invite-error { color: #EF4444; }
         .pc-invite-success { color: #34A853; }
-        .pc-invited-list { margin-top: 1rem; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
+                .pc-invited-list { margin-top: 1rem; border-top: 1px solid rgba(226,232,240,0.95); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
         .pc-invited-list-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #9A9AB0; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 0.35rem; }
         .pc-invited-chip { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; color: #34A853; background: rgba(52,168,83,0.08); border: 1px solid rgba(52,168,83,0.2); border-radius: 100px; padding: 0.28rem 0.75rem; width: fit-content; }
       `}</style>
@@ -808,13 +906,38 @@ export default function PeerConnectHome() {
                 <div className="pc-wrap">
                     <div className="pc-main">
                         <header className="pc-hero">
-                            <div className="pc-hero-label">Community Hub</div>
-                            <h1>Peer <em>Connect</em></h1>
-                            <p>Find your tribe, share resources, and conquer your modules with peer-led study groups.</p>
-                            <button className="pc-create-btn" onClick={() => setShowCreateModal(true)}>
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
-                                Create New Group
-                            </button>
+                            <div className="pc-hero-top">
+                                <div className="min-w-0 flex-1">
+                                    <div className="mb-4">
+                                        <SinhalaTitle text="කුප්පි" />
+                                    </div>
+                                    <div className="pc-hero-label">Community Hub</div>
+                                    <h1>Peer <em>Connect</em></h1>
+                                    <p>Find your tribe, share resources, and conquer your modules with peer-led study groups.</p>
+                                    <button className="pc-create-btn" onClick={() => setShowCreateModal(true)}>
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                                        Create New Group
+                                    </button>
+                                </div>
+
+                                <div className="pc-hero-stats">
+                                    <div className="pc-hero-stat">
+                                        <div className="pc-hero-stat-label">Active Modules</div>
+                                        <div className="pc-hero-stat-value">{modules.length}</div>
+                                        <div className="pc-hero-stat-accent" />
+                                    </div>
+                                    <div className="pc-hero-stat">
+                                        <div className="pc-hero-stat-label">Peer Groups</div>
+                                        <div className="pc-hero-stat-value">{groups.length}</div>
+                                        <div className="pc-hero-stat-accent" />
+                                    </div>
+                                    <div className="pc-hero-stat">
+                                        <div className="pc-hero-stat-label">Joined</div>
+                                        <div className="pc-hero-stat-value">{joinedGroups.size}</div>
+                                        <div className="pc-hero-stat-accent" />
+                                    </div>
+                                </div>
+                            </div>
                         </header>
 
                         {/* --- NEW ACTIVITY GRAPH SECTION --- */}

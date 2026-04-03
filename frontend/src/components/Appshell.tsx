@@ -119,7 +119,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const shellBg =
     activeTheme === "dark"
       ? "bg-[radial-gradient(circle_at_10%_12%,rgba(56,189,248,0.12),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(129,140,248,0.12),transparent_32%),radial-gradient(circle_at_50%_90%,rgba(16,185,129,0.09),transparent_32%),#020617]"
-      : "bg-slate-50";
+      : "bg-white";
 
   return (
     <div className={`min-h-screen ${shellBg}`}>
