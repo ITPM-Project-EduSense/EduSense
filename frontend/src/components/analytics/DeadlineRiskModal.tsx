@@ -146,8 +146,8 @@ export default function DeadlineRiskModal({ isOpen, onClose, subjects }: Deadlin
                                                 animate={{ width: `${averageHazard}%` }}
                                                 transition={{ duration: 1.5, ease: "circOut" }}
                                                 className={`h-full rounded-full ${averageHazard >= 61 ? "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]" :
-                                                        averageHazard >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" :
-                                                            "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
+                                                    averageHazard >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" :
+                                                        "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
                                                     }`}
                                             />
                                         </div>

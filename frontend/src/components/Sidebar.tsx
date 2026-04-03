@@ -39,7 +39,7 @@ const navBottom: NavItem[] = [
   { name: "User Management", href: "/users", icon: Users },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Profile", href: "/users", icon: UserCircle },
+  { name: "Profile", href: "/profile", icon: UserCircle },
 ];
 
 type CurrentUser = {

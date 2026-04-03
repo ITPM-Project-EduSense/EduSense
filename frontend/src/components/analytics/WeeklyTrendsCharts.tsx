@@ -1,356 +1,526 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { TrendingUp, BarChart3, Clock, Target, AlertTriangle } from "lucide-react";
-import {
-    weekLabels,
-    taskCompletionTrend,
-    missedDeadlinesTrend,
-    studyHoursTrend,
-    productivityTrend,
-} from "./analyticsData";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { TrendingUp, CheckCircle, AlertCircle, Target, CheckCircle2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
-/* ── Helper: Build SVG polyline points ── */
-function toPolyline(data: number[], width: number, height: number, padding = 24) {
-    const max = Math.max(...data, 1);
-    const stepX = (width - padding * 2) / (data.length - 1);
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type TaskStatus = "pending" | "in_progress" | "completed";
+
+type Task = {
+    id: string;
+    title: string;
+    subject: string;
+    deadline?: string;
+    status: TaskStatus;
+    updated_at: string;
+    created_at: string;
+};
+
+type ViewMode = "day" | "week" | "cumulative";
+
+type TimePoint = {
+    label: string;
+    date: Date; // represents start of period
+    completedCount: number;
+    missedCount: number;
+    assignedCount: number;
+    isHighProductivity: boolean;
+    isLowProductivity: boolean;
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const MS_PER_DAY = 86_400_000;
+
+function startOfDay(d: Date) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function startOfWeek(d: Date) {
+    const res = startOfDay(d);
+    const offset = (res.getDay() + 6) % 7; // Mon=0
+    res.setDate(res.getDate() - offset);
+    return res;
+}
+
+function formatDateLabel(d: Date, mode: ViewMode): string {
+    if (mode === "week" || (mode === "cumulative" && d.getDay() === 1)) {
+        return `Wk of ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    }
+    return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+}
+
+// ── Data Processing ───────────────────────────────────────────────────────────
+
+function processTaskData(tasks: Task[], mode: ViewMode): TimePoint[] {
+    const now = new Date();
+    const today = startOfDay(now);
+
+    // Determine the periods we want to show
+    // For "day": last 7 days + today (8 points)
+    // For "week": last 4 weeks + this week (5 points)
+    // For "cumulative": use daily points but we will accumulate them later.
+
+    const count = mode === "week" ? 5 : 8;
+    const basePeriodArr: TimePoint[] = [];
+
+    for (let i = count - 1; i >= 0; i--) {
+        const d = new Date(today);
+        if (mode === "week") {
+            const wStart = startOfWeek(d);
+            wStart.setDate(wStart.getDate() - i * 7);
+            basePeriodArr.push({
+                label: i === 0 ? "This Wk" : formatDateLabel(wStart, "week"),
+                date: wStart,
+                completedCount: 0,
+                missedCount: 0,
+                assignedCount: 0,
+                isHighProductivity: false,
+                isLowProductivity: false
+            });
+        } else {
+            d.setDate(d.getDate() - i);
+            basePeriodArr.push({
+                label: i === 0 ? "Today" : formatDateLabel(d, "day"),
+                date: d,
+                completedCount: 0,
+                missedCount: 0,
+                assignedCount: 0,
+                isHighProductivity: false,
+                isLowProductivity: false
+            });
+        }
+    }
+
+    // Helper to find bin index
+    const getBinIndex = (dText: string | undefined, useWeek: boolean) => {
+        if (!dText) return -1;
+        const d = startOfDay(new Date(dText));
+        for (let i = 0; i < basePeriodArr.length; i++) {
+            const startStr = basePeriodArr[i].date.getTime();
+            const endStr = startStr + (useWeek ? 7 * MS_PER_DAY : MS_PER_DAY);
+            if (d.getTime() >= startStr && d.getTime() < endStr) return i;
+        }
+        return -1;
+    };
+
+    tasks.forEach(t => {
+        // Completed Tasks (based on updated_at)
+        if (t.status === "completed") {
+            const idx = getBinIndex(t.updated_at, mode === "week");
+            if (idx >= 0) basePeriodArr[idx].completedCount++;
+        }
+
+        // Missed Deadlines (based on deadline)
+        if (t.deadline && t.status !== "completed") {
+            const deadlineDate = new Date(t.deadline);
+            if (deadlineDate < now) {
+                const idx = getBinIndex(t.deadline, mode === "week");
+                if (idx >= 0) basePeriodArr[idx].missedCount++;
+            }
+        }
+
+        // Assigned Tasks (based on deadline or creation date)
+        const refDate = t.deadline || t.created_at;
+        if (refDate) {
+            const idx = getBinIndex(refDate, mode === "week");
+            if (idx >= 0) basePeriodArr[idx].assignedCount++;
+        }
+    });
+
+    // Mark productivity levels
+    basePeriodArr.forEach(pt => {
+        if (pt.assignedCount > 0) {
+            const ratio = pt.completedCount / pt.assignedCount;
+            if (ratio >= 1.0) pt.isHighProductivity = true;
+            else if (ratio < 0.5 && pt.assignedCount >= 2) pt.isLowProductivity = true;
+        } else if (pt.completedCount > 0) {
+            // Overachieving (completing tasks without deadlines or early)
+            pt.isHighProductivity = true;
+        }
+    });
+
+    if (mode === "cumulative") {
+        let runAssigned = 0;
+        let runCompleted = 0;
+        let runMissed = 0;
+        return basePeriodArr.map(pt => {
+            runAssigned += pt.assignedCount;
+            runCompleted += pt.completedCount;
+            runMissed += pt.missedCount;
+            return {
+                ...pt,
+                assignedCount: runAssigned,
+                completedCount: runCompleted,
+                missedCount: runMissed,
+            };
+        });
+    }
+
+    return basePeriodArr;
+}
+
+/* ── SVG Helpers ── */
+function toPolyline(data: number[], width: number, height: number, padding = 40) {
+    const minPaddingX = padding;
+    const minPaddingY = padding;
+    const activeW = width - minPaddingX * 2;
+    const activeH = height - minPaddingY * 2;
+
+    const maxVal = Math.max(...data, 4); // min scale of 4 to prevent flatline at top
+
+    const stepX = data.length > 1 ? activeW / (data.length - 1) : activeW;
     return data
-        .map((v, i) => `${padding + i * stepX},${height - padding - (v / max) * (height - padding * 2)}`)
+        .map((v, i) => {
+            const cx = minPaddingX + i * stepX;
+            const cy = height - minPaddingY - (v / maxVal) * activeH;
+            return `${cx},${cy}`;
+        })
         .join(" ");
 }
 
-/* ── Mini line chart (dark bg — inside gradient container) ── */
-function MiniLineChart({ data, color, gradId, label }: {
-    data: number[];
-    color: string;
-    gradId: string;
-    label: string;
-}) {
-    const W = 320;
-    const H = 120;
-    const PAD = 24;
-    const points = toPolyline(data, W, H, PAD);
-    const max = Math.max(...data, 1);
-    const stepX = (W - PAD * 2) / (data.length - 1);
-    const latest = data[data.length - 1];
-    const prev = data[data.length - 2] ?? latest;
-    const diff = latest - prev;
+/* ── Productivity Chart (Line Chart: Assigned vs Completed) ── */
+function ProductivityChart({ data }: { data: TimePoint[] }) {
+    const W = 460;
+    const H = 220;
+    const P = 32;
+    const activeW = W - P * 2;
+    const activeH = H - P * 2;
+
+    const assigned = data.map(d => d.assignedCount);
+    const completed = data.map(d => d.completedCount);
+
+    const maxVal = Math.max(...assigned, ...completed, 4);
+
+    const stepX = data.length > 1 ? activeW / (data.length - 1) : activeW;
+
+    const assignedPts = toPolyline(assigned, W, H, P);
+    const completedPts = toPolyline(completed, W, H, P);
+
+    // Build Area underneath completed
+    const completedArea = `${completedPts} ${W - P},${H - P} ${P},${H - P}`;
 
     return (
-        <div>
-            <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-semibold text-blue-100">{label}</p>
-                <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-white">{latest}</span>
-                    {diff !== 0 && (
-                        <span className={`text-[10px] font-medium ${diff > 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                            {diff > 0 ? "↑" : "↓"}{Math.abs(diff)}
-                        </span>
-                    )}
-                </div>
-            </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-                <defs>
-                    <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-                        <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-                    </linearGradient>
-                </defs>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <linearGradient id="compGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#34D399" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#34D399" stopOpacity="0.0" />
+                </linearGradient>
+            </defs>
 
-                {/* Grid lines */}
-                {[0.25, 0.5, 0.75].map((r) => (
-                    <line
-                        key={r}
-                        x1={PAD} y1={H - PAD - r * (H - PAD * 2)}
-                        x2={W - PAD} y2={H - PAD - r * (H - PAD * 2)}
-                        stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 4"
-                    />
-                ))}
+            {/* Grid lines */}
+            {[0, 0.5, 1].map((r) => {
+                const y = P + r * activeH;
+                const val = Math.round(maxVal - r * maxVal);
+                return (
+                    <g key={r}>
+                        <line x1={P} y1={y} x2={W - P} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
+                        <text x={P - 8} y={y + 3} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">{val}</text>
+                    </g>
+                );
+            })}
 
-                {/* Area fill */}
-                <polygon
-                    points={`${points} ${W - PAD},${H - PAD} ${PAD},${H - PAD}`}
-                    fill={`url(#${gradId})`}
-                />
-
-                {/* Line */}
-                <motion.polyline
-                    points={points} fill="none"
-                    stroke={color} strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                />
-
-                {/* Dots */}
-                {data.map((v, i) => {
-                    const cx = PAD + i * stepX;
-                    const cy = H - PAD - (v / max) * (H - PAD * 2);
+            {/* High/Low Productivity Highlights */}
+            {data.map((d, i) => {
+                const cx = P + i * stepX;
+                if (d.isHighProductivity || d.isLowProductivity) {
                     return (
-                        <g key={i}>
-                            <circle cx={cx} cy={cy} r="3.5"
-                                fill={color} stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
-                            <text x={cx} y={cy - 8}
-                                textAnchor="middle" fontSize="8" fontWeight="600"
-                                fill="rgba(255,255,255,0.7)">{v}</text>
-                        </g>
+                        <rect
+                            key={`bg-${i}`}
+                            x={cx - stepX * 0.4} y={P}
+                            width={stepX * 0.8} height={activeH}
+                            rx={4}
+                            fill={d.isHighProductivity ? "rgba(52,211,153,0.06)" : "rgba(244,63,94,0.06)"}
+                        />
                     );
-                })}
+                }
+                return null;
+            })}
 
-                {/* X labels */}
-                {weekLabels.map((l, i) => (
-                    <text key={l} x={PAD + i * stepX} y={H - 6}
-                        textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9">
-                        {l}
-                    </text>
-                ))}
-            </svg>
-        </div>
-    );
+            <polygon points={completedArea} fill="url(#compGrad)" />
+
+            {/* Assigned Line */}
+            <motion.polyline
+                points={assignedPts} fill="none" stroke="#94a3b8" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 4"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+            />
+
+            {/* Completed Line */}
+            <motion.polyline
+                points={completedPts} fill="none" stroke="#34D399" strokeWidth="3"
+                strokeLinecap="round" strokeLinejoin="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1, delay: 0.1, ease: "easeOut" }}
+            />
+
+            {/* Data Dots */}
+            {data.map((d, i) => {
+                const cx = P + i * stepX;
+                const cyC = H - P - (d.completedCount / maxVal) * activeH;
+                const cyA = H - P - (d.assignedCount / maxVal) * activeH;
+                return (
+                    <g key={i}>
+                        {/* Assigned Dot */}
+                        <circle cx={cx} cy={cyA} r={3} fill="#fff" stroke="#94a3b8" strokeWidth="2" />
+                        {/* Completed Dot */}
+                        <circle cx={cx} cy={cyC} r={4.5} fill="#fff" stroke="#34D399" strokeWidth="2.5" className="shadow-sm" />
+
+                        {/* Interaction indicator if needed */}
+                    </g>
+                );
+            })}
+
+            {/* X Labels */}
+            {data.map((d, i) => (
+                <text key={i} x={P + i * stepX} y={H - 8} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="600">
+                    {d.label}
+                </text>
+            ))}
+        </svg>
+    )
 }
 
-/* ── Mini bar chart (dark bg — inside gradient container) ── */
-function MiniBarChart({ data, color, label }: {
-    data: number[];
-    color: string;
-    label: string;
-}) {
-    const W = 320;
-    const H = 120;
-    const PAD = 24;
-    const max = Math.max(...data, 1);
-    const barW = (W - PAD * 2) / data.length - 6;
-    const total = data.reduce((a, b) => a + b, 0);
+/* ── Task Tracking Chart (Bar Chart: Completed vs Missed) ── */
+function TaskTrackingChart({ data }: { data: TimePoint[] }) {
+    const W = 460;
+    const H = 160;
+    const P = 32;
+    const activeW = W - P * 2;
+    const activeH = H - P * 2;
+
+    const completed = data.map(d => d.completedCount);
+    const missed = data.map(d => d.missedCount);
+    const maxVal = Math.max(...completed, ...missed, 4);
+
+    const groupW = activeW / data.length;
+    const barW = Math.min(groupW * 0.35, 12);
+    const gap = 2; // gap between bars in a group
 
     return (
-        <div>
-            <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-semibold text-blue-100">{label}</p>
-                <span className={`text-sm font-bold ${total === 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                    {total} total
-                </span>
-            </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-                {/* Grid lines */}
-                {[0.33, 0.66].map((r) => (
-                    <line
-                        key={r}
-                        x1={PAD} y1={H - PAD - r * (H - PAD * 2)}
-                        x2={W - PAD} y2={H - PAD - r * (H - PAD * 2)}
-                        stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 4"
-                    />
-                ))}
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+            {/* Grid lines */}
+            {[0, 0.5, 1].map((r) => {
+                const y = P + r * activeH;
+                const val = Math.round(maxVal - r * maxVal);
+                return (
+                    <g key={r}>
+                        <line x1={P} y1={y} x2={W - P} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
+                        <text x={P - 8} y={y + 3} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">{val}</text>
+                    </g>
+                );
+            })}
 
-                {data.map((v, i) => {
-                    const barH = (v / max) * (H - PAD * 2);
-                    const x = PAD + i * ((W - PAD * 2) / data.length) + 3;
-                    const y = H - PAD - barH;
-                    return (
-                        <g key={i}>
-                            <rect x={x} y={y} width={barW} height={barH} rx={4}
-                                fill={v === 0 ? "rgba(255,255,255,0.1)" : color} fillOpacity={v === 0 ? 1 : 0.85} />
-                            {v > 0 && (
-                                <text x={x + barW / 2} y={y - 5}
-                                    textAnchor="middle" fontSize="8" fontWeight="600"
-                                    fill="rgba(255,255,255,0.7)">{v}</text>
-                            )}
-                            <text x={x + barW / 2} y={H - 6}
-                                textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9">
-                                {weekLabels[i]}
-                            </text>
-                        </g>
-                    );
-                })}
-            </svg>
-        </div>
-    );
-}
+            {data.map((d, i) => {
+                const cx = P + i * groupW + groupW / 2;
 
-/* ── Dual line chart (dark bg — inside gradient container) ── */
-function DualLineChart({ data1, data2, color1, color2, label1, label2, title }: {
-    data1: number[]; data2: number[];
-    color1: string; color2: string;
-    label1: string; label2: string;
-    title: string;
-}) {
-    const W = 320;
-    const H = 120;
-    const PAD = 24;
-    const allMax = Math.max(...data1, ...data2, 1);
-    const norm1 = data1.map((v) => (v / allMax) * 100);
-    const norm2 = data2.map((v) => (v / allMax) * 100);
-    const points1 = toPolyline(norm1, W, H, PAD);
-    const points2 = toPolyline(norm2, W, H, PAD);
+                // Heights
+                const compH = (d.completedCount / maxVal) * activeH;
+                const missH = (d.missedCount / maxVal) * activeH;
 
-    return (
-        <div>
-            <div className="mb-2 flex items-center gap-4">
-                <p className="text-xs font-semibold text-blue-100">{title}</p>
-                <div className="flex items-center gap-3 ml-auto">
-                    <span className="flex items-center gap-1 text-[10px] text-blue-200">
-                        <span className="inline-block h-2 w-4 rounded-sm" style={{ background: color1 }} />
-                        {label1}
-                    </span>
-                    <span className="flex items-center gap-1 text-[10px] text-blue-200">
-                        <span className="inline-block h-2 w-4 rounded-sm border-t-2 border-dashed" style={{ borderColor: color2, background: "transparent" }} />
-                        {label2}
-                    </span>
-                </div>
-            </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-                {[0.25, 0.5, 0.75].map((r) => (
-                    <line
-                        key={r}
-                        x1={PAD} y1={H - PAD - r * (H - PAD * 2)}
-                        x2={W - PAD} y2={H - PAD - r * (H - PAD * 2)}
-                        stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 4"
-                    />
-                ))}
-                <motion.polyline
-                    points={points1} fill="none" stroke={color1}
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                />
-                <motion.polyline
-                    points={points2} fill="none" stroke={color2}
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    strokeDasharray="6 3"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-                />
-                {weekLabels.map((l, i) => {
-                    const stepX = (W - PAD * 2) / (weekLabels.length - 1);
-                    return (
-                        <text key={l} x={PAD + i * stepX} y={H - 6}
-                            textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9">
-                            {l}
+                // Y positions
+                const compY = H - P - compH;
+                const missY = H - P - missH;
+
+                return (
+                    <g key={i}>
+                        {/* Completed Bar */}
+                        <motion.rect
+                            initial={{ height: 0, y: H - P }}
+                            animate={{ height: compH, y: compY }}
+                            transition={{ duration: 0.8, delay: i * 0.05, ease: "easeOut" }}
+                            x={cx - barW - gap / 2} width={barW} rx={3}
+                            fill="#3B82F6"
+                        />
+                        {/* Missed Bar */}
+                        <motion.rect
+                            initial={{ height: 0, y: H - P }}
+                            animate={{ height: missH, y: missY }}
+                            transition={{ duration: 0.8, delay: i * 0.05 + 0.1, ease: "easeOut" }}
+                            x={cx + gap / 2} width={barW} rx={3}
+                            fill="#F43F5E"
+                        />
+
+                        {/* Labels for X axis */}
+                        <text x={cx} y={H - 8} textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="600">
+                            {d.label}
                         </text>
-                    );
-                })}
-            </svg>
-        </div>
+                    </g>
+                )
+            })}
+        </svg>
     );
+
 }
 
-/* ── Composed Weekly Trends Section ── */
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function WeeklyTrendsCharts() {
-    const totalTasks = taskCompletionTrend.reduce((a, b) => a + b, 0);
-    const totalMissed = missedDeadlinesTrend.reduce((a, b) => a + b, 0);
-    const avgStudy = (studyHoursTrend.reduce((a, b) => a + b, 0) / studyHoursTrend.length).toFixed(1);
-    const avgProductivity = Math.round(productivityTrend.reduce((a, b) => a + b, 0) / productivityTrend.length);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<ViewMode>("day");
+
+    useEffect(() => {
+        let mounted = true;
+        apiFetch("/tasks")
+            .then(res => {
+                if (mounted) setTasks(Array.isArray(res) ? res : []);
+            })
+            .catch(console.error)
+            .finally(() => {
+                if (mounted) setLoading(false);
+            });
+        return () => { mounted = false; };
+    }, []);
+
+    const dataPoints = useMemo(() => processTaskData(tasks, viewMode), [tasks, viewMode]);
+
+    // Calculate aggregated KPIs for displaying
+    const totalCompleted = dataPoints.reduce((s, d) => s + (viewMode === "cumulative" ? 0 : d.completedCount), 0)
+        + (viewMode === "cumulative" ? dataPoints[dataPoints.length - 1]?.completedCount || 0 : 0);
+    const totalMissed = dataPoints.reduce((s, d) => s + (viewMode === "cumulative" ? 0 : d.missedCount), 0)
+        + (viewMode === "cumulative" ? dataPoints[dataPoints.length - 1]?.missedCount || 0 : 0);
+    const totalAssigned = dataPoints.reduce((s, d) => s + (viewMode === "cumulative" ? 0 : d.assignedCount), 0)
+        + (viewMode === "cumulative" ? dataPoints[dataPoints.length - 1]?.assignedCount || 0 : 0);
+
+    const globalCompleted = tasks.filter(t => t.status === "completed").length;
+    const globalAssigned = tasks.length;
+
+    const rawProdPercent = globalAssigned > 0 ? Math.round((globalCompleted / globalAssigned) * 100) : (globalCompleted > 0 ? 100 : 0);
+    const prodPercent = Math.min(100, Math.max(0, rawProdPercent));
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="relative overflow-hidden rounded-2xl bg-white border border-gray-300 shadow-xl shadow-gray-300/50 p-5"
+            className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-xl shadow-slate-200/50 p-5"
         >
-            {/* Ambient glow blobs */}
-            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gray-300/30 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-gray-300/30 blur-3xl" />
+            {/* Ambient gradients */}
+            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-100/40 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-indigo-50/50 blur-3xl" />
 
             <div className="relative">
-                {/* ── Header ── */}
+                {/* ── Header & Toggles ── */}
                 <div className="mb-5 flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="rounded-xl bg-blue-500/15 p-2.5 ring-1 ring-blue-500/25">
+                        <div className="rounded-xl bg-blue-50 p-2.5 ring-1 ring-blue-100">
                             <TrendingUp size={18} className="text-blue-600" />
                         </div>
                         <div>
                             <h3 className="text-base font-semibold text-slate-800 leading-tight">
-                                Weekly Performance Trends
+                                Performance Trends
                             </h3>
-                            <p className="mt-0.5 text-[11px] text-slate-500">Last 7 days overview</p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">Track task completion &amp; missed deadlines</p>
                         </div>
                     </div>
 
-                    {/* Live indicator */}
-                    <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 ring-1 ring-emerald-300">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
-                        <span className="text-[10px] font-medium text-emerald-700">Live</span>
+                    <div className="flex bg-slate-100 p-1 rounded-lg ring-1 ring-slate-200">
+                        {(["day", "week", "cumulative"] as ViewMode[]).map((mode) => (
+                            <button
+                                key={mode}
+                                onClick={() => setViewMode(mode)}
+                                className={`px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${viewMode === mode
+                                        ? "bg-white text-blue-600 shadow-sm ring-1 ring-slate-200"
+                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                                    }`}
+                            >
+                                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 {/* ── KPI Stats Row ── */}
-                <div className="mb-4 grid grid-cols-4 gap-2">
-                    <div className="rounded-xl bg-blue-50 border border-gray-200 px-2.5 py-3 text-center">
-                        <p className="text-lg font-bold text-blue-600">{totalTasks}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Tasks Done</p>
+                <div className="mb-5 grid grid-cols-3 gap-3">
+                    <div className="rounded-xl bg-blue-50/80 border border-blue-100 px-3 py-3 text-center transition hover:shadow-md">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                            <CheckCircle size={14} className="text-blue-500" />
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800">Completed</p>
+                        </div>
+                        <p className="text-2xl font-black text-blue-600 leading-none">{loading ? "-" : totalCompleted}</p>
                     </div>
-                    <div className={`rounded-xl ${totalMissed > 0 ? "bg-rose-50" : "bg-emerald-50"} border border-gray-200 px-2.5 py-3 text-center`}>
-                        <p className={`text-lg font-bold ${totalMissed > 0 ? "text-rose-600" : "text-emerald-600"}`}>{totalMissed}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Missed</p>
+
+                    <div className={`rounded-xl border px-3 py-3 text-center transition hover:shadow-md ${totalMissed > 0 ? "bg-rose-50/80 border-rose-100" : "bg-emerald-50/80 border-emerald-100"}`}>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                            <AlertCircle size={14} className={totalMissed > 0 ? "text-rose-500" : "text-emerald-500"} />
+                            <p className={`text-[10px] font-bold uppercase tracking-wider ${totalMissed > 0 ? "text-rose-800" : "text-emerald-800"}`}>Missed</p>
+                        </div>
+                        <p className={`text-2xl font-black leading-none ${totalMissed > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                            {loading ? "-" : totalMissed}
+                        </p>
                     </div>
-                    <div className="rounded-xl bg-indigo-50 border border-gray-200 px-2.5 py-3 text-center">
-                        <p className="text-lg font-bold text-indigo-600">{avgStudy}h</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Avg Study</p>
-                    </div>
-                    <div className="rounded-xl bg-emerald-50 border border-gray-200 px-2.5 py-3 text-center">
-                        <p className="text-lg font-bold text-emerald-600">{avgProductivity}%</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Productivity</p>
+
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 text-center transition hover:shadow-md">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                            <Target size={14} className="text-emerald-500" />
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-700">Productivity</p>
+                        </div>
+                        <p className="text-2xl font-black text-emerald-600 leading-none">{loading ? "-" : `${prodPercent}%`}</p>
                     </div>
                 </div>
 
-                {/* ── Charts (inside gradient containers) ── */}
+                {/* ── Visualizations ── */}
                 <div className="space-y-4">
-                    {/* Task Completion */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-3 shadow-lg shadow-blue-900/30">
-                        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
-                        <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-400/10 blur-3xl" />
-                        <div className="relative">
-                            <MiniLineChart
-                                data={taskCompletionTrend}
-                                color="#60A5FA"
-                                gradId="taskGrad"
-                                label="Task Completion"
-                            />
+
+                    {/* Productivity Area Chart */}
+                    <div className="relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="mb-4 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-800">Productivity</h4>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Assigned vs. Completed Tasks</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+                                    <span className="inline-block h-2.5 w-4 rounded-sm border-[1.5px] border-dashed border-slate-400" />
+                                    Assigned
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+                                    <span className="inline-block h-2.5 w-4 rounded-sm bg-emerald-400" />
+                                    Completed
+                                </span>
+                            </div>
+                        </div>
+                        <div className="h-44 w-full">
+                            {!loading && <ProductivityChart data={dataPoints} />}
                         </div>
                     </div>
 
-                    {/* Missed Deadlines */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-3 shadow-lg shadow-blue-900/30">
-                        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
-                        <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-400/10 blur-3xl" />
-                        <div className="relative">
-                            <MiniBarChart
-                                data={missedDeadlinesTrend}
-                                color="#e42121ff"
-                                label="Missed Deadlines"
-                            />
+                    {/* Task Tracking Bar Chart */}
+                    <div className="relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="mb-4 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-800">Task Tracking</h4>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Specific completion dates &amp; missed deadlines</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-sm bg-blue-500" />
+                                    Completed
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+                                    <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-500" />
+                                    Missed
+                                </span>
+                            </div>
+                        </div>
+                        <div className="h-36 w-full">
+                            {!loading && <TaskTrackingChart data={dataPoints} />}
                         </div>
                     </div>
 
-                    {/* Study Hours vs Productivity */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-3 shadow-lg shadow-blue-900/30">
-                        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
-                        <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-400/10 blur-3xl" />
-                        <div className="relative">
-                            <DualLineChart
-                                data1={studyHoursTrend}
-                                data2={productivityTrend}
-                                color1="#5f6ad0ff"
-                                color2="#35d69bff"
-                                label1="Study Hours"
-                                label2="Productivity"
-                                title="Study Hours vs Productivity"
-                            />
-                        </div>
-                    </div>
                 </div>
 
-                {/* ── Legend ── */}
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] text-slate-500">
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-400" />Task Completion</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />Missed Deadlines</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-indigo-400" />Study Hours</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />Productivity</span>
-                </div>
             </div>
         </motion.div>
     );
 }
+

@@ -36,6 +36,13 @@ import {
     type DeadlineRiskLevel,
     type DeadlineTask,
 } from "@/lib/deadlineRiskEngine";
+import {
+    calculateWeightedGpa,
+    calculateSubjectGpa,
+    type WeightedGpaResult,
+    type GpaPredictionResult,
+    type SubjectMarks,
+} from "@/lib/gpaEngine";
 
 // ── Shared colour maps ────────────────────────────────────────────────────────
 
@@ -319,8 +326,12 @@ const TOOLTIP_FALLBACK =
 
 // ── GPA Prediction Card ───────────────────────────────────────────────────────
 
-function GpaPredictionCard() {
-    const { gpaPrediction } = kpiData;
+function GpaPredictionCard({ data }: { data: WeightedGpaResult | null }) {
+    // Use weighted GPA data if available, otherwise fallback to static
+    const displayValue = data?.predictedGpa ?? kpiData.gpaPrediction.value;
+    const displayMax = 4.0;
+    const hasValidData = data?.hasValidData ?? false;
+
     return (
         <motion.div
             custom={2} initial="hidden" animate="visible" variants={cardVariants}
@@ -334,8 +345,8 @@ function GpaPredictionCard() {
                             GPA Prediction
                         </p>
                         <div className="mt-2 flex items-baseline gap-2">
-                            <p className="text-2xl font-bold text-slate-800">{gpaPrediction.value}</p>
-                            <span className="text-sm font-medium text-slate-500">/ {gpaPrediction.max.toFixed(1)}</span>
+                            <p className="text-2xl font-bold text-slate-800">{displayValue.toFixed(2)}</p>
+                            <span className="text-sm font-medium text-slate-500">/ {displayMax.toFixed(1)}</span>
                         </div>
                     </div>
                     <div className="rounded-xl bg-blue-600/15 p-2.5 ring-1 ring-blue-600/25">
@@ -347,23 +358,30 @@ function GpaPredictionCard() {
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
                     <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${(gpaPrediction.value / gpaPrediction.max) * 100}%` }}
+                        animate={{ width: `${(displayValue / displayMax) * 100}%` }}
                         transition={{ duration: 0.9, ease: "easeOut" }}
                         className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600"
                     />
                 </div>
 
-                <p className="mt-3 flex-1 text-xs text-slate-500">Overall predicted GPA this semester</p>
+                <p className="mt-3 flex-1 text-xs text-slate-500">
+                    {hasValidData ? `Weighted GPA across ${data?.subjectCount ?? 0} subject(s)` : "Overall predicted GPA this semester"}
+                </p>
 
-                <div className="mt-3">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${gpaPrediction.direction === "up"
-                        ? "bg-emerald-600/15 text-emerald-600 ring-1 ring-emerald-600/25"
-                        : "bg-rose-600/15 text-rose-600 ring-1 ring-rose-600/25"
-                        }`}>
-                        {gpaPrediction.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {gpaPrediction.trend} from last semester
-                    </span>
-                </div>
+                {data?.message && (
+                    <div className="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-2.5">
+                        <p className="text-xs text-blue-700">{data.message}</p>
+                    </div>
+                )}
+
+                {data?.totalCredits && (
+                    <div className="mt-3">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600/15 text-blue-600 ring-1 ring-blue-600/25 px-2.5 py-1 text-xs font-medium">
+                            <TrendingUp size={12} />
+                            {data.totalCredits} total credits
+                        </span>
+                    </div>
+                )}
             </CardShell>
         </motion.div>
     );
@@ -438,9 +456,31 @@ export default function KpiCards() {
     const [riskData, setRiskData] = useState<AcademicRiskResult | null>(null);
     const [burnoutData, setBurnoutData] = useState<BurnoutResult | null>(null);
     const [deadlineRiskData, setDeadlineRiskData] = useState<DeadlineRiskResult | null>(null);
+    const [gpaData, setGpaData] = useState<WeightedGpaResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
     const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
+
+    // ── Helper function to recalculate GPA from localStorage ──
+    const recalculateGpa = () => {
+        try {
+            const storedMarks = localStorage.getItem("edusense_gpa_marks");
+            const marksMap: Record<string, SubjectMarks> = storedMarks ? JSON.parse(storedMarks) : {};
+
+            // Calculate predictions for each subject to get weighted GPA
+            const subjectNames = Object.keys(marksMap);
+            const predictions: GpaPredictionResult[] = subjectNames.map(subject =>
+                calculateSubjectGpa(subject, marksMap[subject])
+            );
+
+            // Calculate weighted GPA
+            const weightedGpa = calculateWeightedGpa(predictions, marksMap);
+            setGpaData(weightedGpa);
+        } catch (error) {
+            console.error("Error recalculating GPA:", error);
+            setGpaData(null);
+        }
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -479,14 +519,39 @@ export default function KpiCards() {
         };
 
         load();
+        // Initial GPA calculation
+        recalculateGpa();
+
         return () => { cancelled = true; };
+    }, []);
+
+    // ── Listen for localStorage changes (from GpaSubjectPrediction modal saves) ──
+    useEffect(() => {
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === "edusense_gpa_marks") {
+                recalculateGpa();
+            }
+        };
+
+        // Listen for custom event dispatched by GpaSubjectPrediction (same-tab updates)
+        const handleGpaUpdate = () => {
+            recalculateGpa();
+        };
+
+        window.addEventListener("storage", handleStorageChange);
+        window.addEventListener("gpaMarksUpdated", handleGpaUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener("storage", handleStorageChange);
+            window.removeEventListener("gpaMarksUpdated", handleGpaUpdate as EventListener);
+        };
     }, []);
 
     return (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <AcademicRiskCard data={riskData} loading={loading} onClick={() => setIsRiskModalOpen(true)} />
             <DeadlineRiskCard data={deadlineRiskData} loading={loading} onClick={() => setIsDeadlineModalOpen(true)} />
-            <GpaPredictionCard />
+            <GpaPredictionCard data={gpaData} />
             <BurnoutIndexCard data={burnoutData} loading={loading} />
 
             <RiskLevelModal
