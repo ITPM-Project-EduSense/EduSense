@@ -670,11 +670,11 @@ export default function LandingPage() {
       )}
 
       {/* ─── HERO SECTION ─── */}
-      <section ref={hero.ref} className="relative pt-24 pb-18 md:pt-32 md:pb-24 overflow-hidden">
+      <section ref={hero.ref} className="relative pt-24 pb-18 md:pt-32 md:pb-24 overflow-hidden bg-[radial-gradient(circle_at_22%_14%,rgba(96,165,250,0.16),transparent_38%),radial-gradient(circle_at_80%_8%,rgba(56,189,248,0.14),transparent_36%),linear-gradient(180deg,#fbfbfd_0%,#f7f8fc_100%)]">
         {/* Background Effects */}
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-[920px] h-[620px] bg-gradient-to-b from-indigo-100/60 via-violet-100/30 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-16 right-[4%] w-[420px] h-[420px] bg-gradient-to-br from-violet-200/35 to-indigo-100/5 rounded-full blur-3xl" />
-        <div className="absolute top-44 left-[2%] w-[320px] h-[320px] bg-gradient-to-tr from-sky-200/25 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-[920px] h-[620px] bg-gradient-to-b from-sky-100/45 via-indigo-100/25 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-16 right-[4%] w-[420px] h-[420px] bg-gradient-to-br from-sky-200/25 to-indigo-100/5 rounded-full blur-3xl" />
+        <div className="absolute top-44 left-[2%] w-[320px] h-[320px] bg-gradient-to-tr from-blue-200/20 to-transparent rounded-full blur-3xl" />
         <div className="absolute left-1/2 top-[8%] -translate-x-1/2 w-[760px] h-[220px] opacity-60 blur-2xl"
           style={{
             background: "conic-gradient(from 90deg, rgba(99,102,241,0.28), rgba(14,165,233,0.2), rgba(168,85,247,0.2), rgba(99,102,241,0.28))",
@@ -703,17 +703,17 @@ export default function LandingPage() {
         {/* Floating UI Decorations intentionally disabled for cleaner centered hero */}
 
         <div className="relative max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-8 xl:gap-10 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 xl:gap-10 items-center lg:-translate-y-6 transition-transform duration-500">
             <div className="max-w-[580px] mx-auto text-center lg:text-center lg:justify-self-center">
               <div
-                className={`inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full text-[12px] font-medium text-indigo-600 mb-7 mx-auto transition-all duration-700 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+                className={`inline-flex items-center gap-2 px-4 py-1.5 bg-white/85 border border-slate-200 rounded-full text-[12px] font-medium text-slate-600 mb-7 mx-auto transition-all duration-700 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               >
                 <Sparkles size={13} />
                 Built for Ambitious University Students
               </div>
 
               <h1
-                className={`text-4xl sm:text-5xl md:text-[60px] font-semibold leading-[1.08] tracking-[0.005em] mb-6 text-center bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 bg-clip-text text-transparent bg-[length:200%_200%] transition-all duration-700 delay-100 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                className={`text-4xl sm:text-5xl md:text-[60px] font-semibold leading-[1.08] tracking-[0.005em] mb-6 text-center font-[family-name:var(--font-playfair)] bg-gradient-to-r from-slate-900 via-indigo-800 to-slate-900 bg-clip-text text-transparent bg-[length:200%_200%] transition-all duration-700 delay-100 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
                 style={{ animation: "gradientFlow 7s ease-in-out infinite" }}
               >
                 Design Your
@@ -733,38 +733,56 @@ export default function LandingPage() {
               >
                 <button
                   onClick={() => router.push("/dashboard")}
-                  className="group inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-[15px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
+                  className="group inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-slate-900 to-indigo-900 text-white rounded-xl text-[15px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
                 >
                   Open Dashboard
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
                 <a
                   href="#features"
-                  className="inline-flex items-center gap-2 px-7 py-3.5 bg-white/80 backdrop-blur-md text-slate-700 rounded-xl text-[15px] font-semibold border border-slate-200 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 bg-white/90 backdrop-blur-md text-slate-700 rounded-xl text-[15px] font-semibold border border-slate-300 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
                 >
                   Learn More
                 </a>
               </div>
 
               <div
-                className={`flex flex-wrap items-center justify-center gap-2.5 mt-10 transition-all duration-700 delay-500 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+                className={`mt-10 max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-2.5 transition-all duration-700 delay-500 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               >
-                {["Next.js", "FastAPI", "MongoDB", "Gemini AI", "Tailwind"].map((tech) => (
-                  <span
-                    key={tech}
-                    className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-[11px] font-medium text-slate-500 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
+                {[
+                  {
+                    title: "Adaptive Planning",
+                    subtitle: "Schedules adjust to your week",
+                    tone: "from-blue-500 to-cyan-500",
+                  },
+                  {
+                    title: "Progress Clarity",
+                    subtitle: "Live priorities and momentum",
+                    tone: "from-indigo-500 to-blue-600",
+                  },
+                  {
+                    title: "Calm Execution",
+                    subtitle: "Focus blocks without overload",
+                    tone: "from-sky-500 to-indigo-500",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white/90 px-3 py-3 text-left shadow-sm"
                     style={{ animation: "chipFloat 6s ease-in-out infinite" }}
                   >
-                    {tech}
-                  </span>
+                    <div className={`mb-2 h-1.5 w-12 rounded-full bg-gradient-to-r ${item.tone}`} />
+                    <div className="text-[11px] font-semibold text-slate-700 leading-tight">{item.title}</div>
+                    <div className="mt-1 text-[10px] text-slate-500 leading-relaxed">{item.subtitle}</div>
+                  </div>
                 ))}
               </div>
             </div>
 
-            <div className={`relative mx-auto lg:mx-0 lg:justify-self-start transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-              <div className="absolute -inset-3 bg-gradient-to-br from-indigo-500/16 via-violet-400/9 to-cyan-400/8 blur-2xl rounded-[28px]" />
+            <div className={`relative mx-auto lg:mx-auto lg:justify-self-center transition-all duration-700 delay-200 ${hero.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
+              <div className="absolute -inset-3 bg-gradient-to-br from-slate-700/12 via-indigo-500/10 to-amber-400/8 blur-2xl rounded-[28px]" />
               <InteractiveTiltCard className="group" maxTilt={9}>
-                <div className="relative max-w-[560px] rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-md shadow-[0_20px_70px_rgba(15,23,42,0.14)] hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <div className="relative max-w-[560px] rounded-2xl border border-slate-300 bg-white/88 backdrop-blur-md shadow-[0_20px_70px_rgba(15,23,42,0.14)] hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/90 flex items-center justify-between">
                   <div>
                     <div className="text-[14px] font-semibold text-slate-800">Modern Study Dashboard</div>
@@ -842,7 +860,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── STATS BAR ─── */}
-      <section ref={stats.ref} className="relative py-8 bg-white/80 backdrop-blur border-y border-slate-100">
+      <section ref={stats.ref} className="relative py-8 bg-[linear-gradient(180deg,rgba(255,255,255,0.9)_0%,rgba(247,248,252,0.95)_100%)] backdrop-blur border-y border-slate-200">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
@@ -870,15 +888,15 @@ export default function LandingPage() {
       </section>
 
       {/* ─── FEATURES / MODULES ─── */}
-      <section ref={features.ref} id="features" className="relative py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.08),transparent_42%)]" />
+      <section ref={features.ref} id="features" className="relative py-24 bg-[linear-gradient(180deg,#f8f9fc_0%,#ffffff_65%)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.09),transparent_42%)]" />
         <div className="max-w-6xl mx-auto px-6">
           {/* Section Header */}
           <div className={`text-center mb-16 transition-all duration-700 ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-full text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mb-4">
               <Target size={12} /> Core Modules
             </div>
-            <h2 className="text-3xl md:text-[38px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
+            <h2 className="text-3xl md:text-[38px] font-semibold text-slate-900 tracking-tight leading-tight mb-4 font-[family-name:var(--font-playfair)]">
               Four Intelligent Modules
             </h2>
             <p className="text-lg text-slate-600 max-w-xl mx-auto">
@@ -928,7 +946,7 @@ export default function LandingPage() {
             ].map((feature, i) => (
               <InteractiveTiltCard
                 key={feature.title}
-                className={`group relative bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl p-7 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                className={`group relative bg-white/85 backdrop-blur-md border border-slate-300 rounded-2xl p-7 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden ${features.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
                 maxTilt={6}
               >
                 {/* Top gradient line */}
@@ -970,7 +988,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── AI WORKFLOW SECTION ─── */}
-      <section ref={workflow.ref} className="relative py-24 bg-gradient-to-br from-[#0F172A] via-[#111827] to-[#020617] overflow-hidden">
+      <section ref={workflow.ref} className="relative py-24 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#171717] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.24),transparent_40%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.2),transparent_35%)]" />
 
@@ -979,7 +997,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[11px] font-semibold text-indigo-300 uppercase tracking-wider mb-4">
               <Zap size={12} /> AI Workflow
             </div>
-            <h2 className="text-3xl md:text-[38px] font-semibold text-white tracking-tight leading-tight mb-4">
+            <h2 className="text-3xl md:text-[38px] font-semibold text-white tracking-tight leading-tight mb-4 font-[family-name:var(--font-playfair)]">
               How EduSense Works
             </h2>
             <p className="text-slate-300 max-w-2xl mx-auto text-[16px]">
@@ -1044,7 +1062,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── VISION SECTION ─── */}
-      <section ref={vision.ref} id="vision" className="relative py-24 bg-[#0F172A] overflow-hidden">
+      <section ref={vision.ref} id="vision" className="relative py-24 bg-[#111827] overflow-hidden">
         {/* Background effects */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[100px]" />
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-violet-500/5 rounded-full blur-[80px]" />
@@ -1056,7 +1074,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[11px] font-semibold text-indigo-400 uppercase tracking-wider mb-5">
                 <Globe size={12} /> Our Vision
               </div>
-              <h2 className="text-3xl md:text-[38px] font-semibold text-white leading-tight tracking-tight mb-6">
+              <h2 className="text-3xl md:text-[38px] font-semibold text-white leading-tight tracking-tight mb-6 font-[family-name:var(--font-playfair)]">
                 Transforming Student
                 <br />
                 <span className="text-indigo-400">Productivity</span> with AI
@@ -1146,14 +1164,14 @@ export default function LandingPage() {
 
       {/* ─── CTA SECTION ─── */}
       <section ref={cta.ref} className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-indigo-50/40 to-violet-50/30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f9fafb] via-[#f3f4f6] to-[#eef2ff]" />
         <div className={`relative max-w-3xl mx-auto px-6 text-center transition-all duration-700 ${cta.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <div className="inline-flex items-center gap-2 mb-5">
             {[...Array(5)].map((_, i) => (
               <Star key={i} size={18} className="text-amber-400 fill-amber-400" />
             ))}
           </div>
-          <h2 className="text-3xl md:text-[38px] font-semibold text-slate-800 tracking-tight leading-tight mb-4">
+          <h2 className="text-3xl md:text-[38px] font-semibold text-slate-900 tracking-tight leading-tight mb-4 font-[family-name:var(--font-playfair)]">
             Ready to Boost Your <span className="text-indigo-500">Productivity?</span>
           </h2>
           <p className="text-lg text-slate-600 mb-10 max-w-lg mx-auto">
@@ -1161,7 +1179,7 @@ export default function LandingPage() {
           </p>
           <button
             onClick={() => router.push("/dashboard")}
-            className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-[16px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
+            className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-slate-900 to-indigo-900 text-white rounded-xl text-[16px] font-semibold shadow-lg hover:scale-105 transition-all duration-300"
           >
             Go to Dashboard
             <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -1220,11 +1238,23 @@ export default function LandingPage() {
             <p className="text-[12px] text-slate-600">
               © 2026 EduSense. All rights reserved. Built by <span className="text-indigo-400">EduSense Team</span> for ITPM at SLIIT.
             </p>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 bg-slate-800 rounded text-[10px] text-slate-500 font-medium">Next.js</span>
-              <span className="px-2.5 py-0.5 bg-slate-800 rounded text-[10px] text-slate-500 font-medium">FastAPI</span>
-              <span className="px-2.5 py-0.5 bg-slate-800 rounded text-[10px] text-slate-500 font-medium">MongoDB</span>
-              <span className="px-2.5 py-0.5 bg-slate-800 rounded text-[10px] text-slate-500 font-medium">Gemini AI</span>
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Live Demo Ready
+              </span>
+              <a
+                href="#features"
+                className="px-2.5 py-1 rounded-md bg-slate-800/90 border border-slate-700 text-[10px] font-medium text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
+              >
+                Explore Features
+              </a>
+              <a
+                href="#vision"
+                className="px-2.5 py-1 rounded-md bg-slate-800/90 border border-slate-700 text-[10px] font-medium text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
+              >
+                Our Vision
+              </a>
             </div>
           </div>
         </div>
