@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { ActivityGraph, IncomingInvitesCard, InviteMemberCard, UploadMaterialCard } from "./components";
 import { MeetingPanel } from "./components/MeetingPanel";
 import { API_BASE, FILE_TYPE_COLORS, PLATFORM_COLORS, modules } from "./constants";
@@ -9,6 +11,7 @@ import type { Group, GroupInvite, GroupMaterial } from "./types";
 import { apiGroupToGroup, apiInviteToInvite, apiMaterialToMaterial, formatFileSize } from "./utils";
 
 export default function PeerConnectHome() {
+    const router = useRouter();
     const [groups, setGroups] = useState<Group[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -49,6 +52,19 @@ export default function PeerConnectHome() {
     const [materialActionError, setMaterialActionError] = useState("");
     const [deletingMaterialId, setDeletingMaterialId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+    const [authRequired, setAuthRequired] = useState(false);
+
+    const handleApiError = (error: unknown, fallback: string) => {
+        if (error instanceof ApiError) {
+            if (error.status === 401) {
+                setAuthRequired(true);
+                return "Not authenticated";
+            }
+            return error.message;
+        }
+        if (error instanceof Error) return error.message;
+        return fallback;
+    };
 
     const loadGroups = async () => {
         const data = await apiFetch("/groups/");
@@ -73,6 +89,8 @@ export default function PeerConnectHome() {
                 ...prev,
                 [groupId]: Boolean(data.can_upload),
             }));
+        } catch (error: unknown) {
+            setMaterialActionError(handleApiError(error, "Failed to load group materials"));
         } finally {
             setLoadingGroupMaterialsId((prev) => (prev === groupId ? null : prev));
         }
@@ -156,21 +174,30 @@ export default function PeerConnectHome() {
     };
 
     useEffect(() => {
+        if (authRequired) {
+            router.push("/login?next=/materials");
+        }
+    }, [authRequired, router]);
+
+    useEffect(() => {
+        if (authRequired) return;
         (async () => {
             try {
                 await Promise.all([loadGroups(), loadIncomingInvites()]);
-            } catch {
-                // silently fall back to empty list
+            } catch (error: unknown) {
+                if (error instanceof ApiError && error.status === 401) {
+                    setAuthRequired(true);
+                }
             } finally {
                 setLoadingGroups(false);
             }
         })();
-    }, []);
+    }, [authRequired]);
 
     useEffect(() => {
-        if (!selectedGroup) return;
+        if (!selectedGroup || authRequired) return;
         void loadGroupMaterials(selectedGroup.id);
-    }, [selectedGroup?.id]);
+    }, [selectedGroup?.id, authRequired]);
 
     const filteredGroups = groups.filter((g) => {
         const q = searchQuery.toLowerCase();

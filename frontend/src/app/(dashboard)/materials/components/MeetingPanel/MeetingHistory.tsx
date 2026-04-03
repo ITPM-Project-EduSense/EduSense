@@ -90,7 +90,7 @@ export const MeetingHistory = ({ groupId }: MeetingHistoryProps) => {
             </div>
             {meetings.map((meeting, idx) => (
                 <div
-                    key={idx}
+                    key={`${meeting.platform}-${meeting.started_at}-${idx}`}
                     style={{
                         padding: '0.75rem',
                         background: '#f9fafb',
@@ -115,6 +115,12 @@ export const MeetingHistory = ({ groupId }: MeetingHistoryProps) => {
                     {meeting.ended_at && (
                         <div style={{ color: '#666' }}>
                             Ended: {formatDate(meeting.ended_at)}
+                        </div>
+                    )}
+                    {(meeting.source || meeting.provider_status || meeting.provider_error) && (
+                        <div style={{ color: '#64748b', marginTop: '0.35rem' }}>
+                            Source: {meeting.source || 'n/a'} • Status: {meeting.provider_status || 'n/a'}
+                            {meeting.provider_error ? ` • Error: ${meeting.provider_error}` : ''}
                         </div>
                     )}
                 </div>

@@ -1,6 +1,18 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
+export class ApiError extends Error {
+  status: number;
+  payload: any;
+
+  constructor(message: string, status: number, payload: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
 /**
  * Simple health check (for testing backend connection)
  */
@@ -36,7 +48,11 @@ export async function apiFetch(
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data?.detail || data?.message || "Something went wrong");
+    throw new ApiError(
+      data?.detail || data?.message || "Something went wrong",
+      response.status,
+      data
+    );
   }
 
   return data;

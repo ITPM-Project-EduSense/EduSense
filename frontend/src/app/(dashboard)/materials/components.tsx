@@ -67,6 +67,11 @@ export function InviteMemberCard({
         let cancelled = false;
 
         const loadInvites = async () => {
+            if (!group.isJoined) {
+                setInvites([]);
+                setLoadingInvites(false);
+                return;
+            }
             setLoadingInvites(true);
             try {
                 const data = await apiFetch(`/groups/${group.id}/invites`);

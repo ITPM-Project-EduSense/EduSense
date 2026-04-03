@@ -9,8 +9,12 @@ class MeetingRecord(BaseModel):
     platform: Literal["zoom", "teams"]
     meeting_link: str
     meeting_code: Optional[str] = None
+    source: Optional[Literal["manual_link", "graph_api"]] = None
+    provider_status: Optional[Literal["success", "failed", "expired"]] = None
+    provider_error: Optional[str] = None
     started_at: datetime
     ended_at: Optional[datetime] = None
+    join_events: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class StudyGroup(Document):

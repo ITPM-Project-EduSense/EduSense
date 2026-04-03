@@ -39,7 +39,7 @@ const navBottom: NavItem[] = [
   { name: "User Management", href: "/users", icon: Users },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Profile", href: "/users", icon: UserCircle },
+  { name: "Profile", href: "/profile", icon: UserCircle },
 ];
 
 type CurrentUser = {
@@ -109,7 +109,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
               const Icon = item.icon;
               const active = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} className={itemClass(active)} onClick={onClose}>
+                <Link key={`${item.href}-${item.name}`} href={item.href} className={itemClass(active)} onClick={onClose}>
                   <Icon size={18} />
                   <span>{item.name}</span>
                 </Link>

@@ -3,8 +3,10 @@ Meeting Routes - API endpoints for managing video meetings in study groups
 """
 from typing import List, Literal, Optional
 from datetime import datetime
+import os
 from fastapi import APIRouter, HTTPException, Depends, status
 from beanie import PydanticObjectId
+from pydantic import BaseModel
 
 from app.models.study_group import StudyGroup, MeetingRecord
 from app.models.user_model import User
@@ -12,6 +14,21 @@ from app.core.security import get_current_user
 from app.services.meeting_service import MeetingService
 
 router = APIRouter(prefix="/groups", tags=["Group Meetings"])
+MEETING_MAX_ACTIVE_MINUTES = int(os.getenv("MEETING_MAX_ACTIVE_MINUTES", "180"))
+
+
+class JoinTelemetryPayload(BaseModel):
+    method: Literal["app", "browser", "copy"]
+    status: Literal["attempted", "success", "failed"] = "attempted"
+    client_platform: Optional[str] = None
+    detail: Optional[str] = None
+
+
+class ManualMeetingStartPayload(BaseModel):
+    platform: Literal["zoom", "teams"]
+    meeting_link: str
+    meeting_code: Optional[str] = None
+    meeting_password: Optional[str] = None
 
 
 # ─── Helper: Check if user is a group member ───
@@ -28,6 +45,57 @@ async def verify_group_member(group_id: str, user_id: str) -> StudyGroup:
         )
     
     return group
+
+
+async def archive_active_meeting(
+    group: StudyGroup,
+    *,
+    ended_at: Optional[datetime] = None,
+    provider_status: Optional[Literal["success", "failed", "expired"]] = None,
+    provider_error: Optional[str] = None,
+) -> None:
+    """Move active meeting to history and clear active slot."""
+    if not group.active_meeting:
+        return
+
+    raw_started_at = group.active_meeting.get("started_at")
+    if not raw_started_at:
+        raw_started_at = datetime.utcnow().isoformat()
+
+    meeting_record = MeetingRecord(
+        platform=group.active_meeting["platform"],
+        meeting_link=group.active_meeting.get("meeting_link", ""),
+        meeting_code=group.active_meeting.get("meeting_code"),
+        source=group.active_meeting.get("source"),
+        provider_status=provider_status or group.active_meeting.get("provider_status", "success"),
+        provider_error=provider_error or group.active_meeting.get("provider_error"),
+        started_at=MeetingService.parse_iso_datetime(raw_started_at),
+        ended_at=ended_at or datetime.utcnow(),
+        join_events=group.active_meeting.get("join_events", []),
+    )
+    group.meeting_history.append(meeting_record)
+    group.active_meeting = None
+
+
+async def expire_stale_active_meeting_if_needed(group: StudyGroup) -> bool:
+    """Expire active meeting when it exceeds the configured active window."""
+    active = group.active_meeting
+    if not active or not active.get("is_active"):
+        return False
+
+    started_at = MeetingService.parse_iso_datetime(active.get("started_at", datetime.utcnow().isoformat()))
+    age_minutes = (datetime.utcnow() - started_at.replace(tzinfo=None) if started_at.tzinfo else datetime.utcnow() - started_at).total_seconds() / 60
+
+    if age_minutes <= MEETING_MAX_ACTIVE_MINUTES:
+        return False
+
+    await archive_active_meeting(
+        group,
+        provider_status="expired",
+        provider_error=f"Auto-expired after {MEETING_MAX_ACTIVE_MINUTES} minutes",
+    )
+    await group.save()
+    return True
 
 
 # ─── POST /{group_id}/meetings/start ───
@@ -71,17 +139,19 @@ async def start_meeting(
                 initiator_id=str(current_user.id)
             )
         
-        # Store as active meeting
-        active_meeting = {
-            "platform": platform,
-            "meeting_link": meeting_response["meeting_link"],
-            "meeting_code": meeting_response.get("meeting_code"),
-            "meeting_password": meeting_response.get("meeting_password"),
-            "started_at": meeting_response["started_at"],
-            "started_by": current_user.full_name,
-            "started_by_id": str(current_user.id),
-            "is_active": True,
-        }
+        # Store as active meeting (uniform shape)
+        active_meeting = MeetingService.build_active_meeting(
+            platform=platform,
+            meeting_link=meeting_response["meeting_link"],
+            meeting_code=meeting_response.get("meeting_code"),
+            meeting_password=meeting_response.get("meeting_password"),
+            started_at=meeting_response.get("started_at"),
+            started_by=current_user.full_name,
+            started_by_id=str(current_user.id),
+            source="graph_api",
+            provider_status="success",
+            provider_error=None,
+        )
         
         # Update group
         group.active_meeting = active_meeting
@@ -93,11 +163,84 @@ async def start_meeting(
             "meeting": active_meeting,
         }
     
+    except RuntimeError as e:
+        message = str(e)
+        group.active_meeting = MeetingService.build_active_meeting(
+            platform=platform,
+            meeting_link="",
+            meeting_code=None,
+            meeting_password=None,
+            started_by=current_user.full_name,
+            started_by_id=str(current_user.id),
+            source="graph_api",
+            provider_status="failed",
+            provider_error=message,
+        )
+        await archive_active_meeting(group, provider_status="failed", provider_error=message)
+        await group.save()
+
+        if platform == "teams" and "start-manual" in message:
+            raise HTTPException(
+                status_code=422,
+                detail=message,
+            )
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"Meeting provider error: {message}"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to create meeting: {str(e)}"
         )
+
+
+# ─── POST /{group_id}/meetings/start-manual ───
+@router.post(
+    "/{group_id}/meetings/start-manual",
+    status_code=status.HTTP_201_CREATED,
+    summary="Start a meeting from an existing platform invite link"
+)
+async def start_manual_meeting(
+    group_id: str,
+    payload: ManualMeetingStartPayload,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Start a meeting by using an invite link generated directly in Teams/Zoom.
+    This path avoids Graph/OAuth setup and is useful for student projects.
+    """
+    group = await verify_group_member(group_id, str(current_user.id))
+
+    if group.active_meeting and group.active_meeting.get("is_active"):
+        raise HTTPException(status_code=409, detail="A meeting is already active for this group")
+
+    try:
+        link = MeetingService.validate_manual_meeting_link(payload.platform, payload.meeting_link)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    active_meeting = MeetingService.build_active_meeting(
+        platform=payload.platform,
+        meeting_link=link,
+        meeting_code=payload.meeting_code,
+        meeting_password=payload.meeting_password,
+        started_by=current_user.full_name,
+        started_by_id=str(current_user.id),
+        source="manual_link",
+        provider_status="success",
+        provider_error=None,
+    )
+
+    group.active_meeting = active_meeting
+    await group.save()
+
+    return {
+        "status": "success",
+        "message": "Meeting started from existing invite link",
+        "meeting": active_meeting,
+    }
 
 
 # ─── GET /{group_id}/meetings/active ───
@@ -115,12 +258,21 @@ async def get_active_meeting(
     - Returns meeting link, platform, and who started it
     """
     group = await verify_group_member(group_id, str(current_user.id))
+
+    expired = await expire_stale_active_meeting_if_needed(group)
+    if expired:
+        return {
+            "status": "inactive",
+            "meeting": None,
+            "message": "Active meeting auto-expired due to inactivity window",
+        }
     
     if not group.active_meeting or not group.active_meeting.get("is_active"):
-        raise HTTPException(
-            status_code=404,
-            detail="No active meeting for this group"
-        )
+        return {
+            "status": "inactive",
+            "meeting": None,
+            "message": "No active meeting for this group",
+        }
     
     return {
         "status": "active",
@@ -157,20 +309,7 @@ async def end_meeting(
             detail="Only the member who started the meeting can end it"
         )
     
-    # Create history record
-    meeting_record = MeetingRecord(
-        platform=group.active_meeting["platform"],
-        meeting_link=group.active_meeting["meeting_link"],
-        meeting_code=group.active_meeting.get("meeting_code"),
-        started_at=datetime.fromisoformat(group.active_meeting["started_at"]),
-        ended_at=datetime.utcnow(),
-    )
-    
-    # Add to history
-    group.meeting_history.append(meeting_record)
-    
-    # Clear active meeting
-    group.active_meeting = None
+    await archive_active_meeting(group, provider_status=group.active_meeting.get("provider_status", "success"))
     await group.save()
     
     return {
@@ -209,6 +348,9 @@ async def get_meeting_history(
         "meetings": [
             {
                 "platform": m.platform,
+                "source": m.source,
+                "provider_status": m.provider_status,
+                "provider_error": m.provider_error,
                 "started_at": m.started_at.isoformat(),
                 "ended_at": m.ended_at.isoformat() if m.ended_at else None,
                 "duration_minutes": round((m.ended_at - m.started_at).seconds / 60)
@@ -244,6 +386,8 @@ async def validate_meeting_access(
             status_code=403,
             detail="You are not a member of this group. Access to this meeting is restricted to group members only.",
         )
+
+    await expire_stale_active_meeting_if_needed(group)
     
     return {
         "status": "allowed",
@@ -252,4 +396,100 @@ async def validate_meeting_access(
         "group_name": group.name,
         "is_member": True,
         "has_active_meeting": bool(group.active_meeting and group.active_meeting.get("is_active")),
+        "meeting": group.active_meeting if group.active_meeting and group.active_meeting.get("is_active") else None,
+        "web_link": group.active_meeting.get("web_link") if group.active_meeting and group.active_meeting.get("is_active") else None,
+        "app_link": group.active_meeting.get("app_link") if group.active_meeting and group.active_meeting.get("is_active") else None,
+    }
+
+
+# ─── POST /{group_id}/meetings/join-event ───
+@router.post(
+    "/{group_id}/meetings/join-event",
+    summary="Store meeting join telemetry event"
+)
+async def log_join_event(
+    group_id: str,
+    payload: JoinTelemetryPayload,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Save a join-attempt telemetry event for reliability analysis.
+    - Only group members can log events
+    - Requires an active meeting
+    """
+    group = await verify_group_member(group_id, str(current_user.id))
+
+    if not group.active_meeting or not group.active_meeting.get("is_active"):
+        raise HTTPException(status_code=404, detail="No active meeting to log join telemetry")
+
+    event = {
+        "user_id": str(current_user.id),
+        "user_name": current_user.full_name,
+        "method": payload.method,
+        "status": payload.status,
+        "client_platform": payload.client_platform,
+        "detail": payload.detail,
+        "occurred_at": datetime.utcnow().isoformat(),
+    }
+
+    join_events = list(group.active_meeting.get("join_events") or [])
+    join_events.append(event)
+    group.active_meeting["join_events"] = join_events
+    await group.save()
+
+    return {
+        "status": "success",
+        "message": "Join telemetry saved",
+        "event_count": len(join_events),
+    }
+
+
+# ─── GET /{group_id}/meetings/telemetry-summary ───
+@router.get(
+    "/{group_id}/meetings/telemetry-summary",
+    summary="Get meeting reliability telemetry summary"
+)
+async def get_meeting_telemetry_summary(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregate join telemetry for active + historical meetings."""
+    group = await verify_group_member(group_id, str(current_user.id))
+
+    events = []
+    if group.active_meeting and group.active_meeting.get("join_events"):
+        events.extend(group.active_meeting.get("join_events", []))
+
+    for record in group.meeting_history:
+        events.extend(record.join_events or [])
+
+    total = len(events)
+    by_status = {"attempted": 0, "success": 0, "failed": 0}
+    by_method = {"app": 0, "browser": 0, "copy": 0}
+    failures = []
+
+    for event in events:
+        status_key = event.get("status")
+        method_key = event.get("method")
+        if status_key in by_status:
+            by_status[status_key] += 1
+        if method_key in by_method:
+            by_method[method_key] += 1
+        if status_key == "failed":
+            failures.append({
+                "detail": event.get("detail"),
+                "method": event.get("method"),
+                "occurred_at": event.get("occurred_at"),
+            })
+
+    success_rate = (by_status["success"] / by_status["attempted"] * 100) if by_status["attempted"] else 0.0
+
+    return {
+        "status": "success",
+        "group_id": group_id,
+        "event_count": total,
+        "by_status": by_status,
+        "by_method": by_method,
+        "join_success_rate": round(success_rate, 2),
+        "top_failures": failures[-10:],
     }
