@@ -27,12 +27,12 @@ interface SubjectDetailModalProps {
     };
 }
 
-export default function SubjectDetailModal({ 
-    isOpen, 
-    onClose, 
-    subjectName, 
-    tasks, 
-    stats 
+export default function SubjectDetailModal({
+    isOpen,
+    onClose,
+    subjectName,
+    tasks,
+    stats
 }: SubjectDetailModalProps) {
     const ongoingTasks = tasks.filter(t => t.status !== "completed");
     const completedTasks = tasks.filter(t => t.status === "completed");
@@ -128,15 +128,14 @@ export default function SubjectDetailModal({
                                             <span className="text-xl font-black text-white/70">%</span>
                                         </div>
                                         <div className="h-3 w-full rounded-full bg-black/20 overflow-hidden ring-1 ring-inset ring-black/20">
-                                            <motion.div 
+                                            <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${stats.completionPct}%` }}
                                                 transition={{ duration: 1.5, ease: "circOut" }}
-                                                className={`h-full rounded-full ${
-                                                    stats.completionPct >= 61 ? "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]" : 
-                                                    stats.completionPct >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" : 
-                                                    "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]"
-                                                }`}
+                                                className={`h-full rounded-full ${stats.completionPct >= 61 ? "bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_12px_rgba(52,211,153,0.5)]" :
+                                                        stats.completionPct >= 31 ? "bg-gradient-to-r from-amber-400 to-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.5)]" :
+                                                            "bg-gradient-to-r from-rose-400 to-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.5)]"
+                                                    }`}
                                             />
                                         </div>
                                     </div>
@@ -167,7 +166,7 @@ export default function SubjectDetailModal({
                                     </div>
                                 </div>
 
-                                <button 
+                                <button
                                     onClick={onClose}
                                     className={`relative z-10 mt-10 w-full rounded-[1.25rem] bg-white py-4 text-xs font-black uppercase tracking-widest transition-all hover:shadow-xl hover:scale-105 active:scale-95 ${theme.btnText} ${theme.btnHover}`}
                                 >
@@ -208,14 +207,13 @@ export default function SubjectDetailModal({
                                             {ongoingTasks.length > 0 ? (
                                                 <div className="grid grid-cols-1 gap-3">
                                                     {ongoingTasks.map((task, idx) => (
-                                                        <motion.div 
+                                                        <motion.div
                                                             key={task.id}
                                                             initial={{ opacity: 0, x: -10 }}
                                                             animate={{ opacity: 1, x: 0 }}
                                                             transition={{ delay: idx * 0.05 }}
-                                                            className={`group flex items-center justify-between p-5 rounded-2xl border transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
-                                                                task.status === "in_progress" ? "bg-amber-50 border-amber-200 hover:border-amber-400" : "bg-slate-50 border-slate-200 hover:border-blue-300"
-                                                            }`}
+                                                            className={`group flex items-center justify-between p-5 rounded-2xl border transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${task.status === "in_progress" ? "bg-amber-50 border-amber-200 hover:border-amber-400" : "bg-slate-50 border-slate-200 hover:border-blue-300"
+                                                                }`}
                                                         >
                                                             <div className="flex items-center gap-4">
                                                                 <div className={`rounded-xl p-0.5 ring-2 ring-white shadow-sm overflow-hidden ${task.status === "in_progress" ? "bg-amber-200" : "bg-slate-200"}`}>
@@ -232,9 +230,8 @@ export default function SubjectDetailModal({
                                                                     </p>
                                                                 </div>
                                                             </div>
-                                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.1em] border ${
-                                                                task.status === "in_progress" ? "bg-white border-amber-200 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 shadow-sm"
-                                                            }`}>
+                                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.1em] border ${task.status === "in_progress" ? "bg-white border-amber-200 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 shadow-sm"
+                                                                }`}>
                                                                 {task.status === "in_progress" ? "Execution" : "Standby"}
                                                             </span>
                                                         </motion.div>
@@ -254,7 +251,7 @@ export default function SubjectDetailModal({
                                             <div className="grid grid-cols-1 gap-3">
                                                 {completedTasks.length > 0 ? (
                                                     completedTasks.map((task, idx) => (
-                                                        <motion.div 
+                                                        <motion.div
                                                             key={task.id}
                                                             initial={{ opacity: 0, x: -10 }}
                                                             animate={{ opacity: 1, x: 0 }}

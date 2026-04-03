@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Brain, TrendingUp, TrendingDown, Minus, Zap, Flame, Activity, AlertTriangle } from "lucide-react";
+import { Brain, TrendingUp, TrendingDown, Minus, Activity, AlertTriangle, Calendar, Layers } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import {
     calculateBurnout,
     type BurnoutResult,
     type BurnoutTask,
     type BurnoutLevel,
+    type WorkloadPoint,
 } from "@/lib/burnoutEngine";
 
 // ── Colour config ─────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ const LEVEL_COLOR: Record<BurnoutLevel, {
         iconBg: "bg-emerald-500/15",
         iconRing: "ring-emerald-500/25",
         scoreBg: "bg-emerald-50",
-        scoreText: "text-emerald-600",
+        scoreText: "text-emerald-700",
     },
     Medium: {
         stroke: "#F59E0B",
@@ -39,46 +40,44 @@ const LEVEL_COLOR: Record<BurnoutLevel, {
         iconBg: "bg-amber-500/15",
         iconRing: "ring-amber-500/25",
         scoreBg: "bg-amber-50",
-        scoreText: "text-amber-600",
+        scoreText: "text-amber-700",
     },
     High: {
-        stroke: "#F87171",
-        gradStart: "#F87171",
+        stroke: "#EF4444",
+        gradStart: "#EF4444",
         badge: "bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/25",
         text: "text-rose-600",
-        dot: "#F87171",
+        dot: "#EF4444",
         iconBg: "bg-rose-500/15",
         iconRing: "ring-rose-500/25",
         scoreBg: "bg-rose-50",
-        scoreText: "text-rose-600",
+        scoreText: "text-rose-700",
     },
 };
 
 function pointColor(score: number): string {
-    if (score > 70) return "#F87171";
+    if (score > 70) return "#EF4444";
     if (score > 40) return "#F59E0B";
     return "#34D399";
 }
 
 // ── SVG Chart ─────────────────────────────────────────────────────────────────
 
-function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
+function WorkloadChart({ data, level }: { data: WorkloadPoint[], level: BurnoutLevel }) {
     const W = 440;
     const H = 200;
     const PAD = 32;
     const usableW = W - PAD * 2;
     const usableH = H - PAD * 2;
 
-    const trend = burnout.weeklyTrend;
-    const stepX = trend.length > 1 ? usableW / (trend.length - 1) : usableW;
-    const level = burnout.level;
+    const stepX = data.length > 1 ? usableW / (data.length - 1) : usableW;
     const colors = LEVEL_COLOR[level];
-    const gradId = `burnoutGrad_${level}`;
+    const gradId = `workloadGrad_${level}`;
 
-    const points = trend.map((w, i) => ({
+    const points = data.map((d, i) => ({
+        ...d,
         x: PAD + i * stepX,
-        y: H - PAD - (Math.min(100, w.score) / 100) * usableH,
-        ...w,
+        y: H - PAD - (Math.min(100, d.score) / 100) * usableH,
     }));
 
     const pathD = points.reduce((acc, pt, i, arr) => {
@@ -95,58 +94,37 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
             <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={colors.gradStart} stopOpacity="0.4" />
-                    <stop offset="100%" stopColor={colors.gradStart} stopOpacity="0.02" />
+                    <stop offset="0%" stopColor={colors.gradStart} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={colors.gradStart} stopOpacity="0.01" />
                 </linearGradient>
             </defs>
 
-            {/* Zone bands */}
-            <rect x={PAD} y={H - PAD - (100 / 100) * usableH}
-                width={usableW} height={(30 / 100) * usableH}
-                fill="rgba(248,113,113,0.08)" rx={4} />
-            <rect x={PAD} y={H - PAD - (70 / 100) * usableH}
-                width={usableW} height={(30 / 100) * usableH}
-                fill="rgba(245,158,11,0.06)" rx={4} />
-            <rect x={PAD} y={H - PAD - (40 / 100) * usableH}
-                width={usableW} height={(40 / 100) * usableH}
-                fill="rgba(52,211,153,0.05)" rx={4} />
-
             {/* Grid lines */}
-            {[25, 40, 70, 75].map((v) => {
+            {[25, 50, 75].map((v) => {
                 const y = H - PAD - (v / 100) * usableH;
-                const col = v === 40 ? "rgba(52,211,153,0.25)" : v === 70 ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.1)";
+                const col = "rgba(148,163,184,0.15)";
                 return (
                     <g key={v}>
                         <line x1={PAD} y1={y} x2={W - PAD} y2={y}
                             stroke={col} strokeWidth="1" strokeDasharray="4 4" />
-                        <text x={PAD - 6} y={y + 4} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.5)">
+                        <text x={PAD - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
                             {v}
                         </text>
                     </g>
                 );
             })}
 
-            {/* Zone labels */}
-            <text x={W - PAD + 4} y={H - PAD - (85 / 100) * usableH + 4} fontSize="8" fill="#F87171" fontWeight="700">HIGH</text>
-            <text x={W - PAD + 4} y={H - PAD - (55 / 100) * usableH + 4} fontSize="8" fill="#FBBF24" fontWeight="700">MED</text>
-            <text x={W - PAD + 4} y={H - PAD - (20 / 100) * usableH + 4} fontSize="8" fill="#34D399" fontWeight="700">LOW</text>
-
-            {/* Critical-week highlight */}
-            {burnout.criticalWeekIndex >= 0 && (
-                <rect
-                    x={points[burnout.criticalWeekIndex].x - stepX * 0.45}
-                    y={PAD} width={stepX * 0.9} height={usableH}
-                    rx={6} fill="rgba(248,113,113,0.15)"
-                />
+            {/* Current Day / Week Highlight */}
+            {points.map((pt, i) =>
+                pt.isCurrent && (
+                    <rect
+                        key={`highlight-${i}`}
+                        x={pt.x - stepX * 0.45}
+                        y={PAD} width={stepX * 0.9} height={usableH}
+                        rx={6} fill="rgba(59,130,246,0.06)"
+                    />
+                )
             )}
-
-            {/* Spike markers */}
-            {points.filter((p) => p.isSpike).map((p, i) => (
-                <text key={`spike-${i}`} x={p.x} y={p.y - 18}
-                    textAnchor="middle" fontSize="9" fill="#FB923C" fontWeight="700">
-                    ↑ Spike
-                </text>
-            ))}
 
             {/* Area fill */}
             <path d={areaD} fill={`url(#${gradId})`} />
@@ -154,7 +132,7 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
             {/* Curve */}
             <motion.path
                 d={pathD} fill="none"
-                stroke={colors.stroke} strokeWidth="2.5" strokeLinecap="round"
+                stroke={colors.stroke} strokeWidth="3" strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
                 transition={{ duration: 1.2, ease: "easeOut" }}
@@ -164,38 +142,32 @@ function BurnoutChart({ burnout }: { burnout: BurnoutResult }) {
             {points.map((pt, i) => (
                 <g key={i}>
                     {pt.isCritical && (
-                        <circle cx={pt.x} cy={pt.y} r={10} fill={pointColor(pt.score)} fillOpacity="0.2" />
+                        <circle cx={pt.x} cy={pt.y} r={12} fill={pointColor(pt.score)} fillOpacity="0.15" />
                     )}
                     <circle
                         cx={pt.x} cy={pt.y}
-                        r={i === burnout.criticalWeekIndex ? 5.5 : 3.5}
-                        fill={pointColor(pt.score)} stroke="rgba(255,255,255,0.9)" strokeWidth="2"
+                        r={pt.isCurrent ? 6 : 4}
+                        fill={pointColor(pt.score)} stroke="#ffffff" strokeWidth="2"
+                        className="shadow-sm"
                     />
-                    <text
-                        x={pt.x} y={pt.y - 10}
-                        textAnchor="middle" fontSize="9"
-                        fill="rgba(255,255,255,0.85)" fontWeight="600"
-                        opacity={pt.isCritical || pt.isSpike ? 1 : 0.7}
-                    >
-                        {pt.score}
-                    </text>
+                    {pt.score > 0 && (
+                        <text
+                            x={pt.x} y={pt.y - 12}
+                            textAnchor="middle" fontSize="9"
+                            fill="#64748b" fontWeight="600"
+                        >
+                            {pt.score}
+                        </text>
+                    )}
                 </g>
             ))}
-
-            {/* Critical label */}
-            {burnout.criticalWeekIndex >= 0 && (
-                <text
-                    x={points[burnout.criticalWeekIndex].x} y={PAD - 6}
-                    textAnchor="middle" fontSize="9" fontWeight="700" fill="#F87171"
-                >
-                    ⚠ Critical
-                </text>
-            )}
 
             {/* X-axis labels */}
             {points.map((pt, i) => (
                 <text key={i} x={pt.x} y={H - 8}
-                    textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.6)">
+                    textAnchor="middle" fontSize="10"
+                    fill={pt.isCurrent ? "#2563eb" : "#94a3b8"}
+                    fontWeight={pt.isCurrent ? "700" : "500"}>
                     {pt.label}
                 </text>
             ))}
@@ -228,9 +200,12 @@ function Skeleton() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
+type ViewMode = "day" | "week" | "month";
+
 export default function BurnoutStressChart() {
     const [burnout, setBurnout] = useState<BurnoutResult | null>(null);
     const [loading, setLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<ViewMode>("week");
 
     useEffect(() => {
         let cancelled = false;
@@ -256,21 +231,33 @@ export default function BurnoutStressChart() {
     if (loading) return <Skeleton />;
 
     const b = burnout!;
-    const colors = LEVEL_COLOR[b.level];
+
+    const chartData =
+        viewMode === "day" ? b.dailyWorkload :
+            viewMode === "week" ? b.weeklyWorkload :
+                b.monthlyWorkload;
+
+    const currentPoint = chartData.find(d => d.isCurrent) || chartData[chartData.length - 1];
+
+    // Check if we have tomorrow/next week info
+    const currentIndex = chartData.findIndex(d => d.isCurrent);
+    const nextPoint = currentIndex >= 0 && currentIndex < chartData.length - 1 ? chartData[currentIndex + 1] : null;
+
+    const currentLevel = currentPoint.level;
+    const colors = LEVEL_COLOR[currentLevel];
 
     const TrendIcon =
         b.trend === "up" ? TrendingUp :
             b.trend === "down" ? TrendingDown :
                 Minus;
 
-    const trendLabel = b.trend === "stable" ? "Stable" : b.trend === "up" ? "Rising" : "Falling";
     const trendColor =
         b.trend === "up" ? "text-rose-500" :
             b.trend === "down" ? "text-emerald-500" :
                 "text-blue-500";
 
-    const peakScore = Math.max(...b.weeklyTrend.map(w => w.score));
-    const peakWeek = b.weeklyTrend.find(w => w.score === peakScore);
+    const peakScore = Math.max(...chartData.map(w => w.score));
+    const peakPoint = chartData.find(w => w.score === peakScore);
 
     return (
         <motion.div
@@ -280,133 +267,112 @@ export default function BurnoutStressChart() {
             className="relative overflow-hidden rounded-2xl bg-white border border-gray-300 shadow-xl shadow-gray-300/50 p-5"
         >
             {/* Ambient glow blobs */}
-            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gray-300/30 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-gray-300/30 blur-3xl" />
+            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-100/50 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-indigo-100/50 blur-3xl" />
 
             <div className="relative">
-                {/* ── Header ── */}
+                {/* ── Header & Toggles ── */}
                 <div className="mb-4 flex items-start justify-between">
                     <div className="flex items-center gap-3">
                         <div className={`rounded-xl p-2.5 ring-1 ${colors.iconBg} ${colors.iconRing}`}>
-                            <Flame size={18} className={colors.text} />
+                            <Activity size={18} className={colors.text} />
                         </div>
                         <div>
                             <h3 className="text-base font-semibold text-slate-800 leading-tight">
-                                Burnout &amp; Stress Trend
+                                Burnout Index Chart
                             </h3>
-                            <p className="mt-0.5 text-[11px] text-slate-500">
-                                6-week rolling burnout index · {b.weeklyTrend.length} weeks
+                            <p className="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1">
+                                <Calendar size={10} /> Track your workload intensity over time
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1.5">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${colors.badge}`}>
-                            {b.level === "High" && "🔴"}
-                            {b.level === "Medium" && "🟡"}
-                            {b.level === "Low" && "🟢"}
-                            {b.level} · {b.score}/100
-                        </span>
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${trendColor}`}>
-                            <TrendIcon size={11} />
-                            {trendLabel}
-                        </span>
+                    <div className="flex bg-gray-100/80 p-1 rounded-lg ring-1 ring-gray-200">
+                        {(["day", "week", "month"] as ViewMode[]).map((mode) => (
+                            <button
+                                key={mode}
+                                onClick={() => setViewMode(mode)}
+                                className={`px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${viewMode === mode
+                                        ? "bg-white text-blue-600 shadow-sm ring-1 ring-gray-200"
+                                        : "text-slate-500 hover:text-slate-700 hover:bg-gray-200/50"
+                                    }`}
+                            >
+                                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 {/* ── KPI Stats Row ── */}
                 <div className="mb-4 grid grid-cols-3 gap-2">
                     <div className={`rounded-xl ${colors.scoreBg} border border-gray-200 px-3 py-3 text-center`}>
-                        <p className={`text-xl font-bold ${colors.scoreText}`}>{b.score}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Burnout Score</p>
-                    </div>
-                    <div className="rounded-xl bg-blue-50 border border-gray-200 px-3 py-3 text-center">
-                        <p className={`text-xl font-bold ${trendColor}`}>
-                            {trendLabel}
+                        <p className={`text-xl font-bold ${colors.scoreText}`}>{currentPoint.score}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-600 font-medium">
+                            {viewMode === "day" ? "Today's Workload" : viewMode === "week" ? "This Week" : "This Month"}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Trend</p>
                     </div>
+
+                    <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-3 text-center">
+                        <p className={`text-xl font-bold text-blue-700`}>
+                            {nextPoint ? nextPoint.score : "N/A"}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-blue-600 font-medium">
+                            {viewMode === "day" ? "Tomorrow" : viewMode === "week" ? "Next Week" : "Next Month"}
+                        </p>
+                    </div>
+
                     <div className="rounded-xl bg-gray-50 border border-gray-200 px-3 py-3 text-center">
                         <p className="text-xl font-bold text-slate-700">{peakScore}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Peak {peakWeek ? `(${peakWeek.label})` : ""}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500 font-medium">Peak {peakPoint ? `(${peakPoint.label})` : ""}</p>
                     </div>
                 </div>
 
-                {/* ── Critical Week Alert ── */}
-                {b.isCriticalWeek && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.96 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mb-3 flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5"
-                    >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 ring-1 ring-rose-500/25">
-                            <AlertTriangle size={13} className="text-rose-500" />
-                        </div>
-                        <p className="text-xs font-semibold text-rose-600">
-                            Critical Week — Burnout risk is high. Consider redistributing your workload.
-                        </p>
-                    </motion.div>
-                )}
+                {/* ── Insights ── */}
+                <div className="mb-3 space-y-2">
+                    {b.isCriticalWeek && viewMode === "week" && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 shadow-sm"
+                        >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 ring-1 ring-rose-500/25">
+                                <AlertTriangle size={13} className="text-rose-600" />
+                            </div>
+                            <p className="text-[11px] font-medium text-rose-700">
+                                Critical workload this week! Consider redistributing your pending tasks.
+                            </p>
+                        </motion.div>
+                    )}
 
-                {/* ── Chart (inside gradient container) ── */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-3 shadow-lg shadow-blue-900/30">
-                    {/* Ambient blobs inside chart */}
-                    <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
-                    <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-400/10 blur-3xl" />
-                    <div className="relative">
-                        <BurnoutChart burnout={b} />
-                    </div>
+                    {nextPoint && nextPoint.score > currentPoint.score + 15 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 shadow-sm"
+                        >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25">
+                                <TrendingUp size={13} className="text-amber-600" />
+                            </div>
+                            <p className="text-[11px] font-medium text-amber-700">
+                                Prepare for a workload spike <strong>{nextPoint.label.toLowerCase()}</strong> ({nextPoint.score}/100 score).
+                            </p>
+                        </motion.div>
+                    )}
+                </div>
+
+                {/* ── Chart ── */}
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white via-blue-50/30 to-slate-50 border border-slate-200 p-3 shadow-inner">
+                    <WorkloadChart data={chartData} level={currentPoint.level} />
                 </div>
 
                 {/* ── Legend ── */}
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] text-slate-500">
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />Low (≤ 40)</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />Medium (41–70)</span>
-                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />High (&gt; 70)</span>
-                    <span className="flex items-center gap-1.5"><span className="h-3 w-5 rounded bg-rose-500/20 border border-rose-400/30" />Critical week</span>
+                <div className="mt-3 flex flex-wrap items-center justify-between">
+                    <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />Light (&le; 40)</span>
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />Moderate (41–70)</span>
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />Heavy (&gt; 70)</span>
+                    </div>
                 </div>
-
-                {/* ── Subject Breakdown ── */}
-                {b.subjectBreakdowns.filter((s) => s.weeklyTaskCount > 0).length > 0 && (
-                    <div className="mt-4 border-t border-gray-200 pt-3">
-                        <p className="mb-2 text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                            <Activity size={12} className="text-blue-500" />
-                            Subject contribution this week
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {b.subjectBreakdowns
-                                .filter((s) => s.weeklyTaskCount > 0)
-                                .sort((a, b) => b.burnoutScore - a.burnoutScore)
-                                .map((s) => {
-                                    const lvl = s.burnoutScore > 70 ? "High" : s.burnoutScore > 40 ? "Medium" : "Low";
-                                    return (
-                                        <span
-                                            key={s.subject}
-                                            title={`${s.subject}: ${s.weeklyTaskCount} tasks · ${s.estimatedHours.toFixed(1)} h`}
-                                            className={`inline-flex cursor-default items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-150 hover:scale-105 ${lvl === "High" ? "border-rose-300 bg-rose-50 text-rose-600"
-                                                : lvl === "Medium" ? "border-amber-300 bg-amber-50 text-amber-600"
-                                                    : "border-emerald-300 bg-emerald-50 text-emerald-600"
-                                                }`}
-                                        >
-                                            {s.subject}
-                                            <span className="font-bold">{s.burnoutScore}</span>
-                                        </span>
-                                    );
-                                })}
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Dominant Factor ── */}
-                {b.dominantFactor !== "None" && (
-                    <div className="mt-3 flex items-center gap-2">
-                        <Zap size={12} className="text-amber-500" />
-                        <span className="text-xs text-slate-500">Top stressor:</span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors.badge}`}>
-                            {b.dominantFactor}
-                        </span>
-                    </div>
-                )}
 
                 {/* ── AI Insight ── */}
                 <div className="mt-4 relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-md shadow-blue-900/20">
@@ -416,8 +382,8 @@ export default function BurnoutStressChart() {
                             <Brain size={15} className="text-white" />
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-blue-200 tracking-wide uppercase">AI Generated Insight</p>
-                            <p className="mt-1 text-sm leading-relaxed text-white/90">
+                            <p className="text-[10px] font-bold text-blue-200 tracking-wider uppercase">AI Analysis</p>
+                            <p className="mt-1 text-[13px] leading-relaxed text-white/95">
                                 {b.aiInsight}
                             </p>
                         </div>

@@ -45,6 +45,18 @@ export type WeeklyBurnoutPoint = {
     isSpike:    boolean;      // increased > 15 pts vs previous week
 };
 
+export type WorkloadPoint = {
+    label:      string;
+    dateStr:    string;
+    score:      number;
+    actualHours:number;
+    tasksCount: number;
+    level:      BurnoutLevel;
+    isCurrent:  boolean;
+    isSpike:    boolean;
+    isCritical: boolean;
+};
+
 export type BurnoutResult = {
     score:             number;
     level:             BurnoutLevel;
@@ -55,6 +67,9 @@ export type BurnoutResult = {
     dominantFactor:    string;
     subjectBreakdowns: SubjectBurnout[];
     weeklyTrend:       WeeklyBurnoutPoint[];
+    dailyWorkload:     WorkloadPoint[];
+    weeklyWorkload:    WorkloadPoint[];
+    monthlyWorkload:   WorkloadPoint[];
     factorBreakdown:   { A: number; B: number; C: number; D: number; E: number; F: number };
 };
 
@@ -295,6 +310,100 @@ function calcWeekScore(weekStart: Date, weekEnd: Date, allTasks: BurnoutTask[], 
     return Math.min(100, Math.round(A + B + C + D + E + F));
 }
 
+// ── Time-Based Workload ───────────────────────────────────────────────────────
+
+function buildWorkloadPoints(
+    tasks: BurnoutTask[],
+    now: Date,
+    period: "day" | "week" | "month",
+    pastCount: number,
+    futureCount: number
+): WorkloadPoint[] {
+    const points: Omit<WorkloadPoint, "isSpike" | "level" | "isCritical" | "score">[] = [];
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (period === "day") {
+        for (let i = -pastCount; i <= futureCount; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() + i);
+            const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+            const label = i === 0 ? "Today" : i === 1 ? "Tmrw" : i === -1 ? "Yest" : d.toLocaleDateString('en-US', { weekday: 'short' });
+            points.push({ label, dateStr, actualHours: 0, tasksCount: 0, isCurrent: i === 0});
+        }
+    } else if (period === "week") {
+        const thisMon = mondayOfWeek(today);
+        for (let i = -pastCount; i <= futureCount; i++) {
+            const d = new Date(thisMon);
+            d.setDate(d.getDate() + i * 7);
+            const dateStr = `${d.getFullYear()}-W${d.getMonth()}-${d.getDate()}`;
+            const label = i === 0 ? "This Wk" : i === 1 ? "Next Wk" : i === -1 ? "Last Wk" : `Wk ${i}`;
+            points.push({ label, dateStr, actualHours: 0, tasksCount: 0, isCurrent: i === 0});
+        }
+    } else if (period === "month") {
+        for (let i = -pastCount; i <= futureCount; i++) {
+            const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+            const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}`;
+            const label = i === 0 ? "This Mo" : i === 1 ? "Next Mo" : d.toLocaleDateString('en-US', { month: 'short' });
+            points.push({ label, dateStr, actualHours: 0, tasksCount: 0, isCurrent: i === 0});
+        }
+    }
+
+    // Attribute hours
+    for (const task of tasks) {
+        if (!task.deadline) continue;
+        const d = new Date(task.deadline);
+        const hours = inferHours(task);
+
+        if (period === "day") {
+            const dToday = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const diffDays = Math.round((dToday.getTime() - today.getTime()) / MS_PER_DAY);
+            if (diffDays >= -pastCount && diffDays <= futureCount) {
+                const idx = diffDays + pastCount;
+                if (points[idx]) {
+                    points[idx].actualHours += hours;
+                    points[idx].tasksCount++;
+                }
+            }
+        } else if (period === "week") {
+            const taskMon = mondayOfWeek(d);
+            const thisMon = mondayOfWeek(today);
+            const diffWeeks = Math.round((taskMon.getTime() - thisMon.getTime()) / (7 * MS_PER_DAY));
+            if (diffWeeks >= -pastCount && diffWeeks <= futureCount) {
+                const idx = diffWeeks + pastCount;
+                if (points[idx]) {
+                    points[idx].actualHours += hours;
+                    points[idx].tasksCount++;
+                }
+            }
+        } else if (period === "month") {
+            const diffMonths = (d.getFullYear() - today.getFullYear()) * 12 + (d.getMonth() - today.getMonth());
+            if (diffMonths >= -pastCount && diffMonths <= futureCount) {
+                const idx = diffMonths + pastCount;
+                if (points[idx]) {
+                    points[idx].actualHours += hours;
+                    points[idx].tasksCount++;
+                }
+            }
+        }
+    }
+
+    // Heuristic max hours for scaling
+    const maxExpectedHours = period === "day" ? 8 : period === "week" ? 30 : 120;
+    
+    return points.map((p, i, arr) => {
+        const score = Math.min(100, Math.round((p.actualHours / maxExpectedHours) * 100));
+        const level = classify(score);
+        const prevScore = i > 0 ? Math.min(100, Math.round((arr[i-1].actualHours / maxExpectedHours) * 100)) : 0;
+        return {
+            ...p,
+            score,
+            level,
+            isCritical: score >= 70,
+            isSpike: i > 0 && (score - prevScore > 20)
+        };
+    });
+}
+
 // ── Main Export ───────────────────────────────────────────────────────────────
 
 export function calculateBurnout(tasks: BurnoutTask[]): BurnoutResult {
@@ -321,6 +430,9 @@ export function calculateBurnout(tasks: BurnoutTask[]): BurnoutResult {
             dominantFactor:    "None",
             subjectBreakdowns: [],
             weeklyTrend:       emptyWeeks,
+            dailyWorkload:     buildWorkloadPoints([], now, "day", 7, 6),
+            weeklyWorkload:    buildWorkloadPoints([], now, "week", 4, 3),
+            monthlyWorkload:   buildWorkloadPoints([], now, "month", 3, 3),
             factorBreakdown:   { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
         };
     }
@@ -405,6 +517,10 @@ export function calculateBurnout(tasks: BurnoutTask[]): BurnoutResult {
 
     const aiInsight = buildInsight(currentLevel, factorBreakdown, heaviestSubject, weeklyTrend);
 
+    const dailyWorkload = buildWorkloadPoints(tasks, now, "day", 6, 7);
+    const weeklyWorkload = buildWorkloadPoints(tasks, now, "week", 4, 3);
+    const monthlyWorkload = buildWorkloadPoints(tasks, now, "month", 3, 3);
+
     return {
         score:             currentScore,
         level:             currentLevel,
@@ -415,6 +531,9 @@ export function calculateBurnout(tasks: BurnoutTask[]): BurnoutResult {
         dominantFactor,
         subjectBreakdowns,
         weeklyTrend,
+        dailyWorkload,
+        weeklyWorkload,
+        monthlyWorkload,
         factorBreakdown,
     };
 }
