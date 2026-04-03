@@ -13,6 +13,8 @@ export function apiGroupToGroup(g: {
     leader_email?: string;
     is_joined?: boolean;
     can_edit?: boolean;
+    active_meeting?: any;
+    meeting_history?: any[];
 }): Group {
     return {
         id: g.id,
@@ -27,6 +29,8 @@ export function apiGroupToGroup(g: {
         leaderEmail: g.leader_email ?? "",
         isJoined: Boolean(g.is_joined),
         canEdit: Boolean(g.can_edit),
+        activeMeeting: g.active_meeting ?? null,
+        meetingHistory: g.meeting_history ?? [],
     };
 }
 

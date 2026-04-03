@@ -27,7 +27,9 @@ export const MOCK_SESSIONS: Record<string, { label: string; url: string; platfor
         { label: "Case Study Session â€” Google Meet", url: "#", platform: "Meet" },
     ],
 };
-
+// ── MOCK_SESSIONS REMOVED ──
+// Video meetings are now managed dynamically via MeetingPanel component
+// See meeting_routes.py for API endpoints
 export const PLATFORM_COLORS: Record<string, string> = {
     Zoom: "#2D8CFF",
     Discord: "#5865F2",

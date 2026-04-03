@@ -6,7 +6,7 @@ import { API_BASE } from "./constants";
 import { apiInviteToInvite, apiMaterialToMaterial } from "./utils";
 import type { Group, GroupInvite, GroupMaterial } from "./types";
 
-export function ActivityGraph() {
+export function ActivityGraph({ activeGroupsCount }: { activeGroupsCount: number }) {
     const data = [10, 25, 15, 45, 30, 60, 40, 85, 55, 70, 90, 80];
     const points = data.map((val, i) => `${(i * 40)},${100 - val}`).join(" ");
 
@@ -18,7 +18,7 @@ export function ActivityGraph() {
                     Live Peer Activity
                 </div>
                 <div className="pc-live-indicator">
-                    <span className="pc-live-dot"></span> 12 Groups Active Now
+                    <span className="pc-live-dot"></span> {activeGroupsCount} Groups Active Now
                 </div>
             </div>
             <div className="pc-graph-container">

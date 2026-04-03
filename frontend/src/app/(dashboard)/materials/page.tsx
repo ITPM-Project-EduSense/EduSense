@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { ActivityGraph, IncomingInvitesCard, InviteMemberCard, UploadMaterialCard } from "./components";
-import { API_BASE, FILE_TYPE_COLORS, MOCK_SESSIONS, PLATFORM_COLORS, modules } from "./constants";
+import { MeetingPanel } from "./components/MeetingPanel";
+import { API_BASE, FILE_TYPE_COLORS, PLATFORM_COLORS, modules } from "./constants";
 import type { Group, GroupInvite, GroupMaterial } from "./types";
 import { apiGroupToGroup, apiInviteToInvite, apiMaterialToMaterial, formatFileSize } from "./utils";
 
@@ -701,7 +702,6 @@ export default function PeerConnectHome() {
 
             {/* ── DETAIL VIEW ── */}
             {selectedGroup ? (() => {
-                const sessions = MOCK_SESSIONS[selectedGroup.module] ?? MOCK_SESSIONS.default;
                 const materials = groupMaterials[selectedGroup.id] ?? [];
                 const canUploadMaterials = groupMaterialsCanUpload[selectedGroup.id] ?? selectedGroup.isJoined;
                 const isJoined = selectedGroup.isJoined;
@@ -757,22 +757,7 @@ export default function PeerConnectHome() {
                                 )}
                             </div>
                             <div className="pc-mat-content-grid">
-                                <div className="pc-mat-card">
-                                    <div className="pc-mat-card-title">
-                                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM7 4v3.5l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                        Session Links
-                                    </div>
-                                    <div className="pc-session-list">
-                                        {sessions.map((s, i) => (
-                                            <a key={i} className="pc-session-item" href={s.url} target="_blank" rel="noreferrer">
-                                                <div className="pc-session-platform-dot" style={{ background: PLATFORM_COLORS[s.platform] ?? "#8A8AAA" }}>{s.platform.slice(0, 2).toUpperCase()}</div>
-                                                <span className="pc-session-label">{s.label}</span>
-                                                <span className="pc-session-arrow">↗</span>
-                                            </a>
-                                        ))}
-                                    </div>
-                                    {materialActionError && <div className="pc-form-error" style={{ marginTop: "0.85rem" }}>{materialActionError}</div>}
-                                </div>
+                                <MeetingPanel group={selectedGroup} moduleColor={selectedGroup.moduleColor} />
                                 <div className="pc-mat-card">
                                     <div className="pc-mat-card-title">
                                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
@@ -844,7 +829,7 @@ export default function PeerConnectHome() {
                         </header>
 
                         {/* --- NEW ACTIVITY GRAPH SECTION --- */}
-                        <ActivityGraph />
+                        <ActivityGraph activeGroupsCount={loadingGroups ? 0 : groups.length} />
                         <IncomingInvitesCard
                             invites={incomingInvites}
                             acceptingInviteId={acceptingInviteId}

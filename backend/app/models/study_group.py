@@ -1,7 +1,16 @@
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Literal, Dict, Any
+
+
+class MeetingRecord(BaseModel):
+    """Record of a completed or ongoing meeting."""
+    platform: Literal["zoom", "teams"]
+    meeting_link: str
+    meeting_code: Optional[str] = None
+    started_at: datetime
+    ended_at: Optional[datetime] = None
 
 
 class StudyGroup(Document):
@@ -17,6 +26,10 @@ class StudyGroup(Document):
     leader_email: Optional[EmailStr] = None
     member_ids: List[str] = Field(default_factory=list)      # user_ids of all members
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # ── Meeting fields ──
+    active_meeting: Optional[Dict[str, Any]] = None  # Current active meeting
+    meeting_history: List[MeetingRecord] = Field(default_factory=list)  # Past meetings
 
     class Settings:
         name = "study_groups"
@@ -68,3 +81,5 @@ class StudyGroupResponse(BaseModel):
     is_joined: bool = False
     can_edit: bool = False
     created_at: datetime
+    active_meeting: Optional[Dict[str, Any]] = None
+    meeting_history: List[MeetingRecord] = Field(default_factory=list)
