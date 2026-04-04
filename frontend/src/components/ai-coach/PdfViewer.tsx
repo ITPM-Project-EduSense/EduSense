@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FileText, Loader2, AlertCircle } from "lucide-react";
 import { UploadedPdf } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+const PDF_VIEWER_STATE_KEY = "edu_ai_pdf_viewer_state_v1";
 
 type PdfMaterialResponse = {
   success: boolean;
@@ -17,6 +19,12 @@ type PdfMaterialResponse = {
   };
 };
 
+interface PersistedPdfViewerState {
+  selectedDocId: string;
+  error: string;
+  content: PdfMaterialResponse["material"] | null;
+}
+
 interface Props {
   uploadedPdfs: UploadedPdf[];
 }
@@ -25,7 +33,44 @@ export default function PdfViewer({ uploadedPdfs }: Props) {
   const [selectedDocId, setSelectedDocId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const [content, setContent] = useState<PdfMaterialResponse["material"] | null>(null);
+  const [content, setContent] = useState<
+    PdfMaterialResponse["material"] | null
+  >(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PDF_VIEWER_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as PersistedPdfViewerState;
+      setSelectedDocId(parsed.selectedDocId || "");
+      setError(parsed.error || "");
+      setContent(parsed.content || null);
+    } catch {
+      // Ignore invalid persisted viewer state.
+    }
+  }, []);
+
+  // Persist viewer state only after a document is selected.
+  useEffect(() => {
+    if (!selectedDocId) return; // avoid overwriting with empty payload on initial mount
+    const payload: PersistedPdfViewerState = {
+      selectedDocId,
+      error,
+      content,
+    };
+    localStorage.setItem(PDF_VIEWER_STATE_KEY, JSON.stringify(payload));
+  }, [selectedDocId, error, content]);
+
+  useEffect(() => {
+    if (!selectedDocId) return;
+    if (uploadedPdfs.length === 0) return;
+    const exists = uploadedPdfs.some((pdf) => pdf.id === selectedDocId);
+    if (!exists) {
+      setSelectedDocId("");
+      setError("");
+      setContent(null);
+    }
+  }, [selectedDocId, uploadedPdfs]);
 
   const fetchContent = async (id: string) => {
     setLoading(true);
@@ -49,8 +94,10 @@ export default function PdfViewer({ uploadedPdfs }: Props) {
       const data = JSON.parse(text) as PdfMaterialResponse;
       if (!data.success || !data.material) throw new Error("Invalid response");
       setContent(data.material);
-    } catch (e: any) {
-      setError(e?.message || "Failed to load PDF content.");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Failed to load PDF content.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -79,7 +126,9 @@ export default function PdfViewer({ uploadedPdfs }: Props) {
           className="p-4 border border-gray-300 rounded-2xl w-full max-w-sm focus:ring-2 focus:ring-indigo-500 outline-none"
         >
           <option value="">-- Select an uploaded PDF --</option>
-          {uploadedPdfs.length === 0 && <option disabled>No documents uploaded yet</option>}
+          {uploadedPdfs.length === 0 && (
+            <option disabled>No documents uploaded yet</option>
+          )}
           {uploadedPdfs.map((pdf) => (
             <option key={pdf.id} value={pdf.id}>
               {pdf.filename}
@@ -122,4 +171,3 @@ export default function PdfViewer({ uploadedPdfs }: Props) {
     </div>
   );
 }
-

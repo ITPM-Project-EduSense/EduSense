@@ -1,23 +1,96 @@
 "use client";
-import React, { useState } from "react";
-import { FileText, Loader2, CheckCircle, AlertCircle, Download } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  FileText,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Download,
+} from "lucide-react";
 import { UploadedPdf } from "./types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+const SUMMARY_STATE_KEY = "edu_ai_summary_state_v1";
+
+interface SummaryResult {
+  success?: boolean;
+  filename?: string;
+  summary?: string[];
+  concepts?: Array<{ title?: string; summary?: string; difficulty?: string }>;
+  difficult_terms?: Array<string | { term?: string; explanation?: string }>;
+  detailed_summary?: string;
+  [key: string]: unknown;
+}
+
+interface PersistedSummaryState {
+  selectedDocId: string;
+  result: SummaryResult | null;
+  error: string;
+  successMessage: string;
+}
 
 interface Props {
   uploadedPdfs: UploadedPdf[];
   onRefreshDocuments?: () => void;
 }
 
-export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Props) {
+export default function PdfSummarizer({
+  uploadedPdfs,
+  onRefreshDocuments,
+}: Props) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SummaryResult | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SUMMARY_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as PersistedSummaryState;
+      setSelectedDocId(parsed.selectedDocId || "");
+      setResult(parsed.result || null);
+      setError(parsed.error || "");
+      setSuccessMessage(parsed.successMessage || "");
+    } catch {
+      // Ignore invalid persisted state.
+    }
+  }, []);
+
+  // Persist state only after a document is selected.
+  useEffect(() => {
+    if (!selectedDocId) return; // avoid overwriting with empty payload on initial mount
+    const payload: PersistedSummaryState = {
+      selectedDocId,
+      result,
+      error,
+      successMessage,
+    };
+    localStorage.setItem(SUMMARY_STATE_KEY, JSON.stringify(payload));
+  }, [selectedDocId, result, error, successMessage]);
+
+  // Validate that the selected document still exists in the uploaded list.
+  // This effect runs when either the selectedDocId changes or the uploaded PDFs list updates.
+  // It only clears the state if the document truly does not exist after the PDFs have been loaded.
+  useEffect(() => {
+    if (!selectedDocId) return;
+    // If the uploaded PDFs are not yet loaded, defer validation.
+    if (uploadedPdfs.length === 0) return;
+    const exists = uploadedPdfs.some((pdf) => pdf.id === selectedDocId);
+    if (!exists) {
+  // Reset all persisted state because the previously selected document is no longer available.
+  setSelectedDocId("");
+  setResult(null);
+  setError("");
+  setSuccessMessage("");
+  // Also clear persisted data from localStorage to avoid stale reads on next mount.
+  localStorage.removeItem(SUMMARY_STATE_KEY);
+    }
+  }, [selectedDocId, uploadedPdfs]);
 
   const handleDocChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDocId(e.target.value);
@@ -55,11 +128,17 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
         setError(data.detail || "Failed to generate summary");
       } else {
         setResult(data);
-        setSuccessMessage(`Summary generated successfully for "${data.filename}"!`);
+        setSuccessMessage(
+          `Summary generated successfully for "${data.filename}"!`,
+        );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to generate summary. Please try again.");
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to generate summary. Please try again.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -84,7 +163,8 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
         <FileText size={64} className="mx-auto text-indigo-500 mb-4" />
         <h2 className="text-3xl font-bold text-gray-800">AI PDF Summarizer</h2>
         <p className="text-gray-500 mt-2">
-          Select a PDF and generate a rich, student-friendly summary with key points and difficult terms
+          Select a PDF and generate a rich, student-friendly summary with key
+          points and difficult terms
         </p>
       </div>
 
@@ -96,7 +176,9 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
           className="p-4 border border-gray-300 rounded-2xl w-full max-w-sm focus:ring-2 focus:ring-indigo-500 outline-none"
         >
           <option value="">-- Select an uploaded PDF --</option>
-          {uploadedPdfs.length === 0 && <option disabled>No documents uploaded yet</option>}
+          {uploadedPdfs.length === 0 && (
+            <option disabled>No documents uploaded yet</option>
+          )}
           {uploadedPdfs.map((pdf) => (
             <option key={pdf.id} value={pdf.id}>
               {pdf.filename}
@@ -142,7 +224,9 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
       {loading && !result && (
         <div className="mt-10 flex flex-col items-center">
           <Loader2 className="animate-spin text-indigo-600" size={48} />
-          <p className="mt-4 text-gray-600">Generating rich AI summary with key points and difficult terms...</p>
+          <p className="mt-4 text-gray-600">
+            Generating rich AI summary with key points and difficult terms...
+          </p>
         </div>
       )}
 
@@ -165,11 +249,16 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
                 </h4>
                 <ul className="space-y-4">
                   {result.summary.map((point: string, i: number) => (
-                    <li key={i} className="flex gap-4 bg-white/70 p-5 rounded-2xl">
+                    <li
+                      key={i}
+                      className="flex gap-4 bg-white/70 p-5 rounded-2xl"
+                    >
                       <span className="flex-shrink-0 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm mt-0.5">
                         {i + 1}
                       </span>
-                      <span className="text-gray-700 leading-relaxed">{point}</span>
+                      <span className="text-gray-700 leading-relaxed">
+                        {point}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -180,16 +269,19 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
             {result.concepts?.length > 0 && (
               <div>
                 <h4 className="font-bold text-2xl text-gray-900 mb-6 flex items-center gap-3">
-                  <CheckCircle size={28} className="text-emerald-500" /> Essential Concepts
+                  <CheckCircle size={28} className="text-emerald-500" />{" "}
+                  Essential Concepts
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {result.concepts.map((concept: any, i: number) => (
+                  {result.concepts.map((concept, i: number) => (
                     <div
                       key={i}
                       className="p-6 bg-white rounded-2xl border-2 border-gray-100 hover:border-indigo-300 transition-all group"
                     >
                       <div className="flex justify-between items-start mb-3">
-                        <h5 className="font-semibold text-lg text-gray-900">{concept.title}</h5>
+                        <h5 className="font-semibold text-lg text-gray-900">
+                          {concept.title}
+                        </h5>
                         <span
                           className={`text-xs px-3 py-1 rounded-full font-bold ${
                             concept.difficulty?.toLowerCase() === "hard"
@@ -200,7 +292,9 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
                           {concept.difficulty || "Medium"}
                         </span>
                       </div>
-                      <p className="text-gray-600 italic">"{concept.summary}"</p>
+                      <p className="text-gray-600 italic">
+                        &ldquo;{concept.summary}&rdquo;
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -210,16 +304,27 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
             {/* Difficult Terms - Improved */}
             {result.difficult_terms?.length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-700 mb-4">⚠️ Difficult Terms & Explanations</h4>
+                <h4 className="font-semibold text-gray-700 mb-4">
+                  ⚠️ Difficult Terms & Explanations
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.difficult_terms.map((item: any, i: number) => {
-                    const term = typeof item === "string" ? item : item.term || item;
-                    const explanation = typeof item === "object" ? item.explanation : "";
+                  {result.difficult_terms.map((item, i: number) => {
+                    const term =
+                      typeof item === "string" ? item : item.term || item;
+                    const explanation =
+                      typeof item === "object" ? item.explanation : "";
                     return (
-                      <div key={i} className="bg-amber-50 border border-amber-200 p-5 rounded-2xl">
-                        <div className="font-medium text-amber-800">• {term}</div>
+                      <div
+                        key={i}
+                        className="bg-amber-50 border border-amber-200 p-5 rounded-2xl"
+                      >
+                        <div className="font-medium text-amber-800">
+                          • {term}
+                        </div>
                         {explanation && (
-                          <p className="text-amber-700 text-sm mt-2 leading-relaxed">{explanation}</p>
+                          <p className="text-amber-700 text-sm mt-2 leading-relaxed">
+                            {explanation}
+                          </p>
                         )}
                       </div>
                     );
@@ -232,9 +337,13 @@ export default function PdfSummarizer({ uploadedPdfs, onRefreshDocuments }: Prop
             {result.detailed_summary && (
               <div className="pt-10 border-t border-dashed border-gray-300">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                  <h4 className="text-2xl font-bold text-gray-900">📖 Full Detailed Analysis</h4>
+                  <h4 className="text-2xl font-bold text-gray-900">
+                    📖 Full Detailed Analysis
+                  </h4>
                   <button
-                    onClick={() => downloadMarkdown(result.detailed_summary, result.filename)}
+                    onClick={() =>
+                      downloadMarkdown(result.detailed_summary, result.filename)
+                    }
                     className="flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white rounded-2xl transition-all shadow-md"
                   >
                     <Download size={20} />

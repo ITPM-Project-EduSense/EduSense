@@ -1,13 +1,39 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  MessageSquare, Paperclip, Send, PanelRightClose, 
-  PanelRightOpen, FileText, Loader2, Bot, User, PlusCircle, Trash2 
+import {
+  MessageSquare,
+  Paperclip,
+  Send,
+  PanelRightClose,
+  PanelRightOpen,
+  FileText,
+  Loader2,
+  Bot,
+  User,
+  PlusCircle,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { apiFetch } from "@/lib/api";
+import {
+  calculateAcademicRisk,
+  type RiskTask,
+  type BurnoutLevel,
+} from "@/lib/academicRiskEngine";
+import {
+  calculateDeadlineRisk,
+  type DeadlineTask,
+} from "@/lib/deadlineRiskEngine";
+import { calculateBurnout, type BurnoutTask } from "@/lib/burnoutEngine";
+import {
+  calculateSubjectGpa,
+  calculateWeightedGpa,
+  type SubjectMarks,
+  type GpaPredictionResult,
+} from "@/lib/gpaEngine";
 
 interface ChatMessage {
   id: string;
@@ -23,7 +49,48 @@ interface ChatSession {
   updatedAt: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+type StudentLevel = "beginner" | "intermediate" | "advanced";
+
+interface StudentProfilePayload {
+  student_level: StudentLevel;
+  academic_risk_analysis: {
+    score: number;
+    level: string;
+  };
+  predictive_deadline_risk: {
+    probability: number;
+    level: string;
+  };
+  gpa_prediction: {
+    predicted_gpa: number;
+    subject_count: number;
+    has_valid_data: boolean;
+  };
+  burnout_index: {
+    score: number;
+    level: string;
+  };
+}
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+
+const normalizeToPercent = (
+  value: number,
+  min: number,
+  max: number,
+): number => {
+  if (!Number.isFinite(value)) return 0;
+  if (max <= min) return 0;
+  const pct = ((value - min) / (max - min)) * 100;
+  return Math.max(0, Math.min(100, Math.round(pct)));
+};
+
+const mapRiskToStudentLevel = (compositeRisk: number): StudentLevel => {
+  if (compositeRisk >= 67) return "beginner";
+  if (compositeRisk >= 34) return "intermediate";
+  return "advanced";
+};
 
 export default function AiChat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -31,7 +98,7 @@ export default function AiChat() {
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +156,90 @@ export default function AiChat() {
     }
   };
 
+  const buildStudentProfile = async (): Promise<StudentProfilePayload> => {
+    let riskScore = 0;
+    let riskLevel = "Safe";
+    let deadlineProbability = 0;
+    let deadlineLevel = "Low";
+    let burnoutScore = 0;
+    let burnoutLevel = "Low";
+
+    try {
+      const rawTasks = await apiFetch("/tasks");
+      const tasks = Array.isArray(rawTasks) ? rawTasks : [];
+      const burnout = calculateBurnout(tasks as BurnoutTask[]);
+      const deadlineRisk = calculateDeadlineRisk(
+        tasks as DeadlineTask[],
+        burnout.score,
+      );
+      const risk = calculateAcademicRisk(
+        tasks as RiskTask[],
+        burnout.level as BurnoutLevel,
+      );
+
+      riskScore = risk.score;
+      riskLevel = risk.level;
+      deadlineProbability = deadlineRisk.probability;
+      deadlineLevel = deadlineRisk.level;
+      burnoutScore = burnout.score;
+      burnoutLevel = burnout.level;
+    } catch {
+      // Keep safe defaults so chat still works even when analytics fetch fails.
+    }
+
+    let predictedGpa = 0;
+    let gpaSubjectCount = 0;
+    let gpaHasValidData = false;
+
+    try {
+      const storedMarks = localStorage.getItem("edusense_gpa_marks");
+      const marksMap: Record<string, SubjectMarks> = storedMarks
+        ? JSON.parse(storedMarks)
+        : {};
+      const subjectNames = Object.keys(marksMap);
+      const predictions: GpaPredictionResult[] = subjectNames.map((subject) =>
+        calculateSubjectGpa(subject, marksMap[subject]),
+      );
+      const weightedGpa = calculateWeightedGpa(predictions, marksMap);
+      predictedGpa = weightedGpa.predictedGpa;
+      gpaSubjectCount = weightedGpa.subjectCount;
+      gpaHasValidData = weightedGpa.hasValidData;
+    } catch {
+      // Keep GPA defaults if local storage data is missing or malformed.
+    }
+
+    const gpaRisk = gpaHasValidData
+      ? 100 - normalizeToPercent(predictedGpa, 0, 4)
+      : 50;
+    const compositeRisk = Math.round(
+      (riskScore + deadlineProbability + burnoutScore + gpaRisk) / 4,
+    );
+
+    const studentLevel = mapRiskToStudentLevel(compositeRisk);
+    localStorage.setItem("edu_student_level", studentLevel);
+
+    return {
+      student_level: studentLevel,
+      academic_risk_analysis: {
+        score: riskScore,
+        level: riskLevel,
+      },
+      predictive_deadline_risk: {
+        probability: deadlineProbability,
+        level: deadlineLevel,
+      },
+      gpa_prediction: {
+        predicted_gpa: predictedGpa,
+        subject_count: gpaSubjectCount,
+        has_valid_data: gpaHasValidData,
+      },
+      burnout_index: {
+        score: burnoutScore,
+        level: burnoutLevel,
+      },
+    };
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !currentSessionId) return;
 
@@ -110,27 +261,29 @@ export default function AiChat() {
           return {
             ...s,
             messages: updatedMessages,
-            title: s.messages.length === 0 
-              ? userMessageText.substring(0, 40) + "..." 
-              : s.title,
+            title:
+              s.messages.length === 0
+                ? userMessageText.substring(0, 40) + "..."
+                : s.title,
             updatedAt: Date.now(),
           };
         }
         return s;
-      })
+      }),
     );
 
     try {
-      const studentLevel = localStorage.getItem("edu_student_level") || "Intermediate";
+      const studentProfile = await buildStudentProfile();
 
       const res = await fetch(`${API_BASE}/chat/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ 
-          message: userMessageText, 
+        body: JSON.stringify({
+          message: userMessageText,
           subject: null,
-          student_level: studentLevel 
+          student_level: studentProfile.student_level,
+          student_profile: studentProfile,
         }),
       });
 
@@ -155,8 +308,8 @@ export default function AiChat() {
                 ],
                 updatedAt: Date.now(),
               }
-            : s
-        )
+            : s,
+        ),
       );
     } catch (error: any) {
       setSessions((prev) =>
@@ -174,8 +327,8 @@ export default function AiChat() {
                   },
                 ],
               }
-            : s
-        )
+            : s,
+        ),
       );
     } finally {
       setLoading(false);
@@ -191,7 +344,10 @@ export default function AiChat() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("subject", `Study Material: ${file.name.replace(/\.[^/.]+$/, "")}`);
+      formData.append(
+        "subject",
+        `Study Material: ${file.name.replace(/\.[^/.]+$/, "")}`,
+      );
 
       const res = await fetch(`${API_BASE}/documents/upload`, {
         method: "POST",
@@ -218,8 +374,8 @@ export default function AiChat() {
                   },
                 ],
               }
-            : s
-        )
+            : s,
+        ),
       );
     } catch (error: any) {
       alert(`Upload failed: ${error.message}`);
@@ -231,10 +387,8 @@ export default function AiChat() {
 
   return (
     <div className="flex h-[calc(100vh-180px)] overflow-hidden bg-transparent text-slate-800 relative font-sans">
-      
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 transition-all duration-300">
-        
         {/* Header */}
         <header className="h-16 border-b border-slate-200/50 flex items-center justify-between px-6 bg-white/40 backdrop-blur-xl z-20 shadow-sm">
           <div className="flex items-center gap-3">
@@ -242,17 +396,25 @@ export default function AiChat() {
               <Bot size={22} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-800">EduSense AI Coach</h1>
-              <p className="text-xs text-indigo-500 font-medium">Your Personal Academic Tutor</p>
+              <h1 className="text-lg font-bold text-gray-800">
+                EduSense AI Coach
+              </h1>
+              <p className="text-xs text-indigo-500 font-medium">
+                Your Personal Academic Tutor
+              </p>
             </div>
           </div>
-          
+
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
             title="Toggle chat history"
           >
-            {isSidebarOpen ? <PanelRightClose size={22} /> : <PanelRightOpen size={22} />}
+            {isSidebarOpen ? (
+              <PanelRightClose size={22} />
+            ) : (
+              <PanelRightOpen size={22} />
+            )}
           </button>
         </header>
 
@@ -261,12 +423,20 @@ export default function AiChat() {
           {!currentSession || currentSession.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-75 px-4">
               <div className="bg-white/60 backdrop-blur-sm p-8 rounded-3xl mb-6 border border-white shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] eds-fade-up">
-                <FileText size={64} className="text-indigo-400 mx-auto" strokeWidth={1.2} />
+                <FileText
+                  size={64}
+                  className="text-indigo-400 mx-auto"
+                  strokeWidth={1.2}
+                />
               </div>
-              <h2 className="text-3xl font-semibold mb-3 text-gray-700">Ready to Learn?</h2>
+              <h2 className="text-3xl font-semibold mb-3 text-gray-700">
+                Ready to Learn?
+              </h2>
               <p className="max-w-md text-gray-500 text-lg leading-relaxed">
-                Upload your lecture PDF using the paperclip icon below.<br />
-                I'll extract the concepts and guide you through the material step by step.
+                Upload your lecture PDF using the paperclip icon below.
+                <br />
+                I'll extract the concepts and guide you through the material
+                step by step.
               </p>
             </div>
           ) : (
@@ -277,42 +447,95 @@ export default function AiChat() {
                 key={msg.id}
                 className={`flex gap-4 ${msg.sender === "user" ? "justify-end" : "justify-start"} max-w-4xl mx-auto`}
               >
-                <div className={`w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center mt-1 ${
-                  msg.sender === "ai" 
-                    ? "bg-indigo-100 text-indigo-600" 
-                    : "bg-gray-800 text-white"
-                }`}>
+                <div
+                  className={`w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center mt-1 ${
+                    msg.sender === "ai"
+                      ? "bg-indigo-100 text-indigo-600"
+                      : "bg-gray-800 text-white"
+                  }`}
+                >
                   {msg.sender === "ai" ? <Bot size={20} /> : <User size={20} />}
                 </div>
 
-                <div className={`p-5 rounded-3xl max-w-[80%] text-[15.2px] leading-relaxed ${
-                  msg.sender === "user" 
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md border border-blue-500/20" 
-                    : "bg-white border border-gray-200 shadow-sm text-gray-700 rounded-tl-none"
-                }`}>
+                <div
+                  className={`p-5 rounded-3xl max-w-[80%] text-[15.2px] leading-relaxed ${
+                    msg.sender === "user"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md border border-blue-500/20"
+                      : "bg-white border border-gray-200 shadow-sm text-gray-700 rounded-tl-none"
+                  }`}
+                >
                   {msg.sender === "user" ? (
                     <p className="whitespace-pre-wrap">{msg.text}</p>
                   ) : (
                     <div className="prose prose-indigo prose-base max-w-none">
-                      <ReactMarkdown 
+                      <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          h1: (props) => <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-800" {...props} />,
-                          h2: (props) => <h2 className="text-xl font-semibold mt-5 mb-3 text-indigo-700" {...props} />,
-                          h3: (props) => <h3 className="text-lg font-medium mt-4 mb-2 text-gray-700" {...props} />,
-                          strong: (props) => <strong className="font-semibold text-indigo-700" {...props} />,
-                          ul: (props) => <ul className="list-disc pl-6 my-4 space-y-2" {...props} />,
-                          ol: (props) => <ol className="list-decimal pl-6 my-4 space-y-2" {...props} />,
-                          li: (props) => <li className="text-gray-700 leading-relaxed" {...props} />,
-                          p: (props) => <p className="my-3 leading-relaxed text-gray-700" {...props} />,
+                          h1: (props) => (
+                            <h1
+                              className="text-2xl font-bold mt-6 mb-4 text-gray-800"
+                              {...props}
+                            />
+                          ),
+                          h2: (props) => (
+                            <h2
+                              className="text-xl font-semibold mt-5 mb-3 text-indigo-700"
+                              {...props}
+                            />
+                          ),
+                          h3: (props) => (
+                            <h3
+                              className="text-lg font-medium mt-4 mb-2 text-gray-700"
+                              {...props}
+                            />
+                          ),
+                          strong: (props) => (
+                            <strong
+                              className="font-semibold text-indigo-700"
+                              {...props}
+                            />
+                          ),
+                          ul: (props) => (
+                            <ul
+                              className="list-disc pl-6 my-4 space-y-2"
+                              {...props}
+                            />
+                          ),
+                          ol: (props) => (
+                            <ol
+                              className="list-decimal pl-6 my-4 space-y-2"
+                              {...props}
+                            />
+                          ),
+                          li: (props) => (
+                            <li
+                              className="text-gray-700 leading-relaxed"
+                              {...props}
+                            />
+                          ),
+                          p: (props) => (
+                            <p
+                              className="my-3 leading-relaxed text-gray-700"
+                              {...props}
+                            />
+                          ),
                           blockquote: (props) => (
-                            <blockquote className="border-l-4 border-indigo-300 pl-4 italic my-4 text-gray-600" {...props} />
+                            <blockquote
+                              className="border-l-4 border-indigo-300 pl-4 italic my-4 text-gray-600"
+                              {...props}
+                            />
                           ),
                           code: ({ inline, ...props }: any) =>
                             inline ? (
-                              <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-sm" {...props} />
+                              <code
+                                className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-sm"
+                                {...props}
+                              />
                             ) : (
-                              <code className="block bg-gray-900 text-gray-100 p-4 rounded-2xl my-4 overflow-x-auto font-mono text-sm" {...props} />
+                              <code
+                                className="block bg-gray-900 text-gray-100 p-4 rounded-2xl my-4 overflow-x-auto font-mono text-sm"
+                                {...props}
+                              />
                             ),
                         }}
                       >
@@ -333,7 +556,9 @@ export default function AiChat() {
               </div>
               <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm flex items-center gap-3">
                 <Loader2 className="animate-spin text-indigo-500" size={22} />
-                <span className="text-gray-600">Processing PDF and extracting concepts...</span>
+                <span className="text-gray-600">
+                  Processing PDF and extracting concepts...
+                </span>
               </div>
             </div>
           )}
@@ -347,9 +572,18 @@ export default function AiChat() {
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600">AI Coach is thinking</span>
                   <div className="flex space-x-1">
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: "0ms"}}></span>
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: "150ms"}}></span>
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: "300ms"}}></span>
+                    <span
+                      className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    ></span>
+                    <span
+                      className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    ></span>
+                    <span
+                      className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    ></span>
                   </div>
                 </div>
               </div>
@@ -362,13 +596,12 @@ export default function AiChat() {
         {/* Input Area */}
         <div className="p-4 bg-white/40 backdrop-blur-xl border-t border-slate-200/50 relative z-20">
           <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-white/80 backdrop-blur-md border border-white rounded-3xl p-2 px-4 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-blue-400/30 focus-within:border-blue-300 transition-all">
-            
-            <input 
-              type="file" 
-              accept=".pdf,.docx,.pptx" 
-              className="hidden" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
+            <input
+              type="file"
+              accept=".pdf,.docx,.pptx"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
             />
 
             <button
@@ -379,7 +612,7 @@ export default function AiChat() {
             >
               <Paperclip size={22} />
             </button>
-            
+
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -393,22 +626,26 @@ export default function AiChat() {
               className="flex-1 max-h-32 min-h-[52px] bg-transparent resize-y outline-none py-3 px-2 text-gray-700 leading-relaxed"
               rows={1}
             />
-            
+
             <button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || loading || uploading}
               className={`p-3.5 rounded-2xl shrink-0 transition-all ${
-                inputValue.trim() 
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" 
+                inputValue.trim()
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
-              <Send size={20} className={inputValue.trim() ? "translate-x-0.5" : ""} />
+              <Send
+                size={20}
+                className={inputValue.trim() ? "translate-x-0.5" : ""}
+              />
             </button>
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-3">
-            AI Coach uses semantic search from your uploaded PDFs • Answers are based only on your material
+            AI Coach uses semantic search from your uploaded PDFs • Answers are
+            based only on your material
           </p>
         </div>
       </div>
@@ -427,7 +664,7 @@ export default function AiChat() {
                 <MessageSquare size={18} className="text-indigo-500" />
                 Previous Sessions
               </h3>
-              <button 
+              <button
                 onClick={createNewSession}
                 className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
                 title="New Chat"
@@ -435,7 +672,7 @@ export default function AiChat() {
                 <PlusCircle size={22} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
               {sessions.map((session) => (
                 <div
@@ -450,7 +687,7 @@ export default function AiChat() {
                   <div className="truncate text-sm font-medium pr-2">
                     {session.title || "Untitled Session"}
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => deleteSession(e, session.id)}
                     className="p-1.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
                   >
@@ -458,9 +695,11 @@ export default function AiChat() {
                   </button>
                 </div>
               ))}
-              
+
               {sessions.length === 0 && (
-                <p className="text-sm text-gray-400 text-center mt-12">No previous chats yet</p>
+                <p className="text-sm text-gray-400 text-center mt-12">
+                  No previous chats yet
+                </p>
               )}
             </div>
           </motion.div>

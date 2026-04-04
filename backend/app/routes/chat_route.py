@@ -19,6 +19,7 @@ class ChatRequest(BaseModel):
     message: str
     subject: Optional[str] = None
     student_level: Optional[str] = "Intermediate"
+    student_profile: Optional[Dict[str, Any]] = None
 
 
 @router.post(
@@ -40,7 +41,8 @@ async def ask_coach(
         user_id=str(current_user.id),
         message=request.message,
         subject=request.subject,
-        student_level=request.student_level
+        student_level=request.student_level,
+        student_profile=request.student_profile,
     )
     
     return {
