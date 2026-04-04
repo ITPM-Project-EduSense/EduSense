@@ -13,6 +13,39 @@ export class ApiError extends Error {
   }
 }
 
+function getApiErrorMessage(payload: any): string {
+  if (!payload) return "Something went wrong";
+
+  if (typeof payload.detail === "string") {
+    return payload.detail;
+  }
+
+  if (Array.isArray(payload.detail)) {
+    const messages = payload.detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item.msg === "string") return item.msg;
+        return "";
+      })
+      .filter(Boolean);
+
+    if (messages.length > 0) {
+      return messages.join(", ");
+    }
+  }
+
+  if (payload.detail && typeof payload.detail === "object") {
+    if (typeof payload.detail.message === "string") return payload.detail.message;
+    if (typeof payload.detail.msg === "string") return payload.detail.msg;
+  }
+
+  if (typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  return "Something went wrong";
+}
+
 /**
  * Simple health check (for testing backend connection)
  */
@@ -49,7 +82,7 @@ export async function apiFetch(
 
   if (!response.ok) {
     throw new ApiError(
-      data?.detail || data?.message || "Something went wrong",
+      getApiErrorMessage(data),
       response.status,
       data
     );

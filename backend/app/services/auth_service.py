@@ -191,14 +191,15 @@ class AuthService:
     @staticmethod
     async def login(email: str, password: str):
         email_lower = email.lower().strip()
+        invalid_login_message = "Invalid creadtials Email/Password isincorrect"
 
         user = await User.find_one({"email": email_lower})
 
         if not user:
-            raise HTTPException(status_code=401, detail="Incorrect user credential password or email are incorrect")
+            raise HTTPException(status_code=401, detail=invalid_login_message)
 
         if not user.password_hash or not verify_password(password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Incorrect user credential password or email are incorrect")
+            raise HTTPException(status_code=401, detail=invalid_login_message)
 
         token = create_access_token({"user_id": str(user.id), "email": user.email})
 

@@ -936,7 +936,7 @@ export default function LandingPage() {
               },
               {
                 icon: <BarChart3 size={24} />,
-                title: "Smart Event Management",
+                title: "Smart Analytics",
                 member: "Module 4",
                 desc: "Discover and manage campus events with AI recommendations. Smart scheduling prevents overload and suggests events matching your interests.",
                 features: ["Event Recommendations", "Load Validation", "Interest Matching", "Campus Calendar"],

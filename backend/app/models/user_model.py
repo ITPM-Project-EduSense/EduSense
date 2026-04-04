@@ -48,8 +48,8 @@ class UserCreate(BaseModel):
         cleaned = " ".join(value.strip().split())
         if len(cleaned) < 2:
             raise ValueError("Full name must be at least 2 characters")
-        if cleaned.isdigit():
-            raise ValueError("Name cannot contain only numbers")
+        if any(char.isdigit() for char in cleaned):
+            raise ValueError("cant enter numbers")
         return cleaned
 
     @field_validator("email")
@@ -106,6 +106,8 @@ class UpdateProfileRequest(BaseModel):
         cleaned = " ".join(value.strip().split())
         if len(cleaned) < 2:
             raise ValueError("Full name must be at least 2 characters")
+        if any(char.isdigit() for char in cleaned):
+            raise ValueError("cant enter numbers")
         return cleaned
 
     @field_validator("program_name")

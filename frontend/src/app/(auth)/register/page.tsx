@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import Auth3DVisualization from "@/components/Auth3DVisualization";
-import { type FieldErrors, validateRegisterInput } from "@/lib/validation";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+import { type FieldErrors, validateRegisterField, validateRegisterInput } from "@/lib/validation";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -122,8 +123,12 @@ export default function RegisterPage() {
                     required
                     value={fullName}
                     onChange={(e) => {
-                      setFullName(e.target.value);
-                      setFieldErrors((prev) => ({ ...prev, fullName: "" }));
+                      const value = e.target.value;
+                      setFullName(value);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        fullName: validateRegisterField("fullName", value),
+                      }));
                     }}
                     className="w-full bg-transparent text-slate-900 outline-none"
                     placeholder="Your Name"
@@ -141,8 +146,12 @@ export default function RegisterPage() {
                     required
                     value={email}
                     onChange={(e) => {
-                      setEmail(e.target.value);
-                      setFieldErrors((prev) => ({ ...prev, email: "" }));
+                      const value = e.target.value;
+                      setEmail(value);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        email: validateRegisterField("email", value),
+                      }));
                     }}
                     className="w-full bg-transparent text-slate-900 outline-none"
                     placeholder="student@example.com"
@@ -160,8 +169,12 @@ export default function RegisterPage() {
                     required
                     value={password}
                     onChange={(e) => {
-                      setPassword(e.target.value);
-                      setFieldErrors((prev) => ({ ...prev, password: "" }));
+                      const value = e.target.value;
+                      setPassword(value);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        password: validateRegisterField("password", value),
+                      }));
                     }}
                     className="w-full bg-transparent text-slate-900 outline-none"
                     placeholder="********"
@@ -197,6 +210,17 @@ export default function RegisterPage() {
                 )}
               </button>
             </form>
+
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs uppercase tracking-[0.16em] text-slate-400">or continue</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <GoogleSignInButton
+              onSuccess={() => router.push("/dashboard")}
+              onError={(message) => setError(message)}
+            />
 
             <p className="mt-4 text-center text-sm text-slate-600">
               Already have an account?{" "}

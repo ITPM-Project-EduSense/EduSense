@@ -16,7 +16,7 @@ import { apiFetch } from "@/lib/api";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import Auth3DVisualization from "@/components/Auth3DVisualization";
 import { useToast } from "@/components/Toast";
-import { type FieldErrors, validateLoginInput } from "@/lib/validation";
+import { type FieldErrors, validateLoginField, validateLoginInput } from "@/lib/validation";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -148,8 +148,12 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => {
-                      setEmail(e.target.value);
-                      setFieldErrors((prev) => ({ ...prev, email: "" }));
+                      const value = e.target.value;
+                      setEmail(value);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        email: validateLoginField("email", value),
+                      }));
                     }}
                     className="w-full bg-transparent text-slate-900 outline-none"
                     placeholder="student@example.com"
@@ -167,8 +171,12 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => {
-                      setPassword(e.target.value);
-                      setFieldErrors((prev) => ({ ...prev, password: "" }));
+                      const value = e.target.value;
+                      setPassword(value);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        password: validateLoginField("password", value),
+                      }));
                     }}
                     className="w-full bg-transparent text-slate-900 outline-none"
                     placeholder="********"
