@@ -22,9 +22,12 @@ function getApiErrorMessage(payload: any): string {
 
   if (Array.isArray(payload.detail)) {
     const messages = payload.detail
-      .map((item) => {
+      .map((item: unknown) => {
         if (typeof item === "string") return item;
-        if (item && typeof item.msg === "string") return item.msg;
+        if (item && typeof item === "object" && "msg" in item) {
+          const msg = (item as { msg?: unknown }).msg;
+          if (typeof msg === "string") return msg;
+        }
         return "";
       })
       .filter(Boolean);

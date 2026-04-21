@@ -242,7 +242,7 @@ export default function PdfSummarizer({
 
           <div className="space-y-12">
             {/* Quick Insights / Key Takeaways */}
-            {result.summary?.length > 0 && (
+            {Array.isArray(result.summary) && result.summary.length > 0 && (
               <div className="p-8 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-3xl border border-indigo-100">
                 <h4 className="flex items-center gap-3 text-xl font-bold text-indigo-900 mb-6">
                   <FileText size={24} /> Key Takeaways
@@ -266,7 +266,7 @@ export default function PdfSummarizer({
             )}
 
             {/* Key Concepts */}
-            {result.concepts?.length > 0 && (
+            {Array.isArray(result.concepts) && result.concepts.length > 0 && (
               <div>
                 <h4 className="font-bold text-2xl text-gray-900 mb-6 flex items-center gap-3">
                   <CheckCircle size={28} className="text-emerald-500" />{" "}
@@ -302,15 +302,14 @@ export default function PdfSummarizer({
             )}
 
             {/* Difficult Terms - Improved */}
-            {result.difficult_terms?.length > 0 && (
+            {Array.isArray(result.difficult_terms) && result.difficult_terms.length > 0 && (
               <div>
                 <h4 className="font-semibold text-gray-700 mb-4">
                   ⚠️ Difficult Terms & Explanations
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {result.difficult_terms.map((item, i: number) => {
-                    const term =
-                      typeof item === "string" ? item : item.term || item;
+                    const term = typeof item === "string" ? item : item.term || "Unknown term";
                     const explanation =
                       typeof item === "object" ? item.explanation : "";
                     return (
@@ -342,7 +341,7 @@ export default function PdfSummarizer({
                   </h4>
                   <button
                     onClick={() =>
-                      downloadMarkdown(result.detailed_summary, result.filename)
+                      downloadMarkdown(result.detailed_summary || "", result.filename || "summary")
                     }
                     className="flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white rounded-2xl transition-all shadow-md"
                   >

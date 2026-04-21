@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/api";
 import {
   Calendar,
@@ -23,6 +24,10 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  Brain,
+  Target,
+  Gauge,
+  ClipboardList,
 } from "lucide-react";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
@@ -107,6 +112,7 @@ function getFirstDayOfMonth(date: Date) {
 
 export default function TasksPage() {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -139,6 +145,10 @@ export default function TasksPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     loadTasks();
@@ -269,8 +279,51 @@ export default function TasksPage() {
     router.push(`/analytics?date=${dateStr}`);
   };
 
+  const formDeadlineDaysLeft = useMemo(() => {
+    if (!form.deadline) return null;
+    const deadlineMs = new Date(form.deadline).getTime();
+    if (Number.isNaN(deadlineMs)) return null;
+    return Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60 * 24));
+  }, [form.deadline]);
+
+  const recommendedDailyHours = useMemo(() => {
+    if (formDeadlineDaysLeft === null || formDeadlineDaysLeft <= 0) return null;
+    return Math.max(0.5, Number((form.estimated_hours / formDeadlineDaysLeft).toFixed(1)));
+  }, [form.estimated_hours, formDeadlineDaysLeft]);
+
+  const urgencyConfig = useMemo(() => {
+    if (formDeadlineDaysLeft === null) {
+      return {
+        label: "No deadline yet",
+        tone: "text-slate-600 bg-slate-100 border-slate-200",
+      };
+    }
+    if (formDeadlineDaysLeft < 0) {
+      return {
+        label: `Overdue by ${Math.abs(formDeadlineDaysLeft)} day${Math.abs(formDeadlineDaysLeft) > 1 ? "s" : ""}`,
+        tone: "text-rose-700 bg-rose-100 border-rose-200",
+      };
+    }
+    if (formDeadlineDaysLeft <= 2) {
+      return {
+        label: "Critical window",
+        tone: "text-rose-700 bg-rose-100 border-rose-200",
+      };
+    }
+    if (formDeadlineDaysLeft <= 7) {
+      return {
+        label: "Tight schedule",
+        tone: "text-amber-700 bg-amber-100 border-amber-200",
+      };
+    }
+    return {
+      label: "Healthy timeline",
+      tone: "text-emerald-700 bg-emerald-100 border-emerald-200",
+    };
+  }, [formDeadlineDaysLeft]);
+
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
+    <div className="eds-page-shell mx-auto w-full max-w-7xl space-y-6 rounded-3xl p-4 lg:p-6">
       {/* ── Page Header with Gradient (EDS) ── */}
       <section className="eds-hero-card">
         {/* Ambient glow blobs */}
@@ -321,7 +374,7 @@ export default function TasksPage() {
       </section>
 
       {/* ── Section: Quick Stats ── */}
-      <section className="eds-fade-up" style={{ animationDelay: "100ms" }}>
+      <section className="eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "100ms" }}>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
           <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
@@ -558,7 +611,7 @@ export default function TasksPage() {
       )}
 
       {/* ── Section: Filters ── */}
-      <section className="eds-fade-up" style={{ animationDelay: "200ms" }}>
+      <section className="eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "200ms" }}>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
           <Sparkles size={14} className="text-blue-500" />
@@ -617,7 +670,7 @@ export default function TasksPage() {
       )}
 
       {/* ── Section: Task List ── */}
-      <section className="col-span-1 lg:col-span-3 eds-fade-up" style={{ animationDelay: "300ms" }}>
+      <section className="col-span-1 lg:col-span-3 eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "300ms" }}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
@@ -801,140 +854,218 @@ export default function TasksPage() {
       </section>
 
       {/* ── Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xl animate-in zoom-in-95 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-slate-900">{editingTask ? "✏️ Edit Task" : "➕ Create New Task"}</h2>
-            <p className="mt-1 text-sm text-slate-600">Fill in the task details below and save your changes.</p>
-
-            <form onSubmit={submitForm} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Task Title</label>
-                <input
-                  value={form.title}
-                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="Enter task title"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Add task description (optional)"
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50 resize-none"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
-                  <input
-                    value={form.subject}
-                    onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-                    placeholder="e.g., Mathematics"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                    required
-                  />
+      {isClient && showModal && createPortal((
+        <div className="fixed inset-0 z-120 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center">
+          <div className="my-4 max-h-[92vh] w-full max-w-5xl overflow-y-auto animate-in zoom-in-95 rounded-3xl border border-white/30 bg-white shadow-2xl sm:my-6">
+            <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-indigo-300/20 blur-3xl" />
+              <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-white/15 p-3 ring-1 ring-white/25 backdrop-blur-sm">
+                    <ClipboardList size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">EduSense · Task Studio</p>
+                    <h2 className="text-2xl font-bold text-white">
+                      {editingTask ? "Refine Task" : "Create New Task"}
+                    </h2>
+                    <p className="mt-1 text-sm text-blue-100/90">Build a clear, realistic plan with timeline intelligence.</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Deadline</label>
-                  <input
-                    type="datetime-local"
-                    value={form.deadline}
-                    onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                    required
-                  />
-                </div>
+                <span className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold ${urgencyConfig.tone}`}>
+                  <Gauge size={13} />
+                  {urgencyConfig.label}
+                </span>
               </div>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Task Type</label>
-                  <select
-                    value={form.task_type}
-                    onChange={(e) => setForm((prev) => ({ ...prev, task_type: e.target.value as TaskType }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+            <form onSubmit={submitForm} className="grid gap-6 p-6 lg:grid-cols-[1.35fr_1fr] lg:p-7">
+              <div className="space-y-5">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Target size={14} className="text-blue-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Core Details</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Task Title</label>
+                      <input
+                        value={form.title}
+                        onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="Enter task title"
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Description</label>
+                      <textarea
+                        value={form.description}
+                        onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="What exactly needs to be done?"
+                        rows={3}
+                        className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Subject</label>
+                        <input
+                          value={form.subject}
+                          onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+                          placeholder="e.g., Database Systems"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Deadline</label>
+                        <input
+                          type="datetime-local"
+                          value={form.deadline}
+                          onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-2">
+                    <CalendarClock size={14} className="text-indigo-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Effort & Priority</h3>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Task Type</label>
+                      <select
+                        value={form.task_type}
+                        onChange={(e) => setForm((prev) => ({ ...prev, task_type: e.target.value as TaskType }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      >
+                        <option value="reading">Reading</option>
+                        <option value="assignment">Assignment</option>
+                        <option value="exam">Exam</option>
+                        <option value="coding">Coding</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Estimated Hours</label>
+                      <input
+                        type="number"
+                        min={0.5}
+                        max={200}
+                        step={0.5}
+                        value={form.estimated_hours}
+                        onChange={(e) => setForm((prev) => ({ ...prev, estimated_hours: Number(e.target.value) || 1 }))}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Difficulty</label>
+                      <select
+                        value={form.difficulty}
+                        onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value as TaskDifficulty }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      >
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Status</label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="flex flex-wrap justify-end gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
                   >
-                    <option value="reading">Reading</option>
-                    <option value="assignment">Assignment</option>
-                    <option value="exam">Exam</option>
-                    <option value="coding">Coding</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Estimated Hours</label>
-                  <input
-                    type="number"
-                    min={0.5}
-                    max={200}
-                    step={0.5}
-                    value={form.estimated_hours}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, estimated_hours: Number(e.target.value) || 1 }))
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                    required
-                  />
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : editingTask ? "Save Changes" : "Create Task"}
+                  </button>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Difficulty</label>
-                  <select
-                    value={form.difficulty}
-                    onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value as TaskDifficulty }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                  >
-                    <option value="easy">🟢 Easy</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="hard">🔴 Hard</option>
-                  </select>
+              <aside className="h-fit rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-5 shadow-sm lg:sticky lg:top-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Brain size={15} className="text-blue-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Task Intelligence</h3>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                  >
-                    <option value="pending">⏳ Pending</option>
-                    <option value="in_progress">⚙️ In Progress</option>
-                    <option value="completed">✅ Completed</option>
-                  </select>
-                </div>
-              </div>
 
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Saving..." : editingTask ? "Save Changes" : "Create Task"}
-                </button>
-              </div>
+                <div className="space-y-3 rounded-xl border border-white/70 bg-white/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
+                  <h4 className="text-base font-bold text-slate-800">
+                    {form.title.trim() || "Untitled Task"}
+                  </h4>
+                  <p className="text-sm font-medium text-slate-600">
+                    {form.subject.trim() || "No subject yet"}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${difficultyClass(form.difficulty)}`}>
+                      {form.difficulty}
+                    </span>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(form.status)}`}>
+                      {form.status.replace("_", " ")}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="rounded-xl border border-slate-200 bg-white/85 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Days Remaining</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-800">
+                      {formDeadlineDaysLeft === null ? "--" : formDeadlineDaysLeft}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/85 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Suggested Daily Focus</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-800">
+                      {recommendedDailyHours === null ? "--" : `${recommendedDailyHours}h`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Planning Tip</p>
+                  <p className="mt-1 text-sm text-indigo-900/80">
+                    Keep the task scope specific and realistic. If this task exceeds 8 hours, split it into milestones after saving.
+                  </p>
+                </div>
+              </aside>
             </form>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ── Delete Confirmation Modal ── */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      {isClient && deleteConfirm && createPortal((
+        <div className="fixed inset-0 z-130 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-sm animate-in zoom-in-95 rounded-2xl border border-rose-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-rose-100 p-3">
@@ -974,7 +1105,7 @@ export default function TasksPage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }
