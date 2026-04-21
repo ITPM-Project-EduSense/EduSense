@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, type CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Network, Sparkles, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { ApiError } from "@/lib/api";
@@ -13,6 +13,7 @@ import { apiGroupToGroup, apiInviteToInvite, apiMaterialToMaterial, formatFileSi
 
 export default function PeerConnectHome() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [groups, setGroups] = useState<Group[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,6 +55,19 @@ export default function PeerConnectHome() {
     const [deletingMaterialId, setDeletingMaterialId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [authRequired, setAuthRequired] = useState(false);
+
+    useEffect(() => {
+        const moduleParam = searchParams.get("module");
+        const taskParam = searchParams.get("task_id");
+        if (moduleParam) {
+            setActiveFilter(moduleParam);
+            setSelectedModule(moduleParam);
+            if (taskParam && !searchQuery) {
+                setSearchQuery(moduleParam);
+            }
+            setGroupModule((prev) => prev || moduleParam);
+        }
+    }, [searchParams, searchQuery]);
 
     const handleApiError = (error: unknown, fallback: string) => {
         if (error instanceof ApiError) {
@@ -929,7 +943,7 @@ export default function PeerConnectHome() {
                                     <div
                                         key={m.code}
                                         className={`pc-module-card ${activeFilter === m.code ? "pc-active" : ""}`}
-                                        style={{ "--card-color": m.color } as any}
+                                        style={{ "--card-color": m.color } as CSSProperties}
                                         onClick={() => setActiveFilter(activeFilter === m.code ? "All" : m.code)}
                                     >
                                         <div className="pc-module-dot" />

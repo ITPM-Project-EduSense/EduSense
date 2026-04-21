@@ -11,16 +11,12 @@ import {
   Circle,
   Clock3,
   Filter,
-  Pencil,
   Plus,
   Search,
   Trash2,
   ListTodo,
   Sparkles,
   Activity,
-  AlertTriangle,
-  BookOpen,
-  Flame,
   TrendingUp,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +24,12 @@ import {
   Target,
   Gauge,
   ClipboardList,
+  Workflow,
+  ArrowRight,
+  Network,
+  MessageSquare,
+  BarChart3,
+  PieChart,
 } from "lucide-react";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
@@ -45,8 +47,42 @@ type Task = {
   difficulty: TaskDifficulty;
   status: TaskStatus;
   priority_score: number | null;
+  workflow_stage?: WorkflowStage;
+  next_action?: string;
   created_at: string;
   updated_at: string;
+};
+
+type WorkflowStage =
+  | "draft"
+  | "material_ready"
+  | "planned"
+  | "in_progress"
+  | "at_risk"
+  | "completed";
+
+type WorkflowTaskItem = {
+  task_id: string;
+  title: string;
+  subject: string;
+  deadline: string;
+  stage: WorkflowStage;
+  next_action: string;
+  recommended_route: string;
+  has_materials: boolean;
+  has_schedule: boolean;
+  is_overdue: boolean;
+  progress_pct: number;
+  planner_route?: string;
+  collaboration_route?: string;
+  coach_route?: string;
+  analytics_route?: string;
+};
+
+type WorkflowOverview = {
+  total_tasks: number;
+  stage_counts: Record<WorkflowStage, number>;
+  tasks: WorkflowTaskItem[];
 };
 
 type TaskForm = {
@@ -95,13 +131,6 @@ function statusClass(value: TaskStatus) {
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
-function priorityColor(score: number | null) {
-  if (!score) return "bg-slate-100";
-  if (score >= 7) return "bg-rose-300";
-  if (score >= 4) return "bg-amber-300";
-  return "bg-emerald-300";
-}
-
 function getDaysInMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
@@ -110,10 +139,44 @@ function getFirstDayOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 }
 
+function workflowStageClass(stage: WorkflowStage) {
+  if (stage === "completed") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (stage === "at_risk") return "bg-rose-50 text-rose-700 border-rose-200";
+  if (stage === "in_progress") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (stage === "planned") return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (stage === "material_ready") return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function workflowStageLabel(stage: WorkflowStage) {
+  if (stage === "material_ready") return "material ready";
+  if (stage === "in_progress") return "in progress";
+  if (stage === "at_risk") return "at risk";
+  return stage;
+}
+
+function fallbackRouteForStage(stage?: WorkflowStage, taskId?: string) {
+  if (stage === "draft") return "/materials";
+  if (stage === "material_ready") return `/planner?task_id=${taskId}`;
+  if (stage === "planned") return `/planner?task_id=${taskId}`;
+  if (stage === "in_progress") return `/planner?task_id=${taskId}`;
+  if (stage === "at_risk") return `/planner?task_id=${taskId}`;
+  if (stage === "completed") return "/analytics";
+  return `/planner?task_id=${taskId}`;
+}
+
+function taskTypeTone(taskType: TaskType) {
+  if (taskType === "assignment") return "from-fuchsia-500 to-pink-500";
+  if (taskType === "exam") return "from-rose-500 to-orange-500";
+  if (taskType === "coding") return "from-cyan-500 to-blue-500";
+  return "from-emerald-500 to-teal-500";
+}
+
 export default function TasksPage() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [workflowOverview, setWorkflowOverview] = useState<WorkflowOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,8 +199,12 @@ export default function TasksPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiFetch("/tasks");
-      setTasks(Array.isArray(data) ? data : []);
+      const [tasksData, workflowData] = await Promise.all([
+        apiFetch("/tasks"),
+        apiFetch("/tasks/workflow/overview"),
+      ]);
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+      setWorkflowOverview(workflowData as WorkflowOverview);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to load tasks";
       setError(message);
@@ -164,12 +231,97 @@ export default function TasksPage() {
     });
   }, [tasks, search, statusFilter, difficultyFilter]);
 
+  const workflowByTaskId = useMemo(() => {
+    const map = new Map<string, WorkflowTaskItem>();
+    if (!workflowOverview?.tasks) return map;
+    for (const item of workflowOverview.tasks) {
+      map.set(item.task_id, item);
+    }
+    return map;
+  }, [workflowOverview]);
+
   const stats = useMemo(() => {
     const total = tasks.length;
     const pending = tasks.filter((t) => t.status === "pending").length;
     const inProgress = tasks.filter((t) => t.status === "in_progress").length;
     const completed = tasks.filter((t) => t.status === "completed").length;
     return { total, pending, inProgress, completed };
+  }, [tasks]);
+
+  const statusMix = useMemo(() => {
+    const total = Math.max(tasks.length, 1);
+    return [
+      {
+        label: "Pending",
+        value: stats.pending,
+        pct: Math.round((stats.pending / total) * 100),
+        tone: "from-blue-500 to-indigo-500",
+        bg: "bg-blue-50",
+      },
+      {
+        label: "In Progress",
+        value: stats.inProgress,
+        pct: Math.round((stats.inProgress / total) * 100),
+        tone: "from-amber-500 to-orange-500",
+        bg: "bg-amber-50",
+      },
+      {
+        label: "Completed",
+        value: stats.completed,
+        pct: Math.round((stats.completed / total) * 100),
+        tone: "from-emerald-500 to-teal-500",
+        bg: "bg-emerald-50",
+      },
+    ];
+  }, [stats, tasks.length]);
+
+  const difficultyMix = useMemo(() => {
+    const easy = tasks.filter((task) => task.difficulty === "easy").length;
+    const medium = tasks.filter((task) => task.difficulty === "medium").length;
+    const hard = tasks.filter((task) => task.difficulty === "hard").length;
+    const total = Math.max(tasks.length, 1);
+    return [
+      { label: "Easy", value: easy, pct: Math.round((easy / total) * 100), tone: "from-emerald-400 to-teal-500" },
+      { label: "Medium", value: medium, pct: Math.round((medium / total) * 100), tone: "from-amber-400 to-orange-500" },
+      { label: "Hard", value: hard, pct: Math.round((hard / total) * 100), tone: "from-rose-500 to-pink-500" },
+    ];
+  }, [tasks]);
+
+  const subjectLoad = useMemo(() => {
+    const map = new Map<string, { count: number; hours: number }>();
+    for (const task of tasks) {
+      const current = map.get(task.subject) || { count: 0, hours: 0 };
+      map.set(task.subject, {
+        count: current.count + 1,
+        hours: current.hours + task.estimated_hours,
+      });
+    }
+    const entries = [...map.entries()]
+      .map(([subject, data]) => ({ subject, ...data }))
+      .sort((a, b) => b.count - a.count || b.hours - a.hours)
+      .slice(0, 5);
+    const maxCount = Math.max(1, ...entries.map((entry) => entry.count));
+    return entries.map((entry) => ({
+      ...entry,
+      width: `${Math.max((entry.count / maxCount) * 100, 16)}%`,
+    }));
+  }, [tasks]);
+
+  const taskTypeMix = useMemo(() => {
+    const counts: Record<TaskType, number> = {
+      reading: 0,
+      assignment: 0,
+      exam: 0,
+      coding: 0,
+    };
+    for (const task of tasks) counts[task.task_type] += 1;
+    const max = Math.max(1, ...Object.values(counts));
+    return (Object.entries(counts) as Array<[TaskType, number]>).map(([taskType, value]) => ({
+      taskType,
+      value,
+      width: `${Math.max((value / max) * 100, value > 0 ? 14 : 8)}%`,
+      tone: taskTypeTone(taskType),
+    }));
   }, [tasks]);
 
   const openCreate = () => {
@@ -373,105 +525,133 @@ export default function TasksPage() {
         </div>
       </section>
 
-      {/* ── Section: Quick Stats ── */}
-      <section className="eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "100ms" }}>
+      {/* ── Section: Workflow Overview ── */}
+      <section className="eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "80ms" }}>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
+          <Workflow size={14} className="text-blue-500" />
           <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
-            Performance & Insights
+            Workflow Engine
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Overdue Tasks Alert */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(225,29,72,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(225,29,72,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-600">Overdue Tasks</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {loading ? "--" : tasks.filter(t => t.status !== "completed" && daysLeft(t.deadline) < 0).length}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-rose-500">Need immediate attention</p>
-              </div>
-              <div className="rounded-xl bg-gradient-to-br from-rose-100 to-red-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <AlertTriangle size={18} className="text-rose-600" />
-              </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          {([
+            ["draft", "Draft"],
+            ["material_ready", "Materials Ready"],
+            ["planned", "Planned"],
+            ["in_progress", "In Progress"],
+            ["at_risk", "At Risk"],
+            ["completed", "Completed"],
+          ] as Array<[WorkflowStage, string]>).map(([key, label]) => (
+            <div key={key} className="rounded-xl border border-slate-200/70 bg-white/80 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+              <p className="mt-1 text-2xl font-extrabold text-slate-800">{workflowOverview?.stage_counts?.[key] ?? 0}</p>
             </div>
-          </article>
+          ))}
+        </div>
+      </section>
 
-          {/* Completion Rate */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div className="w-full">
-                <p className="text-sm font-bold text-slate-600">Completion Rate</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {loading ? "--" : `${Math.round((stats.completed / (stats.total || 1)) * 100)}%`}
-                </p>
-                <div className="mt-3 h-1.5 w-full max-w-[124px] overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                  <div 
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" 
-                    style={{ width: `${Math.round((stats.completed / (stats.total || 1)) * 100)}%` }}
-                  />
+      <section className="eds-fade-up grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]" style={{ animationDelay: "90ms" }}>
+        <article className="rounded-3xl border border-white/60 bg-white/72 p-5 shadow-[0_12px_36px_-16px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Task Atlas</p>
+              <h2 className="mt-1 text-xl font-extrabold text-slate-900">Workload Composition</h2>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2 text-slate-500 shadow-sm">
+              <PieChart size={18} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {statusMix.map((item) => (
+              <div key={item.label} className={`rounded-2xl border border-white/70 p-4 shadow-sm ${item.bg}`}>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-slate-700">{item.label}</p>
+                  <span className="rounded-full bg-white/85 px-2 py-0.5 text-xs font-bold text-slate-500">{item.pct}%</span>
+                </div>
+                <p className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">{item.value}</p>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
+                  <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: `${Math.max(item.pct, item.value > 0 ? 14 : 8)}%` }} />
                 </div>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <CheckCircle2 size={18} className="text-emerald-600" />
-              </div>
-            </div>
-          </article>
+            ))}
+          </div>
 
-          {/* Avg Task Complexity */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-600">Avg. Difficulty</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {loading ? "--" : (
-                    tasks.length > 0
-                      ? tasks.reduce((sum, t) => sum + (t.difficulty === "hard" ? 3 : t.difficulty === "medium" ? 2 : 1), 0) / tasks.length
-                      : 0
-                  ).toFixed(1)}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-amber-500">
-                  {tasks.length > 0 
-                    ? tasks.filter(t => t.difficulty === "hard").length > tasks.length / 2
-                      ? "Challenging workload"
-                      : "Balanced workload"
-                    : "No tasks yet"
-                  }
-                </p>
-              </div>
-              <div className="rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <Flame size={18} className="text-amber-600" />
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Difficulty Balance</p>
+              <div className="mt-4 space-y-3">
+                {difficultyMix.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1.5 flex items-center justify-between text-sm">
+                      <span className="font-semibold text-slate-700">{item.label}</span>
+                      <span className="text-slate-400">{item.value} tasks</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-white">
+                      <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: `${Math.max(item.pct, item.value > 0 ? 14 : 7)}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </article>
 
-          {/* Most Active Subject */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(59,130,246,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(59,130,246,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-600">Top Subject</p>
-                <p className="mt-2 truncate text-3xl font-extrabold text-slate-800 tracking-tight max-w-[140px]">
-                  {loading ? "--" : (
-                    tasks.length > 0
-                      ? Object.entries(
-                          tasks.reduce((acc, t) => ({
-                            ...acc,
-                            [t.subject]: (acc[t.subject as keyof typeof acc] || 0) + 1
-                          }), {} as Record<string, number>)
-                        ).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
-                      : "N/A"
-                  )}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-blue-500">Most tasks assigned</p>
-              </div>
-              <div className="rounded-xl bg-gradient-to-br from-blue-100 to-indigo-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <BookOpen size={18} className="text-blue-600" />
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Task Type Mix</p>
+              <div className="mt-4 space-y-3">
+                {taskTypeMix.map((item) => (
+                  <div key={item.taskType}>
+                    <div className="mb-1.5 flex items-center justify-between text-sm">
+                      <span className="font-semibold capitalize text-slate-700">{item.taskType}</span>
+                      <span className="text-slate-400">{item.value}</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-white">
+                      <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: item.width }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </article>
-        </div>
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-white/60 bg-white/72 p-5 shadow-[0_12px_36px_-16px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Subject Pulse</p>
+              <h2 className="mt-1 text-xl font-extrabold text-slate-900">Module Load Map</h2>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2 text-slate-500 shadow-sm">
+              <BarChart3 size={18} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {subjectLoad.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-center text-sm text-slate-500">
+                Add tasks to see your module workload map.
+              </div>
+            )}
+
+            {subjectLoad.map((item) => (
+              <div key={item.subject} className="rounded-2xl border border-slate-200/70 bg-gradient-to-r from-white to-slate-50/70 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-800">{item.subject}</p>
+                    <p className="text-xs text-slate-400">{item.hours.toFixed(1)}h estimated workload</p>
+                  </div>
+                  <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">
+                    {item.count} tasks
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" style={{ width: item.width }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
       </section>
 
       {/* ── Section: Calendar View ── */}
@@ -726,13 +906,20 @@ export default function TasksPage() {
               </div>
               <p className="text-base font-bold text-slate-700">No tasks found</p>
               <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto">
-                You've cleared your filter or finished everything. Enjoy your free time or add a new task!
+                You&apos;ve cleared your filter or finished everything. Enjoy your free time or add a new task!
               </p>
             </div>
           )}
 
           {filteredTasks.map((task, idx) => {
             const remaining = daysLeft(task.deadline);
+            const workflow = workflowByTaskId.get(task.id);
+            const workflowStage = workflow?.stage || task.workflow_stage || "draft";
+            const nextAction = workflow?.next_action || task.next_action || "Generate a plan and begin focused study sessions";
+            const nextRoute = workflow?.recommended_route || fallbackRouteForStage(workflowStage, task.id);
+            const plannerRoute = workflow?.planner_route || `/planner?task_id=${task.id}`;
+            const collaborationRoute = workflow?.collaboration_route || `/materials?module=${encodeURIComponent(task.subject)}&task_id=${task.id}`;
+            const coachRoute = workflow?.coach_route || `/ai?subject=${encodeURIComponent(task.subject)}&task_id=${task.id}`;
             return (
               <article
                 key={task.id}
@@ -758,6 +945,10 @@ export default function TasksPage() {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-extrabold shadow-sm ${workflowStageClass(workflowStage)}`}>
+                        <Workflow size={13} />
+                        {workflowStageLabel(workflowStage)}
+                      </span>
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${statusClass(task.status)}`}>
                         {task.status === "completed" ? <CheckCircle2 size={14}/> : task.status === "in_progress" ? <Activity size={14}/> : <Circle size={14}/>} 
                         {task.status.replace("_", " ")}
@@ -816,6 +1007,34 @@ export default function TasksPage() {
                   </div>
                 </div>
 
+                <div className="border-t border-white/40 bg-blue-50/50 px-5 py-3 lg:px-6">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Next Best Action</p>
+                  <p className="mt-1 text-sm font-medium text-slate-700">{nextAction}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => router.push(plannerRoute)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:bg-indigo-50"
+                    >
+                      <Sparkles size={12} />
+                      AI Schedule
+                    </button>
+                    <button
+                      onClick={() => router.push(collaborationRoute)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-sky-700 shadow-sm transition-all duration-200 hover:border-sky-300 hover:bg-sky-50"
+                    >
+                      <Network size={12} />
+                      PeerConnect
+                    </button>
+                    <button
+                      onClick={() => router.push(coachRoute)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-violet-700 shadow-sm transition-all duration-200 hover:border-violet-300 hover:bg-violet-50"
+                    >
+                      <MessageSquare size={12} />
+                      AI Coach
+                    </button>
+                  </div>
+                </div>
+
                 {/* Bottom section with actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 lg:px-6 bg-slate-50/40 border-t border-white/40">
                   <div className="flex-1" />
@@ -833,10 +1052,10 @@ export default function TasksPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => router.push(`/planner?task_id=${task.id}`)}
+                      onClick={() => router.push(nextRoute)}
                       className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-[0_4px_14px_rgba(59,130,246,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)]"
                     >
-                      <Sparkles size={14} /> Plan Task
+                      <ArrowRight size={14} /> Next Best Action
                     </button>
                     <button
                       onClick={() => removeTask(task)}
@@ -1078,7 +1297,7 @@ export default function TasksPage() {
             </div>
 
             <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">"{deleteConfirm.title}"</p>
+              <p className="text-sm font-semibold text-slate-900">&quot;{deleteConfirm.title}&quot;</p>
               <p className="mt-1 text-xs text-slate-600">Subject: {deleteConfirm.subject}</p>
               {deleteConfirm.description && (
                 <p className="mt-2 line-clamp-2 text-xs text-slate-500">{deleteConfirm.description}</p>
@@ -1109,3 +1328,4 @@ export default function TasksPage() {
     </div>
   );
 }
+

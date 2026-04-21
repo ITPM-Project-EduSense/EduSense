@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Calendar,
@@ -10,7 +10,6 @@ import {
   Loader2,
   Sparkles,
   FileText,
-  X,
   ChevronDown,
   ChevronUp,
   Target,
@@ -32,10 +31,13 @@ import {
   attachTaskResource,
   generateTaskPlan,
   getTaskPlan,
+  getTaskResources,
+  getUserMaterials,
   regenerateTaskPlan,
   type GeneratedPlanResponse,
+  type TaskResourceResponse,
+  type UserMaterialListItem,
 } from "@/lib/scheduleApi";
-import { validateFiles } from "@/lib/validation";
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 interface Task {
@@ -164,9 +166,6 @@ function toSmartSchedule(task: Task, plan: GeneratedPlanResponse): SmartSchedule
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-const PLANNER_FILE_ALLOWED_EXTENSIONS = [".pdf", ".pptx", ".docx"];
-const PLANNER_MAX_FILE_SIZE = 10 * 1024 * 1024;
-const PLANNER_MAX_FILES = 5;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -210,6 +209,15 @@ function focusStyle(level: string) {
 function toPercent(value?: number) {
   if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
   return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
+}
+
+function getFileExtension(filename: string) {
+  if (!filename.includes(".")) return "file";
+  return filename.split(".").pop()?.toLowerCase() || "file";
+}
+
+function estimateContentLength(textLength: number) {
+  return Math.max(1, Math.round(textLength / 1800));
 }
 
 /* ─── Build weekly calendar from sessions ───────────────────────────────── */
@@ -259,9 +267,9 @@ function PlannerPageContent() {
   const [generatingStep, setGeneratingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const [files, setFiles] = useState<File[]>([]);
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [materials, setMaterials] = useState<UserMaterialListItem[]>([]);
+  const [attachedResources, setAttachedResources] = useState<TaskResourceResponse[]>([]);
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<Set<string>>(new Set());
 
   const [activeView, setActiveView] = useState<"timeline" | "calendar">("timeline");
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
@@ -276,11 +284,13 @@ function PlannerPageContent() {
       return;
     }
     try {
-      const [taskRes, schedRes] = await Promise.allSettled([
+      const [taskRes, schedRes, materialsRes, resourcesRes] = await Promise.allSettled([
         fetch(`${API}/tasks/${taskId}`, { credentials: "include" }).then((r) =>
           r.ok ? r.json() : null
         ),
         getTaskPlan(taskId).catch(() => null),
+        getUserMaterials(50),
+        getTaskResources(taskId),
       ]);
 
       if (taskRes.status === "fulfilled" && taskRes.value) {
@@ -288,6 +298,27 @@ function PlannerPageContent() {
       }
       if (schedRes.status === "fulfilled" && schedRes.value && taskRes.status === "fulfilled" && taskRes.value) {
         setSchedule(toSmartSchedule(taskRes.value, schedRes.value));
+      }
+      if (materialsRes.status === "fulfilled") {
+        const nextMaterials = Array.isArray(materialsRes.value?.materials)
+          ? (materialsRes.value.materials as UserMaterialListItem[])
+          : [];
+        setMaterials(nextMaterials);
+
+        if (resourcesRes.status === "fulfilled") {
+          const nextResources = Array.isArray(resourcesRes.value) ? resourcesRes.value : [];
+          const attachedNames = new Set(nextResources.map((resource) => resource.file_name));
+          setSelectedMaterialIds(
+            new Set(
+              nextMaterials
+                .filter((material) => attachedNames.has(material.filename))
+                .map((material) => material.id)
+            )
+          );
+        }
+      }
+      if (resourcesRes.status === "fulfilled") {
+        setAttachedResources(Array.isArray(resourcesRes.value) ? resourcesRes.value : []);
       }
     } catch (e) {
       console.error("loadInitialData error:", e);
@@ -301,62 +332,25 @@ function PlannerPageContent() {
   }, [loadInitialData]);
 
   /* ─── File handling ─────────────────────────────────────────────────── */
-  const addFiles = (newFiles: FileList | null) => {
-    if (!newFiles) return;
-
-    const incoming = Array.from(newFiles);
-    setFiles((prev) => {
-      const existing = new Set(prev.map((f) => f.name));
-      const combined = [...prev, ...incoming.filter((f) => !existing.has(f.name))];
-
-      const allErrors = validateFiles(combined, {
-        allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
-        maxSizeBytes: PLANNER_MAX_FILE_SIZE,
-        maxFiles: PLANNER_MAX_FILES,
-      });
-
-      if (allErrors.length > 0) {
-        setError(allErrors[0]);
+  const toggleMaterialSelection = (materialId: string) => {
+    setSelectedMaterialIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(materialId)) {
+        next.delete(materialId);
       } else {
-        setError(null);
+        next.add(materialId);
       }
-
-      return combined.filter((file) => {
-        const fileErrors = validateFiles([file], {
-          allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
-          maxSizeBytes: PLANNER_MAX_FILE_SIZE,
-        });
-        return fileErrors.length === 0;
-      }).slice(0, PLANNER_MAX_FILES);
+      return next;
     });
-  };
-
-  const removeFile = (name: string) =>
-    setFiles((prev) => prev.filter((f) => f.name !== name));
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    addFiles(e.dataTransfer.files);
   };
 
   /* ─── Generate schedule ─────────────────────────────────────────────── */
   const handleGenerate = async () => {
     if (!taskId) return;
 
-    if (files.length === 0) {
+    const selectedMaterials = materials.filter((material) => selectedMaterialIds.has(material.id));
+    if (selectedMaterials.length === 0 && attachedResources.length === 0) {
       setError("Attach at least one study material before generating a plan.");
-      return;
-    }
-
-    const fileErrors = validateFiles(files, {
-      allowedExtensions: PLANNER_FILE_ALLOWED_EXTENSIONS,
-      maxSizeBytes: PLANNER_MAX_FILE_SIZE,
-      maxFiles: PLANNER_MAX_FILES,
-    });
-
-    if (fileErrors.length > 0) {
-      setError(fileErrors[0]);
       return;
     }
 
@@ -367,20 +361,25 @@ function PlannerPageContent() {
 
     setGenerating(true);
     setError(null);
-    setGeneratingStep("Extracting text from documents...");
+    setGeneratingStep("Preparing selected study materials...");
 
     try {
-      setGeneratingStep("Attaching study materials to this task...");
-      const attachTargets = files.map((file) => {
-        const ext = file.name.includes(".") ? file.name.split(".").pop() || "file" : "file";
-        const estimatedPages = Math.max(1, Math.round(file.size / (1024 * 200)));
-        return attachTaskResource(taskId, {
-          file_name: file.name,
-          file_type: ext.toLowerCase(),
-          content_length: estimatedPages,
-        });
-      });
-      await Promise.all(attachTargets);
+      const attachedNames = new Set(attachedResources.map((resource) => resource.file_name));
+      const pendingMaterials = selectedMaterials.filter((material) => !attachedNames.has(material.filename));
+
+      if (pendingMaterials.length > 0) {
+        setGeneratingStep("Attaching materials to this task...");
+        await Promise.all(
+          pendingMaterials.map((material) =>
+            attachTaskResource(taskId, {
+              file_name: material.filename,
+              file_type: getFileExtension(material.filename),
+              content_length: estimateContentLength(material.text_length),
+            })
+          )
+        );
+        setAttachedResources(await getTaskResources(taskId));
+      }
 
       setGeneratingStep("Analyzing task + materials and generating sessions...");
       const plan = await generateTaskPlan(taskId);
@@ -396,6 +395,11 @@ function PlannerPageContent() {
       setGeneratingStep("");
     }
   };
+
+  const selectedMaterials = materials.filter((material) => selectedMaterialIds.has(material.id));
+  const attachedFileNames = new Set(attachedResources.map((resource) => resource.file_name));
+  const availableMaterials = materials.filter((material) => !attachedFileNames.has(material.filename));
+  const canGenerate = attachedResources.length > 0 || selectedMaterials.length > 0;
 
   const handleRegenerate = async () => {
     if (!taskId || !task) return;
@@ -577,7 +581,7 @@ function PlannerPageContent() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            UPLOAD + GENERATE PANEL  (shown if no schedule yet)
+            ATTACH + GENERATE PANEL  (shown if no schedule yet)
         ══════════════════════════════════════════════════════════════ */}
         {!schedule && (
           <div className="rounded-2xl border border-white/60 bg-white/60 p-6 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] backdrop-blur-xl space-y-6 eds-fade-up" style={{ animationDelay: "300ms" }}>
@@ -587,7 +591,7 @@ function PlannerPageContent() {
                 Generate AI Schedule
               </h3>
               <p className="text-sm font-medium text-slate-500">
-                Follow this flow: choose your task, upload material, then generate your study plan.
+                Follow this flow: create task, attach uploaded materials, then generate your study plan.
                 Materials are required before generating a plan.
               </p>
             </div>
@@ -606,8 +610,8 @@ function PlannerPageContent() {
                   <Upload size={40} className="text-slate-500" />
                 </div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Step 2</p>
-                <p className="mt-1 text-sm font-extrabold text-slate-800">Upload PDF or docs</p>
-                <p className="mt-1 text-xs font-medium text-slate-500">PDF, PPTX, DOCX supported.</p>
+                <p className="mt-1 text-sm font-extrabold text-slate-800">Attach materials</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">Choose from your uploaded study materials.</p>
               </div>
               <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
@@ -619,61 +623,94 @@ function PlannerPageContent() {
               </div>
             </div>
 
-            {/* Drop zone */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                dragging
-                  ? "border-blue-400 bg-blue-50/50"
-                  : "border-slate-300 hover:border-blue-300 hover:bg-white/60"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.pptx,.docx"
-                multiple
-                className="hidden"
-                onChange={(e) => addFiles(e.target.files)}
-              />
-              <Upload size={28} className="text-blue-500 mx-auto mb-3" />
-              <p className="text-sm font-extrabold text-slate-700">
-                Drop files here or <span className="text-blue-600">browse</span>
-              </p>
-              <p className="text-xs font-medium text-slate-400 mt-1">PDF · PPTX · DOCX · Max 5 files · 10MB each</p>
-            </div>
-
-            {/* File list */}
-            {files.length > 0 && (
-              <div className="space-y-2 mt-4">
+            {attachedResources.length > 0 && (
+              <div className="space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">
-                  {files.length} file{files.length > 1 ? "s" : ""} selected
+                  Already attached
                 </p>
-                {files.map((f) => (
+                {attachedResources.map((resource) => (
                   <div
-                    key={f.name}
-                    className="flex items-center gap-3 px-4 py-3 bg-white/60 backdrop-blur-md rounded-xl border border-blue-100 shadow-sm transition-all hover:shadow-md hover:border-blue-200"
+                    key={resource.id}
+                    className="flex items-center gap-3 px-4 py-3 bg-white/60 backdrop-blur-md rounded-xl border border-emerald-100 shadow-sm"
                   >
-                    <div className="p-2 bg-blue-50 rounded-lg shrink-0">
-                      <FileText size={16} className="text-blue-500" />
+                    <div className="p-2 bg-emerald-50 rounded-lg shrink-0">
+                      <FileText size={16} className="text-emerald-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-700 truncate">{f.name}</p>
-                      <p className="text-xs font-medium text-slate-400">
-                        {(f.size / 1024).toFixed(0)} KB
-                      </p>
+                      <p className="text-sm font-bold text-slate-700 truncate">{resource.file_name}</p>
+                      <p className="text-xs font-medium text-slate-400">Attached to this task</p>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); removeFile(f.name); }}
-                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
-                    >
-                      <X size={16} />
-                    </button>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      Ready
+                    </span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {materials.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
+                <Upload size={28} className="text-blue-500 mx-auto mb-3" />
+                <p className="text-sm font-extrabold text-slate-700">No uploaded materials yet</p>
+                <p className="text-xs font-medium text-slate-400 mt-1">
+                  Upload your PDFs, PPTX, or DOCX files first, then come back to generate this plan.
+                </p>
+                <button
+                  onClick={() => router.push("/materials")}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50 transition-colors"
+                >
+                  <ArrowRight size={15} />
+                  Go to Materials
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 mt-4">
+                <div className="flex items-center justify-between gap-3 pl-1">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    Available uploaded materials
+                  </p>
+                  <p className="text-xs font-semibold text-slate-400">
+                    {selectedMaterials.length} selected
+                  </p>
+                </div>
+
+                {availableMaterials.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm font-medium text-slate-500">
+                    All of your uploaded materials are already attached to this task.
+                  </div>
+                ) : (
+                  availableMaterials.map((material) => {
+                    const isSelected = selectedMaterialIds.has(material.id);
+                    return (
+                      <button
+                        key={material.id}
+                        onClick={() => toggleMaterialSelection(material.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left shadow-sm transition-all ${
+                          isSelected
+                            ? "bg-blue-50/80 border-blue-300 shadow-blue-100"
+                            : "bg-white/60 border-blue-100 hover:border-blue-200 hover:shadow-md"
+                        }`}
+                      >
+                        <div className={`flex h-5 w-5 items-center justify-center rounded-md border ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-500 text-white"
+                            : "border-slate-300 bg-white text-transparent"
+                        }`}>
+                          <CheckCircle2 size={13} />
+                        </div>
+                        <div className="p-2 bg-blue-50 rounded-lg shrink-0">
+                          <FileText size={16} className="text-blue-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-700 truncate">{material.filename}</p>
+                          <p className="text-xs font-medium text-slate-400">
+                            Added {formatDate(material.created_at)}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
 
@@ -688,17 +725,19 @@ function PlannerPageContent() {
             {/* Generate button */}
             <button
               onClick={handleGenerate}
-              disabled={!taskId || files.length === 0}
+              disabled={!taskId || !canGenerate}
               className="w-full py-4 text-white rounded-xl font-bold text-sm bg-gradient-to-r from-blue-600 to-indigo-600 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] transition-all hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none mt-6"
             >
-              <Brain size={20} className={files.length > 0 ? "animate-pulse" : ""} />
-              {files.length > 0
-                ? `Attach ${files.length} file${files.length > 1 ? "s" : ""} and Generate Plan`
+              <Brain size={20} className={canGenerate ? "animate-pulse" : ""} />
+              {selectedMaterials.length > 0
+                ? `Attach ${selectedMaterials.length} material${selectedMaterials.length > 1 ? "s" : ""} and Generate Plan`
+                : attachedResources.length > 0
+                ? "Generate Plan from Attached Materials"
                 : "Attach Materials to Generate Plan"}
             </button>
 
             <p className="text-xs font-semibold text-slate-400 text-center mt-4">
-              Required: upload at least one material to generate a task-aware study plan.
+              Required: attach at least one uploaded material to generate a task-aware study plan.
             </p>
           </div>
         )}

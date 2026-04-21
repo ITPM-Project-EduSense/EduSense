@@ -17,6 +17,9 @@ import {
   Sparkles,
   Brain,
   Activity,
+  Target,
+  Workflow,
+  MessageCircle,
 } from "lucide-react";
 
 type Task = {
@@ -144,6 +147,72 @@ export default function DashboardPage() {
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [tasks]);
 
+  const deadlineBuckets = useMemo(() => {
+    const activeTasks = tasks.filter((task) => task.status !== "completed");
+    const buckets = [
+      { label: "Today", count: 0, tone: "from-rose-500 to-pink-500" },
+      { label: "1-3 Days", count: 0, tone: "from-amber-500 to-orange-500" },
+      { label: "4-7 Days", count: 0, tone: "from-sky-500 to-cyan-500" },
+      { label: "Later", count: 0, tone: "from-indigo-500 to-violet-500" },
+    ];
+
+    for (const task of activeTasks) {
+      const days = daysUntil(task.deadline);
+      if (days <= 0) buckets[0].count += 1;
+      else if (days <= 3) buckets[1].count += 1;
+      else if (days <= 7) buckets[2].count += 1;
+      else buckets[3].count += 1;
+    }
+
+    const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
+    return buckets.map((bucket) => ({
+      ...bucket,
+      width: `${Math.max((bucket.count / max) * 100, bucket.count > 0 ? 18 : 8)}%`,
+    }));
+  }, [tasks]);
+
+  const productivityPulse = useMemo(() => {
+    const active = Math.max(1, stats.pending + stats.inProgress);
+    const momentum = Math.min(100, Math.round((stats.inProgress / active) * 100 + stats.completionRate * 0.35));
+    return momentum;
+  }, [stats]);
+
+  const flowSteps = useMemo(
+    () => [
+      {
+        title: "Create Task",
+        caption: `${stats.total} tracked tasks`,
+        icon: ListTodo,
+        tone: "from-blue-500 to-indigo-500",
+      },
+      {
+        title: "Attach Materials",
+        caption: `${subjectDistribution.length} active modules`,
+        icon: BookOpen,
+        tone: "from-cyan-500 to-sky-500",
+      },
+      {
+        title: "AI Schedule",
+        caption: `${priorityQueue.length} ready to plan`,
+        icon: Sparkles,
+        tone: "from-fuchsia-500 to-violet-500",
+      },
+      {
+        title: "PeerConnect",
+        caption: "Study with the right module circle",
+        icon: Workflow,
+        tone: "from-amber-500 to-orange-500",
+      },
+      {
+        title: "AI Coach",
+        caption: `${productivityPulse}% momentum`,
+        icon: MessageCircle,
+        tone: "from-emerald-500 to-teal-500",
+      },
+    ],
+    [priorityQueue.length, productivityPulse, stats.total, subjectDistribution.length]
+  );
+
   const openPlannerForTask = (taskId: string) => {
     router.push(`/planner?task_id=${taskId}`);
   };
@@ -189,7 +258,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ── Section: Quick Stats ── */}
+      {/* Task Overview */}
       <section>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1 rounded-full bg-gradient-to-b from-indigo-400 to-purple-600" />
@@ -205,37 +274,67 @@ export default function DashboardPage() {
               value: stats.total,
               icon: ListTodo,
               tone: "text-blue-600 bg-blue-50 border-blue-100",
+              accent: "from-blue-500 to-indigo-500",
+              meta: `${stats.pending} active in queue`,
             },
             {
               label: "Completed",
               value: stats.completed,
               icon: CheckCircle2,
               tone: "text-emerald-600 bg-emerald-50 border-emerald-100",
+              accent: "from-emerald-500 to-teal-500",
+              meta: `${stats.completionRate}% completion rate`,
             },
             {
               label: "In Progress",
               value: stats.inProgress,
               icon: Clock3,
               tone: "text-amber-600 bg-amber-50 border-amber-100",
+              accent: "from-amber-500 to-orange-500",
+              meta: `${productivityPulse}% momentum`,
             },
             {
               label: "Overdue",
               value: stats.overdue,
               icon: Flame,
               tone: "text-rose-600 bg-rose-50 border-rose-100",
+              accent: "from-rose-500 to-pink-500",
+              meta: stats.overdue > 0 ? "Needs attention today" : "All caught up",
             },
           ].map((card) => {
             const Icon = card.icon;
             return (
-              <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+              <article key={card.label} className="group relative overflow-hidden rounded-3xl border border-white/60 bg-white/75 p-5 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_-18px_rgba(59,130,246,0.35)]">
+                <div className={`pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${card.accent}`} />
+                <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-slate-100/70 blur-2xl transition-transform duration-300 group-hover:scale-110" />
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">{card.label}</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-900">{loading ? "--" : card.value}</p>
+                    <p className="text-sm font-bold text-slate-500">{card.label}</p>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{loading ? "--" : card.value}</p>
+                    <p className="mt-2 text-xs font-semibold text-slate-400">{card.meta}</p>
                   </div>
-                  <div className={`rounded-xl border p-2 ${card.tone}`}>
+                  <div className={`rounded-2xl border p-2.5 shadow-inner shadow-white/50 ${card.tone}`}>
                     <Icon size={18} />
                   </div>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${card.accent}`}
+                    style={{
+                      width: loading
+                        ? "22%"
+                        : `${Math.max(
+                            18,
+                            card.label === "Total Tasks"
+                              ? Math.min(100, stats.total * 8)
+                              : card.label === "Completed"
+                              ? stats.completionRate
+                              : card.label === "In Progress"
+                              ? Math.min(100, productivityPulse)
+                              : Math.min(100, stats.overdue * 22)
+                          )}%`,
+                    }}
+                  />
                 </div>
               </article>
             );
@@ -243,6 +342,92 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <section>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-5 w-1 rounded-full bg-gradient-to-b from-cyan-400 to-blue-600" />
+          <Workflow size={14} className="text-cyan-600" />
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+            Smart Flow
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <article className="eds-flow-stage rounded-3xl border border-white/60 bg-white/78 p-6 shadow-[0_14px_40px_-16px_rgba(15,23,42,0.22)] backdrop-blur-xl">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Journey Diagram</p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900">3D Study Workflow</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-500">
+                  The platform now flows from task setup into materials, AI planning, collaboration, and focused coaching.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 shadow-sm">
+                {flowSteps.length} connected stages
+              </div>
+            </div>
+
+            <div className="eds-flow-board relative overflow-hidden rounded-[28px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_28%),linear-gradient(135deg,#f8fbff_0%,#eef4ff_50%,#f8fbff_100%)] p-5 md:p-6">
+              <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(148,163,184,0.10)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.10)_1px,transparent_1px)] [background-size:32px_32px]" />
+              <div className="pointer-events-none absolute -right-16 top-8 h-40 w-40 rounded-full bg-cyan-200/40 blur-3xl" />
+              <div className="pointer-events-none absolute -left-10 bottom-0 h-36 w-36 rounded-full bg-indigo-200/40 blur-3xl" />
+
+              <div className="relative grid gap-4 md:grid-cols-5">
+                {flowSteps.map((step, index) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.title} className="relative">
+                      {index < flowSteps.length - 1 && (
+                        <div className="hidden md:block eds-flow-connector absolute left-[calc(100%-0.35rem)] top-1/2 z-0 h-[3px] w-[calc(100%+0.7rem)] -translate-y-1/2 rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-fuchsia-300" />
+                      )}
+                      <div className="eds-flow-node relative z-10 overflow-hidden rounded-[24px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_30px_-18px_rgba(30,64,175,0.45)] backdrop-blur-xl">
+                        <div className={`mb-4 inline-flex rounded-2xl bg-gradient-to-r ${step.tone} p-3 text-white shadow-lg`}>
+                          <Icon size={18} />
+                        </div>
+                        <p className="text-sm font-extrabold text-slate-900">{step.title}</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-500">{step.caption}</p>
+                        <div className={`mt-4 h-1.5 rounded-full bg-gradient-to-r ${step.tone}`} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-3xl border border-white/60 bg-white/78 p-6 shadow-[0_14px_40px_-16px_rgba(15,23,42,0.22)] backdrop-blur-xl">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Flow Pulse</p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900">Execution Signals</h2>
+              </div>
+              <Target size={18} className="text-indigo-500" />
+            </div>
+
+            <div className="space-y-4">
+              {deadlineBuckets.map((bucket) => (
+                <div key={bucket.label} className="rounded-2xl border border-slate-200/70 bg-gradient-to-r from-white to-slate-50/70 p-4">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="font-semibold text-slate-700">{bucket.label}</span>
+                    <span className="text-slate-400">{bucket.count} tasks</span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                    <div className={`h-full rounded-full bg-gradient-to-r ${bucket.tone}`} style={{ width: bucket.width }} />
+                  </div>
+                </div>
+              ))}
+
+              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">Momentum</p>
+                <p className="mt-2 text-3xl font-extrabold text-slate-900">{productivityPulse}%</p>
+                <p className="mt-1 text-sm text-slate-500">How strongly your current tasks are moving through the flow.</p>
+                <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white shadow-inner">
+                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-cyan-400" style={{ width: `${Math.max(productivityPulse, 12)}%` }} />
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
       {/* ── Section: Priority & Upcoming ── */}
       <section>
         <div className="mb-4 flex items-center gap-3">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageCircle, FileText, Brain, Sparkles, Upload } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { MessageCircle, FileText, Brain, Sparkles } from "lucide-react";
 
 import Ai from "@/components/ai-coach/AiChat";
 import PdfSummarizer from "@/components/ai-coach/PdfSummarizer";
@@ -13,9 +14,12 @@ import { UploadedPdf } from "@/components/ai-coach/types";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
 export default function AiPage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("chat");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadedPdfs, setUploadedPdfs] = useState<UploadedPdf[]>([]);
+  const subject = searchParams.get("subject");
+  const taskId = searchParams.get("task_id");
 
   // Fetch existing materials on mount so Summary/Quiz are populated after reload
   useEffect(() => {
@@ -55,6 +59,29 @@ export default function AiPage() {
 
   return (
     <div className="p-6">
+      {(subject || taskId) && (
+        <div className="mb-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-blue-50 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+              <Sparkles size={13} />
+              Productivity Flow
+            </span>
+            {subject && (
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                Module: {subject}
+              </span>
+            )}
+            {taskId && (
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                Task linked
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            Use the coach to break this task down, stay focused, and get help that matches your current module.
+          </p>
+        </div>
+      )}
 
       {/* 🔥 Styled Tabs */}
       <div className="flex justify-between items-center mb-6">

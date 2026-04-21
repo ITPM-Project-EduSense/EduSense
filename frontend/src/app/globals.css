@@ -320,4 +320,28 @@ body {
     transform: translateY(-1px);
     box-shadow: 0 10px 26px rgba(15, 23, 42, 0.26);
   }
+
+  .eds-flow-stage {
+    perspective: 1600px;
+  }
+
+  .eds-flow-board {
+    transform-style: preserve-3d;
+  }
+
+  .eds-flow-node {
+    transform-style: preserve-3d;
+    animation: floatCard 5.5s ease-in-out infinite;
+    transition: transform 220ms ease, box-shadow 220ms ease;
+  }
+
+  .eds-flow-node:hover {
+    transform: rotateX(8deg) rotateY(-10deg) translateY(-8px) translateZ(16px);
+    box-shadow: 0 28px 44px -24px rgba(37, 99, 235, 0.4);
+  }
+
+  .eds-flow-connector {
+    transform-origin: left center;
+    animation: shimmer 4.8s linear infinite;
+  }
 }
