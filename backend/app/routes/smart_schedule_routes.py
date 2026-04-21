@@ -12,6 +12,7 @@ from app.models.smart_scheduling import (
     StudySessionOut,
     TaskResource,
     TaskResourceCreate,
+    TaskResourceOut,
 )
 from app.models.task import Task
 from app.models.user_model import User
@@ -56,6 +57,17 @@ def _to_plan_out(plan: StudyPlan, sessions: List[StudySession]) -> StudyPlanOut:
     )
 
 
+def _to_resource_out(resource: TaskResource) -> TaskResourceOut:
+    return TaskResourceOut(
+        id=str(resource.id),
+        task_id=resource.task_id,
+        file_name=resource.file_name,
+        file_type=resource.file_type,
+        content_length=resource.content_length,
+        created_at=resource.created_at,
+    )
+
+
 @router.post(
     "/{task_id}/resources",
     response_model=dict,
@@ -70,6 +82,18 @@ async def attach_resource(
     """Step 2: Attach resources after task creation and before plan generation."""
     task = await _get_task_or_404(task_id, current_user)
 
+    existing_resource = await TaskResource.find_one(
+        TaskResource.task_id == str(task.id),
+        TaskResource.file_name == payload.file_name,
+        TaskResource.file_type == payload.file_type,
+    )
+    if existing_resource:
+        return {
+            "message": "Resource already attached",
+            "resource_id": str(existing_resource.id),
+            "task_id": str(task.id),
+        }
+
     resource = TaskResource(
         task_id=str(task.id),
         file_name=payload.file_name,
@@ -83,6 +107,20 @@ async def attach_resource(
         "resource_id": str(resource.id),
         "task_id": str(task.id),
     }
+
+
+@router.get(
+    "/{task_id}/resources",
+    response_model=List[TaskResourceOut],
+    summary="Get all study materials attached to a task",
+)
+async def get_resources(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    task = await _get_task_or_404(task_id, current_user)
+    resources = await TaskResource.find(TaskResource.task_id == str(task.id)).sort("-created_at").to_list()
+    return [_to_resource_out(resource) for resource in resources]
 
 
 @router.post(
