@@ -56,6 +56,15 @@ class TaskResourceCreate(BaseModel):
     content_length: float = Field(..., gt=0)
 
 
+class TaskResourceOut(BaseModel):
+    id: str
+    task_id: str
+    file_name: str
+    file_type: str
+    content_length: float
+    created_at: datetime
+
+
 class StudySessionOut(BaseModel):
     id: str
     session_type: str
