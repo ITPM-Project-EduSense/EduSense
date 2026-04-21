@@ -6,6 +6,7 @@ import { MessageCircle, FileText, Brain, Sparkles, Upload } from "lucide-react";
 import Ai from "@/components/ai-coach/AiChat";
 import PdfSummarizer from "@/components/ai-coach/PdfSummarizer";
 import SmartQuiz from "@/components/ai-coach/SmartQuiz";
+import SmartQuizV2 from "@/components/ai-coach/SmartQuizV2";
 import PdfUploaderModal from "@/components/ai-coach/PdfUploaderModal";
 import PdfViewer from "@/components/ai-coach/PdfViewer";
 import { UploadedPdf } from "@/components/ai-coach/types";
@@ -95,7 +96,7 @@ export default function AiPage() {
           <PdfSummarizer uploadedPdfs={uploadedPdfs} />
         )}
         {activeTab === "quiz" && (
-          <SmartQuiz uploadedPdfs={uploadedPdfs} />
+          <SmartQuizV2 uploadedPdfs={uploadedPdfs} />
         )}
         {activeTab === "pdf" && (
           <PdfViewer uploadedPdfs={uploadedPdfs} />

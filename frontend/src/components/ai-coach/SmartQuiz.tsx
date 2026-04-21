@@ -74,14 +74,14 @@ export default function SmartQuiz({ uploadedPdfs }: Props) {
     if (uploadedPdfs.length === 0) return;
     const exists = uploadedPdfs.some((pdf) => pdf.id === selectedDocId);
     if (!exists) {
-  // Reset all persisted state because the previously selected document is no longer available.
-  setSelectedDocId("");
-  setQuizData([]);
-  setSelectedAnswers({});
-  setShowResults(false);
-  setScore(0);
-  // Also clear persisted data from localStorage to avoid stale reads on next mount.
-  localStorage.removeItem(QUIZ_STATE_KEY);
+      // Reset all persisted state because the previously selected document is no longer available.
+      setSelectedDocId("");
+      setQuizData([]);
+      setSelectedAnswers({});
+      setShowResults(false);
+      setScore(0);
+      // Also clear persisted data from localStorage to avoid stale reads on next mount.
+      localStorage.removeItem(QUIZ_STATE_KEY);
     }
   }, [selectedDocId, uploadedPdfs]);
 
@@ -141,7 +141,7 @@ export default function SmartQuiz({ uploadedPdfs }: Props) {
   return (
     <div className="p-8 max-w-4xl mx-auto h-full overflow-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-        <div>
+        <div className="text-center mb-10">
           <h2 className="text-3xl font-bold flex items-center gap-3">
             <Brain className="text-indigo-600" /> Smart Quiz Generator
           </h2>
@@ -201,8 +201,7 @@ export default function SmartQuiz({ uploadedPdfs }: Props) {
                 {q.options.map((option, optIdx) => (
                   <label
                     key={optIdx}
-                    className={`block p-5 rounded-2xl border cursor-pointer transition-all ${
-                      showResults
+                    className={`block p-5 rounded-2xl border cursor-pointer transition-all ${showResults
                         ? optIdx === q.correct_index
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700" // Always show green for the right answer
                           : selectedAnswers[index] === optIdx
@@ -211,7 +210,7 @@ export default function SmartQuiz({ uploadedPdfs }: Props) {
                         : selectedAnswers[index] === optIdx
                           ? "border-indigo-500 bg-indigo-50" // Normal selection mode
                           : "border-gray-200 hover:border-gray-300"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
