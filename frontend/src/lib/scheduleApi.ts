@@ -61,6 +61,13 @@ export async function getUserMaterials(limit: number = 50) {
   return apiFetch(`/documents/materials?limit=${limit}`);
 }
 
+export interface UserMaterialListItem {
+  id: string;
+  filename: string;
+  created_at: string;
+  text_length: number;
+}
+
 export async function getMaterialById(materialId: string) {
   return apiFetch(`/documents/materials/${materialId}`);
 }
@@ -288,6 +295,15 @@ export interface TaskResourcePayload {
   content_length: number;
 }
 
+export interface TaskResourceResponse {
+  id: string;
+  task_id: string;
+  file_name: string;
+  file_type: string;
+  content_length: number;
+  created_at: string;
+}
+
 export interface GeneratedPlanSession {
   id: string;
   session_type: "reading" | "revision" | "research" | "implementation" | "review" | "practice";
@@ -328,4 +344,8 @@ export async function regenerateTaskPlan(
 
 export async function getTaskPlan(taskId: string): Promise<GeneratedPlanResponse> {
   return apiFetch(`/tasks/${taskId}/plan`);
+}
+
+export async function getTaskResources(taskId: string): Promise<TaskResourceResponse[]> {
+  return apiFetch(`/tasks/${taskId}/resources`);
 }
