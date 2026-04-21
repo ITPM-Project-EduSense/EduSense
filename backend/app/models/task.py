@@ -144,5 +144,7 @@ class TaskResponse(BaseModel):
     difficulty: str
     status: str
     priority_score: Optional[float]
+    workflow_stage: Optional[str] = None
+    next_action: Optional[str] = None
     created_at: datetime
     updated_at: datetime
