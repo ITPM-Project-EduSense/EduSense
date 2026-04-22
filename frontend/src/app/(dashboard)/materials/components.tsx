@@ -54,6 +54,7 @@ export function InviteMemberCard({
     const [errorMsg, setErrorMsg] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [loadingInvites, setLoadingInvites] = useState(true);
+    const [statusFilter, setStatusFilter] = useState("none");
 
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailsList = email.split(/[,\s;]+/).map(e => e.trim()).filter(e => e !== "");
@@ -183,23 +184,59 @@ export function InviteMemberCard({
             {successMsg && <p className="pc-invite-hint pc-invite-success">{successMsg}</p>}
 
             <div className="pc-invited-list">
-                <p className="pc-invited-list-label">Invite status</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                    <p className="pc-invited-list-label" style={{ marginBottom: 0 }}>Invite status</p>
+                    <select 
+                        className="pc-status-filter"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        style={{
+                            padding: "0.25rem 0.5rem",
+                            fontSize: "0.85rem",
+                            borderRadius: "0.375rem",
+                            border: "1px solid #E5E7EB",
+                            background: "#FFF",
+                            color: "#374151",
+                            outline: "none",
+                            cursor: "pointer"
+                        }}
+                    >
+                        <option value="none">Select status...</option>
+                        <option value="all">All Invites</option>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="declined">Declined</option>
+                    </select>
+                </div>
+
                 {loadingInvites ? (
                     <div className="pc-invite-empty">Loading invites...</div>
-                ) : invites.length === 0 ? (
-                    <div className="pc-invite-empty">No invites have been sent for this group yet.</div>
+                ) : statusFilter === "none" ? (
+                    <div className="pc-invite-empty">Select a status filter above to view invitations.</div>
                 ) : (
-                    invites.map((invite) => (
-                        <div key={invite.id} className="pc-invite-row">
-                            <div className="pc-invite-row-main">
-                                <div className="pc-invite-row-email">{invite.invitedEmail}</div>
-                                <div className="pc-invite-row-meta">
-                                    {invite.emailSent ? "Email sent" : "In-app invite saved"} · {invite.groupModule}
+                    (() => {
+                        const filtered = invites.filter(i => statusFilter === "all" || i.status === statusFilter);
+                        if (filtered.length === 0) {
+                            return (
+                                <div className="pc-invite-empty">
+                                    {statusFilter === "all" 
+                                        ? "No invites have been sent for this group yet." 
+                                        : `No ${statusFilter} invites found.`}
                                 </div>
+                            );
+                        }
+                        return filtered.map((invite) => (
+                            <div key={invite.id} className="pc-invite-row">
+                                <div className="pc-invite-row-main">
+                                    <div className="pc-invite-row-email">{invite.invitedEmail}</div>
+                                    <div className="pc-invite-row-meta">
+                                        {invite.emailSent ? "Email sent" : "In-app invite saved"} · {invite.groupModule}
+                                    </div>
+                                </div>
+                                <span className={`pc-invite-status pc-status-${invite.status}`}>{invite.status}</span>
                             </div>
-                            <span className={`pc-invite-status pc-status-${invite.status}`}>{invite.status}</span>
-                        </div>
-                    ))
+                        ));
+                    })()
                 )}
             </div>
         </div>
