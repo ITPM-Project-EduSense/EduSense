@@ -311,6 +311,32 @@ async def create_group_invite(
 
 
 @router.get(
+    "/{group_id}/members",
+    response_model=List[dict],
+    summary="List members of a study group",
+)
+async def list_group_members(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    group = await StudyGroup.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    if str(current_user.id) not in group.member_ids:
+        raise HTTPException(status_code=403, detail="Only group members can view the member list")
+
+    # Fetch all user documents for the member IDs
+    member_ids = [PydanticObjectId(uid) for uid in group.member_ids]
+    users = await User.find({"_id": {"$in": member_ids}}).to_list()
+    
+    return [
+        {"full_name": user.full_name, "email": str(user.email)} 
+        for user in users
+    ]
+
+
+@router.get(
     "/{group_id}/invites",
     response_model=List[StudyGroupInviteResponse],
     summary="List invites for a study group",

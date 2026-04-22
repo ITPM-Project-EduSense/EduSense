@@ -55,6 +55,8 @@ export function InviteMemberCard({
     const [submitting, setSubmitting] = useState(false);
     const [loadingInvites, setLoadingInvites] = useState(true);
     const [statusFilter, setStatusFilter] = useState("none");
+    const [roster, setRoster] = useState<{ full_name: string; email: string }[]>([]);
+    const [loadingRoster, setLoadingRoster] = useState(false);
 
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailsList = email.split(/[,\s;]+/).map(e => e.trim()).filter(e => e !== "");
@@ -97,6 +99,23 @@ export function InviteMemberCard({
             cancelled = true;
         };
     }, [group.id]);
+
+    useEffect(() => {
+        if (statusFilter !== "roster" || !group.isJoined) return;
+        
+        const loadRoster = async () => {
+            setLoadingRoster(true);
+            try {
+                const data = await apiFetch(`/groups/${group.id}/members`);
+                setRoster(Array.isArray(data) ? data : []);
+            } catch {
+                setRoster([]);
+            } finally {
+                setLoadingRoster(false);
+            }
+        };
+        void loadRoster();
+    }, [statusFilter, group.id, group.isJoined]);
 
     const handleInvite = async () => {
         if (!isValidEmail || hasAlreadyInvited) return;
@@ -185,7 +204,7 @@ export function InviteMemberCard({
 
             <div className="pc-invited-list">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                    <p className="pc-invited-list-label" style={{ marginBottom: 0 }}>Invite status</p>
+                    <p className="pc-invited-list-label" style={{ marginBottom: 0 }}>View Info</p>
                     <select 
                         className="pc-status-filter"
                         value={statusFilter}
@@ -202,6 +221,7 @@ export function InviteMemberCard({
                         }}
                     >
                         <option value="none">Select status...</option>
+                        <option value="roster">Group Roster</option>
                         <option value="all">All Invites</option>
                         <option value="pending">Pending</option>
                         <option value="accepted">Accepted</option>
@@ -209,10 +229,26 @@ export function InviteMemberCard({
                     </select>
                 </div>
 
-                {loadingInvites ? (
+                {statusFilter === "none" ? (
+                    <div className="pc-invite-empty">Select a filter above to view roaster or invitations.</div>
+                ) : statusFilter === "roster" ? (
+                    loadingRoster ? (
+                        <div className="pc-invite-empty">Loading roster...</div>
+                    ) : roster.length === 0 ? (
+                        <div className="pc-invite-empty">No members found.</div>
+                    ) : (
+                        roster.map((member, idx) => (
+                            <div key={idx} className="pc-invite-row">
+                                <div className="pc-invite-row-main">
+                                    <div className="pc-invite-row-email">{member.full_name}</div>
+                                    <div className="pc-invite-row-meta">{member.email}</div>
+                                </div>
+                                <span className="pc-invite-status pc-status-accepted">Active</span>
+                            </div>
+                        ))
+                    )
+                ) : loadingInvites ? (
                     <div className="pc-invite-empty">Loading invites...</div>
-                ) : statusFilter === "none" ? (
-                    <div className="pc-invite-empty">Select a status filter above to view invitations.</div>
                 ) : (
                     (() => {
                         const filtered = invites.filter(i => statusFilter === "all" || i.status === statusFilter);
