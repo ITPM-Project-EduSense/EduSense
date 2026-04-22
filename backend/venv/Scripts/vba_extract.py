@@ -1,4 +1,4 @@
-#!C:\Users\kanis\Documents\GitHub\EduSense\backend\venv\Scripts\python.exe
+#!c:\Users\palih\Desktop\New folder\EduSense\backend\venv\Scripts\python.exe
 
 ##############################################################################
 #

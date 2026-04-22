@@ -2,9 +2,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# load .env explicitly from project root (backend folder)
+# Load .env from backend folder
 env_path = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+    print(f"SUCCESS: Loaded .env from {env_path}")
+else:
+    print(f"WARNING: .env file not found at {env_path}, checking current directory...")
+    load_dotenv()  # Try loading from current working directory
 
 
 class Settings:

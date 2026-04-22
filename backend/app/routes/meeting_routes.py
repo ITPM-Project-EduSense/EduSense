@@ -1,7 +1,8 @@
 """
 Meeting Routes - API endpoints for managing video meetings in study groups
 """
-from typing import List, Literal, Optional
+from typing import List, Optional
+from typing_extensions import Literal
 from datetime import datetime
 import os
 from fastapi import APIRouter, HTTPException, Depends, status

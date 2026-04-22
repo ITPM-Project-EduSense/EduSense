@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Optional
+from typing_extensions import Literal
 
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field, field_validator

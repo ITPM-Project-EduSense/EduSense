@@ -9,6 +9,7 @@ import pypdfium2  # type: ignore
 from . import utils
 from ._typing import T_bbox, T_num, T_obj, T_obj_list, T_point, T_seq
 from .table import T_table_settings, Table, TableFinder, TableSettings
+from .utils.exceptions import MalformedPDFException
 
 if TYPE_CHECKING:  # pragma: nocover
     import pandas as pd
@@ -52,7 +53,11 @@ def get_page_image(
         stream.seek(0)
         src = stream
 
-    pdfium_doc = pypdfium2.PdfDocument(src, password=password)
+    try:
+        pdfium_doc = pypdfium2.PdfDocument(src, password=password)
+    except pypdfium2.PdfiumError as e:
+        raise MalformedPDFException(e)
+
     pdfium_page = pdfium_doc.get_page(page_ix)
 
     img: PIL.Image.Image = pdfium_page.render(
@@ -64,8 +69,6 @@ def get_page_image(
         # Non-modifiable arguments
         prefer_bgrx=True,
     ).to_pil()
-    # In theory `autoclose` when creating it should make it close...
-    # automatically.  In practice this does not seem to be the case.
     pdfium_doc.close()
 
     return img.convert("RGB")
@@ -334,12 +337,17 @@ class PageImage:
         return self
 
     def debug_tablefinder(
-        self, tf: Optional[Union[TableFinder, TableSettings, T_table_settings]] = None
+        self,
+        table_settings: Optional[
+            Union[TableFinder, TableSettings, T_table_settings]
+        ] = None,
     ) -> "PageImage":
-        if isinstance(tf, TableFinder):
-            finder = tf
-        elif tf is None or isinstance(tf, (TableSettings, dict)):
-            finder = self.page.debug_tablefinder(tf)
+        if isinstance(table_settings, TableFinder):
+            finder = table_settings
+        elif table_settings is None or isinstance(
+            table_settings, (TableSettings, dict)
+        ):
+            finder = self.page.debug_tablefinder(table_settings)
         else:
             raise ValueError(
                 "Argument must be instance of TableFinder"

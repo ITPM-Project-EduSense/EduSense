@@ -4,7 +4,8 @@ Uses placeholder integration for testing (no actual API calls in dev)
 """
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Any, Literal
+from typing import Dict, Optional, Any
+from typing_extensions import Literal
 import os
 import httpx
 

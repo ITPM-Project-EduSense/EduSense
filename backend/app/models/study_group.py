@@ -1,7 +1,8 @@
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
-from typing import List, Optional, Literal, Dict, Any
+from typing import List, Optional, Dict, Any
+from typing_extensions import Literal
 
 
 class MeetingRecord(BaseModel):

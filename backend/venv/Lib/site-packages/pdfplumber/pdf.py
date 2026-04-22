@@ -3,14 +3,13 @@ import logging
 import pathlib
 from io import BufferedReader, BytesIO
 from types import TracebackType
-from typing import Any, Dict, List, Literal, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, List, Literal, Optional, Tuple, Type, Union
 
 from pdfminer.layout import LAParams
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
-from pdfminer.psparser import PSException
 
 from ._typing import T_num, T_obj_list
 from .container import Container
@@ -18,6 +17,7 @@ from .page import Page
 from .repair import T_repair_setting, _repair
 from .structure import PDFStructTree, StructTreeMissing
 from .utils import resolve_and_decode
+from .utils.exceptions import PdfminerException
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ class PDF(Container):
         password: Optional[str] = None,
         strict_metadata: bool = False,
         unicode_norm: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        raise_unicode_errors: bool = True,
     ):
         self.stream = stream
         self.stream_is_external = stream_is_external
@@ -43,8 +44,12 @@ class PDF(Container):
         self.laparams = None if laparams is None else LAParams(**laparams)
         self.password = password
         self.unicode_norm = unicode_norm
+        self.raise_unicode_errors = raise_unicode_errors
 
-        self.doc = PDFDocument(PDFParser(stream), password=password or "")
+        try:
+            self.doc = PDFDocument(PDFParser(stream), password=password or "")
+        except Exception as e:
+            raise PdfminerException(e)
         self.rsrcmgr = PDFResourceManager()
         self.metadata = {}
 
@@ -76,6 +81,7 @@ class PDF(Container):
         repair: bool = False,
         gs_path: Optional[Union[str, pathlib.Path]] = None,
         repair_setting: T_repair_setting = "default",
+        raise_unicode_errors: bool = True,
     ) -> "PDF":
 
         stream: Union[BufferedReader, BytesIO]
@@ -107,9 +113,10 @@ class PDF(Container):
                 strict_metadata=strict_metadata,
                 unicode_norm=unicode_norm,
                 stream_is_external=stream_is_external,
+                raise_unicode_errors=raise_unicode_errors,
             )
 
-        except PSException:
+        except PdfminerException:
             if not stream_is_external:
                 stream.close()
             raise
@@ -142,7 +149,18 @@ class PDF(Container):
         doctop: T_num = 0
         pp = self.pages_to_parse
         self._pages: List[Page] = []
-        for i, page in enumerate(PDFPage.create_pages(self.doc)):
+
+        def iter_pages() -> Generator[PDFPage, None, None]:
+            gen = PDFPage.create_pages(self.doc)
+            while True:
+                try:
+                    yield next(gen)
+                except StopIteration:
+                    break
+                except Exception as e:
+                    raise PdfminerException(e)
+
+        for i, page in enumerate(iter_pages()):
             page_number = i + 1
             if pp is not None and page_number not in pp:
                 continue

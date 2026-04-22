@@ -587,7 +587,7 @@ class WordExtractor:
             (cx < ax)
             or (cx > bx + x)
             # Interline test
-            or (cy > ay + y)
+            or abs(cy - ay) > y
         )
 
     def iter_chars_to_words(

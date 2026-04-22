@@ -4,6 +4,8 @@ from pdfminer.pdftypes import PDFObjRef
 from pdfminer.psparser import PSLiteral
 from pdfminer.utils import PDFDocEncoding
 
+from .exceptions import MalformedPDFException
+
 
 def decode_text(s: Union[bytes, str]) -> str:
     """
@@ -72,7 +74,10 @@ def resolve_all(x: Any) -> Any:
         if get_dict_type(resolved) == "Page":
             return x
 
-        return resolve_all(resolved)
+        try:
+            return resolve_all(resolved)
+        except RecursionError as e:
+            raise MalformedPDFException(e)
     elif isinstance(x, (list, tuple)):
         return type(x)(resolve_all(v) for v in x)
     elif isinstance(x, dict):

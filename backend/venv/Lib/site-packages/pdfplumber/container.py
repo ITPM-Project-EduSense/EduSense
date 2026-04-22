@@ -170,7 +170,13 @@ class Container(object):
 
         cols = CSV_COLS_REQUIRED + list(filter(serializer.attr_filter, non_req_cols))
 
-        w = csv.DictWriter(stream, fieldnames=cols, extrasaction="ignore")
+        w = csv.DictWriter(
+            stream,
+            fieldnames=cols,
+            extrasaction="ignore",
+            quoting=csv.QUOTE_MINIMAL,
+            escapechar="\\",
+        )
         w.writeheader()
         w.writerows(serialized)
 

@@ -1,3 +1,4 @@
+import numbers
 import re
 from functools import lru_cache
 from typing import (
@@ -13,6 +14,7 @@ from typing import (
     Union,
 )
 from unicodedata import normalize as normalize_unicode
+from warnings import warn
 
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import (
@@ -34,6 +36,7 @@ from .container import Container
 from .structure import PDFStructTree, StructTreeMissing
 from .table import T_table_settings, Table, TableFinder, TableSettings
 from .utils import decode_text, resolve_all, resolve_and_decode
+from .utils.exceptions import MalformedPDFException, PdfminerException
 from .utils.text import TextMap
 
 lt_pat = re.compile(r"^LT")
@@ -64,6 +67,7 @@ ALL_ATTRS = set(
         "stroke",
         "stroking_color",
         "stream",
+        "name",
         "mcid",
         "tag",
     ]
@@ -94,29 +98,6 @@ def fix_fontname_bytes(fontname: bytes) -> str:
 
     suffix_new = CP936_FONTNAMES.get(suffix, str(suffix)[2:-1])
     return str(prefix)[2:-1] + suffix_new
-
-
-def separate_pattern(
-    color: Tuple[Any, ...]
-) -> Tuple[Optional[Tuple[Union[float, int], ...]], Optional[str]]:
-    if isinstance(color[-1], PSLiteral):
-        return (color[:-1] or None), decode_text(color[-1].name)
-    else:
-        return color, None
-
-
-def normalize_color(
-    color: Any,
-) -> Tuple[Optional[Tuple[Union[float, int], ...]], Optional[str]]:
-    if color is None:
-        return (None, None)
-    elif isinstance(color, tuple):
-        tuplefied = color
-    elif isinstance(color, list):
-        tuplefied = tuple(color)
-    else:
-        tuplefied = (color,)
-    return separate_pattern(tuplefied)
 
 
 def tuplify_list_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -182,6 +163,10 @@ def _normalize_box(box_raw: T_bbox, rotation: T_num = 0) -> T_bbox:
     # conventionally specified by their lower-left and upperright
     # corners, it is acceptable to specify any two diagonally opposite
     # corners."
+    if not all(isinstance(x, numbers.Number) for x in box_raw):  # pragma: nocover
+        raise MalformedPDFException(
+            f"Bounding box contains non-number coordinate(s): {box_raw}"
+        )
     x0, x1 = sorted((box_raw[0], box_raw[2]))
     y0, y1 = sorted((box_raw[1], box_raw[3]))
     if rotation in [90, 270]:
@@ -231,11 +216,14 @@ class Page(Container):
 
         self.mediabox = _invert_box(mb_raw, mb_height)
 
-        if "CropBox" in page_obj.attrs:
-            self.cropbox = _invert_box(
-                _normalize_box(get_attr("CropBox"), self.rotation), mb_height
-            )
-        else:
+        for box_name in ["CropBox", "TrimBox", "BleedBox", "ArtBox"]:
+            if box_name in page_obj.attrs:
+                box_normalized = _invert_box(
+                    _normalize_box(get_attr(box_name), self.rotation), mb_height
+                )
+                setattr(self, box_name.lower(), box_normalized)
+
+        if "CropBox" not in page_obj.attrs:
             self.cropbox = self.mediabox
 
         # Page.bbox defaults to self.mediabox, but can be altered by Page.crop(...)
@@ -274,7 +262,10 @@ class Page(Container):
             laparams=self.pdf.laparams,
         )
         interpreter = PDFPageInterpreter(self.pdf.rsrcmgr, device)
-        interpreter.process_page(self.page_obj)
+        try:
+            interpreter.process_page(self.page_obj)
+        except Exception as e:
+            raise PdfminerException(e)
         self._layout: LTPage = device.get_result()
         return self._layout
 
@@ -306,7 +297,15 @@ class Page(Container):
                     try:
                         extras[k] = v.decode("utf-8")
                     except UnicodeDecodeError:
-                        extras[k] = v.decode("utf-16")
+                        try:
+                            extras[k] = v.decode("utf-16")
+                        except UnicodeDecodeError:
+                            if self.pdf.raise_unicode_errors:
+                                raise
+                            warn(
+                                f"Could not decode {k} of annotation."
+                                f" {k} will be missing."
+                            )
 
             parsed = {
                 "page_number": self.page_number,
@@ -376,13 +375,6 @@ class Page(Container):
             if hasattr(obj, cs):
                 attr[cs] = resolve_and_decode(getattr(obj, cs).name)
 
-        for color_attr, pattern_attr in [
-            ("stroking_color", "stroking_pattern"),
-            ("non_stroking_color", "non_stroking_pattern"),
-        ]:
-            if color_attr in attr:
-                attr[color_attr], attr[pattern_attr] = normalize_color(attr[color_attr])
-
         if isinstance(obj, (LTChar, LTTextContainer)):
             text = obj.get_text()
             attr["text"] = (
@@ -396,15 +388,15 @@ class Page(Container):
             # directly expose .stroking_color and .non_stroking_color
             # for LTChar objects (unlike, e.g., LTRect objects).
             gs = obj.graphicstate
-            attr["stroking_color"], attr["stroking_pattern"] = normalize_color(
-                gs.scolor
+            attr["stroking_color"] = (
+                gs.scolor if isinstance(gs.scolor, tuple) else (gs.scolor,)
             )
-            attr["non_stroking_color"], attr["non_stroking_pattern"] = normalize_color(
-                gs.ncolor
+            attr["non_stroking_color"] = (
+                gs.ncolor if isinstance(gs.ncolor, tuple) else (gs.ncolor,)
             )
 
             # Handle (rare) byte-encoded fontnames
-            if isinstance(attr["fontname"], bytes):
+            if isinstance(attr["fontname"], bytes):  # pragma: nocover
                 attr["fontname"] = fix_fontname_bytes(attr["fontname"])
 
         elif isinstance(obj, (LTCurve,)):
