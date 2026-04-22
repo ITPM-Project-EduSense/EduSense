@@ -41,6 +41,8 @@ def group_to_response(group: StudyGroup, current_user: Optional[User] = None) ->
         is_joined=current_user_id in group.member_ids if current_user_id else False,
         can_edit=current_user_email == leader_email if current_user_email and leader_email else False,
         created_at=group.created_at,
+        active_meeting=group.active_meeting,
+        meeting_history=group.meeting_history,
     )
 
 

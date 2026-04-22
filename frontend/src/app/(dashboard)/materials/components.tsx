@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { API_BASE } from "./constants";
 import { apiInviteToInvite, apiMaterialToMaterial } from "./utils";
@@ -14,7 +15,7 @@ export function ActivityGraph({ activeGroupsCount }: { activeGroupsCount: number
         <div className="pc-activity-card">
             <div className="pc-activity-header">
                 <div className="pc-section-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
                     Live Peer Activity
                 </div>
                 <div className="pc-live-indicator">
@@ -62,8 +63,8 @@ export function InviteMemberCard({
     const emailsList = email.split(/[,\s;]+/).map(e => e.trim()).filter(e => e !== "");
     const isValidEmail = emailsList.length > 0 && emailsList.every(e => EMAIL_REGEX.test(e));
     const showError = touched && email.trim() !== "" && !isValidEmail;
-    
-    const alreadyInvitedEmails = emailsList.filter(e => 
+
+    const alreadyInvitedEmails = emailsList.filter(e =>
         invites.some(invite => invite.invitedEmail.toLowerCase() === e.toLowerCase() && invite.status === "pending")
     );
     const hasAlreadyInvited = alreadyInvitedEmails.length > 0;
@@ -102,7 +103,7 @@ export function InviteMemberCard({
 
     useEffect(() => {
         if (statusFilter !== "roster" || !group.isJoined) return;
-        
+
         const loadRoster = async () => {
             setLoadingRoster(true);
             try {
@@ -130,7 +131,7 @@ export function InviteMemberCard({
             });
             const createdInvites = Array.isArray(data) ? data.map(apiInviteToInvite) : [];
             setInvites((prev) => [...createdInvites, ...prev]);
-            
+
             if (createdInvites.length > 1) {
                 setSuccessMsg(`${createdInvites.length} invites sent successfully.`);
             } else if (createdInvites.length === 1) {
@@ -141,7 +142,7 @@ export function InviteMemberCard({
                         : `Invite saved for ${invite.invitedEmail}. Email delivery is not available right now.`
                 );
             }
-            
+
             setEmail("");
             setTouched(false);
             setTimeout(() => setSuccessMsg(""), 3500);
@@ -156,8 +157,8 @@ export function InviteMemberCard({
         <div className="pc-invite-card">
             <div className="pc-mat-card-title" style={{ background: moduleColor }}>
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M9.5 6A2.5 2.5 0 1 0 7 3.5 2.5 2.5 0 0 0 9.5 6zM2 11.5a5.5 5.5 0 0 1 7.45-5.14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M11 9.5v3M9.5 11h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    <path d="M9.5 6A2.5 2.5 0 1 0 7 3.5 2.5 2.5 0 0 0 9.5 6zM2 11.5a5.5 5.5 0 0 1 7.45-5.14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M11 9.5v3M9.5 11h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
                 Invite a Member
             </div>
@@ -194,7 +195,7 @@ export function InviteMemberCard({
             {showError && <p className="pc-invite-hint pc-invite-error">Please enter valid email addresses (e.g. name@domain.com)</p>}
             {hasAlreadyInvited && touched && (
                 <p className="pc-invite-hint pc-invite-error">
-                    {alreadyInvitedEmails.length === 1 
+                    {alreadyInvitedEmails.length === 1
                         ? `${alreadyInvitedEmails[0]} already has a pending invite.`
                         : "Some emails already have pending invites."}
                 </p>
@@ -205,7 +206,7 @@ export function InviteMemberCard({
             <div className="pc-invited-list">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                     <p className="pc-invited-list-label" style={{ marginBottom: 0 }}>View Info</p>
-                    <select 
+                    <select
                         className="pc-status-filter"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
@@ -255,8 +256,8 @@ export function InviteMemberCard({
                         if (filtered.length === 0) {
                             return (
                                 <div className="pc-invite-empty">
-                                    {statusFilter === "all" 
-                                        ? "No invites have been sent for this group yet." 
+                                    {statusFilter === "all"
+                                        ? "No invites have been sent for this group yet."
                                         : `No ${statusFilter} invites found.`}
                                 </div>
                             );
@@ -416,8 +417,8 @@ export function UploadMaterialCard({
         <div className="pc-upload-card">
             <div className="pc-mat-card-title" style={{ background: moduleColor }}>
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 9.5V2M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 10.5v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    <path d="M7 9.5V2M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 10.5v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
                 Upload Study Material
             </div>
@@ -431,9 +432,9 @@ export function UploadMaterialCard({
             >
                 <div className="pc-upload-dropzone-icon" style={{ color: moduleColor }}>
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                 </div>
                 <p className="pc-upload-dropzone-text">
@@ -453,6 +454,135 @@ export function UploadMaterialCard({
             </div>
             {errorMsg && <p className="pc-invite-hint pc-invite-error" style={{ marginTop: "0.55rem" }}>{errorMsg}</p>}
             {successMsg && <p className="pc-invite-hint pc-invite-success" style={{ marginTop: "0.55rem" }}>{successMsg}</p>}
+        </div>
+    );
+}
+
+export function ActiveMeetingsCard({ groups }: { groups: Group[] }) {
+    const joinedActive = groups.filter(g => g.isJoined && g.activeMeeting);
+
+    if (joinedActive.length === 0) return null;
+
+    return (
+        <div className="eds-fade-up" style={{ 
+            marginTop: "1.5rem",
+            marginBottom: "2rem",
+            borderRadius: "1.5rem",
+            overflow: "hidden",
+            border: "1px solid rgba(139, 92, 246, 0.2)",
+            background: "rgba(255, 255, 255, 0.7)",
+            backdropFilter: "blur(12px)",
+            boxShadow: "0 10px 30px -5px rgba(139, 92, 246, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5)"
+        }}>
+            <div style={{ 
+                padding: "1.25rem 1.5rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "linear-gradient(90deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%)",
+                borderBottom: "1px solid rgba(139, 92, 246, 0.1)"
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ position: "relative", display: "flex" }}>
+                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22C55E", position: "relative", zIndex: 2 }} />
+                        <div style={{ 
+                            width: "8px", height: "8px", borderRadius: "50%", background: "#22C55E", 
+                            position: "absolute", zIndex: 1, animation: "pc-pulse 2s infinite" 
+                        }} />
+                        <style>{`
+                            @keyframes pc-pulse {
+                                0% { transform: scale(1); opacity: 0.8; }
+                                100% { transform: scale(3.5); opacity: 0; }
+                            }
+                        `}</style>
+                    </div>
+                    <h2 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#5B21B6", letterSpacing: "0.02em", margin: 0 }}>
+                        LIVE STUDY SESSIONS
+                    </h2>
+                </div>
+                <div style={{ 
+                    fontSize: "0.75rem", fontWeight: 700, color: "#6D28D9", 
+                    background: "rgba(139, 92, 246, 0.12)", padding: "0.25rem 0.6rem", 
+                    borderRadius: "1rem", letterSpacing: "0.05em" 
+                }}>
+                    {joinedActive.length} {joinedActive.length === 1 ? "SESSION" : "SESSIONS"}
+                </div>
+            </div>
+
+            <div style={{ padding: "0.75rem" }}>
+                {joinedActive.map((g) => {
+                    const meeting = g.activeMeeting!;
+                    const startedTime = new Date(meeting.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    return (
+                        <div key={g.id} style={{ 
+                            padding: "1rem",
+                            margin: "0.5rem",
+                            borderRadius: "1.25rem",
+                            background: "white",
+                            border: "1px solid rgba(0,0,0,0.03)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "1rem",
+                            transition: "all 0.2s ease",
+                            boxShadow: "0 2px 8px -2px rgba(0,0,0,0.05)"
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flex: 1, minWidth: 0 }}>
+                                <div style={{ 
+                                    width: "48px", height: "48px", borderRadius: "1rem", 
+                                    background: `rgba(139, 92, 246, 0.08)`, border: `1px solid rgba(139, 92, 246, 0.15)`,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: "1.2rem", flexShrink: 0
+                                }}>
+                                    {meeting.platform === "zoom" ? "📹" : meeting.platform === "google" ? "Ⓜ️" : "👥"}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1E293B", margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                        {g.name}
+                                        <span style={{ 
+                                            fontSize: "0.65rem", fontWeight: 800, padding: "2px 6px", 
+                                            borderRadius: "4px", background: `rgba(139, 92, 246, 0.1)`, 
+                                            color: "#7C3AED", border: `1px solid rgba(139, 92, 246, 0.2)` 
+                                        }}>
+                                            {g.module}
+                                        </span>
+                                    </h3>
+                                    <p style={{ fontSize: "0.8rem", color: "#64748B", margin: "0.25rem 0 0 0", fontWeight: 500 }}>
+                                        Started at <span style={{ color: "#334155", fontWeight: 600 }}>{startedTime}</span> by <span style={{ color: "#334155", fontWeight: 600 }}>{meeting.started_by}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <a 
+                                href={meeting.meeting_link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ 
+                                    textDecoration: "none",
+                                    background: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)",
+                                    color: "white",
+                                    fontSize: "0.85rem",
+                                    fontWeight: 700,
+                                    padding: "0.75rem 1.25rem",
+                                    borderRadius: "1rem",
+                                    boxShadow: "0 4px 12px -2px rgba(139, 92, 246, 0.4)",
+                                    transition: "all 0.2s ease",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.5rem",
+                                    whiteSpace: "nowrap"
+                                }}
+                                onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px -4px rgba(139, 92, 246, 0.5)"; }}
+                                onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 12px -2px rgba(139, 92, 246, 0.4)"; }}
+                            >
+                                Join Session
+                                <ArrowRight size={14} />
+                            </a>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }

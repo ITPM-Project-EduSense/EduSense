@@ -119,10 +119,10 @@ export default function TasksPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(defaultForm);
-  
+
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   const [showCalendarView, setShowCalendarView] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -355,8 +355,8 @@ export default function TasksPage() {
                   {loading ? "--" : `${Math.round((stats.completed / (stats.total || 1)) * 100)}%`}
                 </p>
                 <div className="mt-3 h-1.5 w-full max-w-[124px] overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                  <div 
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" 
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000"
                     style={{ width: `${Math.round((stats.completed / (stats.total || 1)) * 100)}%` }}
                   />
                 </div>
@@ -380,7 +380,7 @@ export default function TasksPage() {
                   ).toFixed(1)}
                 </p>
                 <p className="mt-1 text-xs font-semibold text-amber-500">
-                  {tasks.length > 0 
+                  {tasks.length > 0
                     ? tasks.filter(t => t.difficulty === "hard").length > tasks.length / 2
                       ? "Challenging workload"
                       : "Balanced workload"
@@ -403,11 +403,11 @@ export default function TasksPage() {
                   {loading ? "--" : (
                     tasks.length > 0
                       ? Object.entries(
-                          tasks.reduce((acc, t) => ({
-                            ...acc,
-                            [t.subject]: (acc[t.subject as keyof typeof acc] || 0) + 1
-                          }), {} as Record<string, number>)
-                        ).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
+                        tasks.reduce((acc, t) => ({
+                          ...acc,
+                          [t.subject]: (acc[t.subject as keyof typeof acc] || 0) + 1
+                        }), {} as Record<string, number>)
+                      ).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
                       : "N/A"
                   )}
                 </p>
@@ -474,9 +474,9 @@ export default function TasksPage() {
 
                   // Empty cells for days before month starts
                   for (let i = 0; i < firstDay; i++) {
-                      days.push(
-                        <div key={`empty-${i}`} className="h-32 rounded-lg bg-slate-50" />
-                      );
+                    days.push(
+                      <div key={`empty-${i}`} className="h-32 rounded-lg bg-slate-50" />
+                    );
                   }
 
                   // Calendar days
@@ -488,47 +488,45 @@ export default function TasksPage() {
 
                     days.push(
                       <button
-                          key={day}
-                          onClick={() => navigateToAnalytics(date)}
-                          className={`h-32 rounded-lg border-2 transition-all duration-200 p-2 flex flex-col overflow-hidden hover:shadow-md cursor-pointer ${
-                          isToday
+                        key={day}
+                        onClick={() => navigateToAnalytics(date)}
+                        className={`h-32 rounded-lg border-2 transition-all duration-200 p-2 flex flex-col overflow-hidden hover:shadow-md cursor-pointer ${isToday
                             ? "border-blue-400 bg-blue-50"
                             : "border-slate-200 bg-white hover:border-blue-300"
-                        }`}
+                          }`}
                       >
-                          {/* Day number */}
-                          <span className={`text-xs font-bold mb-1 ${isToday ? "text-blue-600" : "text-slate-600"}`}>
+                        {/* Day number */}
+                        <span className={`text-xs font-bold mb-1 ${isToday ? "text-blue-600" : "text-slate-600"}`}>
                           {day}
                         </span>
 
-                          {/* Tasks list */}
-                          <div className="flex-1 overflow-y-auto space-y-1 text-left min-w-0">
-                            {tasksForDay.length > 0 ? (
-                              tasksForDay.slice(0, 3).map((task) => (
-                                <div
-                                  key={task.id}
-                                  className={`text-xs rounded px-1.5 py-0.5 truncate font-medium ${
-                                      (task.priority_score ?? 0) >= 7
-                                      ? "bg-rose-100 text-rose-700 border-l-2 border-rose-400"
-                                        : (task.priority_score ?? 0) >= 4
+                        {/* Tasks list */}
+                        <div className="flex-1 overflow-y-auto space-y-1 text-left min-w-0">
+                          {tasksForDay.length > 0 ? (
+                            tasksForDay.slice(0, 3).map((task) => (
+                              <div
+                                key={task.id}
+                                className={`text-xs rounded px-1.5 py-0.5 truncate font-medium ${(task.priority_score ?? 0) >= 7
+                                    ? "bg-rose-100 text-rose-700 border-l-2 border-rose-400"
+                                    : (task.priority_score ?? 0) >= 4
                                       ? "bg-amber-100 text-amber-700 border-l-2 border-amber-400"
                                       : "bg-emerald-100 text-emerald-700 border-l-2 border-emerald-400"
                                   }`}
-                                  title={`${task.title} (${task.subject})`}
-                                >
-                                  <div className="truncate">{task.title}</div>
-                                  <div className="text-xs opacity-75 truncate">{task.subject}</div>
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-xs text-slate-400">No tasks</span>
-                            )}
-                            {tasksForDay.length > 3 && (
-                              <div className="text-xs font-semibold text-slate-500 px-1.5">
-                                +{tasksForDay.length - 3} more
+                                title={`${task.title} (${task.subject})`}
+                              >
+                                <div className="truncate">{task.title}</div>
+                                <div className="text-xs opacity-75 truncate">{task.subject}</div>
                               </div>
-                            )}
-                          </div>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400">No tasks</span>
+                          )}
+                          {tasksForDay.length > 3 && (
+                            <div className="text-xs font-semibold text-slate-500 px-1.5">
+                              +{tasksForDay.length - 3} more
+                            </div>
+                          )}
+                        </div>
                       </button>
                     );
                   }
@@ -706,7 +704,7 @@ export default function TasksPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${statusClass(task.status)}`}>
-                        {task.status === "completed" ? <CheckCircle2 size={14}/> : task.status === "in_progress" ? <Activity size={14}/> : <Circle size={14}/>} 
+                        {task.status === "completed" ? <CheckCircle2 size={14} /> : task.status === "in_progress" ? <Activity size={14} /> : <Circle size={14} />}
                         {task.status.replace("_", " ")}
                       </span>
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${difficultyClass(task.difficulty)}`}>
@@ -726,9 +724,8 @@ export default function TasksPage() {
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Deadline</p>
                       <p className="mt-0.5 text-sm font-extrabold text-slate-700">{formatDate(task.deadline)}</p>
-                      <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ${
-                        remaining <= 1 ? "bg-rose-100 text-rose-700" : remaining <= 3 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                      }`}>
+                      <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ${remaining <= 1 ? "bg-rose-100 text-rose-700" : remaining <= 3 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                        }`}>
                         {remaining < 0 ? `Overdue ${Math.abs(remaining)}d` : `${remaining}d left`}
                       </p>
                     </div>

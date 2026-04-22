@@ -18,6 +18,9 @@ import {
   Brain,
   Activity,
 } from "lucide-react";
+import { ActiveMeetingsCard } from "../materials/components";
+import { apiGroupToGroup } from "../materials/utils";
+import type { Group } from "../materials/types";
 
 type Task = {
   id: string;
@@ -103,8 +106,24 @@ export default function DashboardPage() {
       }
     };
 
+    const loadDashboardGroups = async () => {
+      try {
+        setLoadingGroups(true);
+        const data = await apiFetch("/groups/");
+        setGroups(Array.isArray(data) ? data.map(apiGroupToGroup) : []);
+      } catch {
+        setGroups([]);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
     load();
+    loadDashboardGroups();
   }, []);
+
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -188,6 +207,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {!loadingGroups && <ActiveMeetingsCard groups={groups} />}
 
       {/* ── Section: Quick Stats ── */}
       <section>
