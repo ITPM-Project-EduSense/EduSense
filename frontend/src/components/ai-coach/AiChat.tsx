@@ -1,27 +1,27 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  MessageSquare,
-  Paperclip,
-  Send,
-  PanelRightClose,
-  PanelRightOpen,
+  Bot,
   FileText,
   Loader2,
-  Bot,
-  User,
+  MessageSquare,
+  PanelRightClose,
+  PanelRightOpen,
+  Paperclip,
   PlusCircle,
+  Send,
   Trash2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
+import { AnimatePresence, motion } from "framer-motion";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+
 import { apiFetch } from "@/lib/api";
 import {
   calculateAcademicRisk,
-  type RiskTask,
   type BurnoutLevel,
+  type RiskTask,
 } from "@/lib/academicRiskEngine";
 import {
   calculateDeadlineRisk,
@@ -31,8 +31,8 @@ import { calculateBurnout, type BurnoutTask } from "@/lib/burnoutEngine";
 import {
   calculateSubjectGpa,
   calculateWeightedGpa,
-  type SubjectMarks,
   type GpaPredictionResult,
+  type SubjectMarks,
 } from "@/lib/gpaEngine";
 
 interface ChatMessage {
@@ -75,11 +75,37 @@ interface StudentProfilePayload {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
-const normalizeToPercent = (
-  value: number,
-  min: number,
-  max: number,
-): number => {
+const starterPrompts = [
+  "Summarize this lecture in simple bullet points.",
+  "Create a quick revision plan for my next exam.",
+  "Ask me 5 quiz questions from my uploaded notes.",
+  "Explain this topic as if I am a beginner.",
+];
+
+const markdownComponents: Components = {
+  code: ({ className, children, ...props }) => {
+    const isInline =
+      typeof className === "string" ? !className.includes("language-") : true;
+
+    return isInline ? (
+      <code
+        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-sm"
+        {...props}
+      >
+        {children}
+      </code>
+    ) : (
+      <code
+        className="block overflow-x-auto rounded-2xl bg-slate-950 p-4 font-mono text-sm text-slate-100"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+};
+
+const normalizeToPercent = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) return 0;
   if (max <= min) return 0;
   const pct = ((value - min) / (max - min)) * 100;
@@ -92,49 +118,27 @@ const mapRiskToStudentLevel = (compositeRisk: number): StudentLevel => {
   return "advanced";
 };
 
+function formatSessionTime(timestamp: number) {
+  return new Date(timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function AiChat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load sessions from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("edu_coach_sessions");
-    if (stored) {
-      try {
-        const parsed: ChatSession[] = JSON.parse(stored);
-        setSessions(parsed);
-        if (parsed.length > 0) {
-          setCurrentSessionId(parsed[0].id);
-        } else {
-          createNewSession();
-        }
-      } catch (e) {
-        createNewSession();
-      }
-    } else {
-      createNewSession();
-    }
-  }, []);
-
-  // Save to localStorage
-  useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem("edu_coach_sessions", JSON.stringify(sessions));
-    }
-  }, [sessions]);
-
-  // Auto scroll to bottom
-  const currentSession = sessions.find((s) => s.id === currentSessionId);
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [currentSession?.messages, uploading, loading]);
+  const hasInitializedScrollRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
 
   const createNewSession = () => {
     const newSession: ChatSession = {
@@ -143,17 +147,74 @@ export default function AiChat() {
       messages: [],
       updatedAt: Date.now(),
     };
+
     setSessions((prev) => [newSession, ...prev]);
     setCurrentSessionId(newSession.id);
   };
 
+  useEffect(() => {
+    const stored = localStorage.getItem("edu_coach_sessions");
+    if (!stored) {
+      createNewSession();
+      return;
+    }
+
+    try {
+      const parsed: ChatSession[] = JSON.parse(stored);
+      if (parsed.length === 0) {
+        createNewSession();
+        return;
+      }
+      setSessions(parsed);
+      setCurrentSessionId(parsed[0].id);
+    } catch {
+      createNewSession();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sessions.length > 0) {
+      localStorage.setItem("edu_coach_sessions", JSON.stringify(sessions));
+    }
+  }, [sessions]);
+
+  const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
+
+  useEffect(() => {
+    if (!currentSessionId && sessions.length > 0) {
+      setCurrentSessionId(sessions[0].id);
+    }
+  }, [currentSessionId, sessions]);
+
+  useEffect(() => {
+    const messageCount = currentSession?.messages.length ?? 0;
+
+    if (!hasInitializedScrollRef.current) {
+      hasInitializedScrollRef.current = true;
+      previousMessageCountRef.current = messageCount;
+      return;
+    }
+
+    const shouldScroll =
+      messageCount > previousMessageCountRef.current || loading || uploading;
+
+    previousMessageCountRef.current = messageCount;
+
+    if (shouldScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [currentSession?.messages.length, uploading, loading]);
+
   const deleteSession = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    if (currentSessionId === id) {
-      const remaining = sessions.filter((s) => s.id !== id);
-      setCurrentSessionId(remaining.length > 0 ? remaining[0].id : null);
-    }
+
+    setSessions((prev) => {
+      const remaining = prev.filter((session) => session.id !== id);
+      if (currentSessionId === id) {
+        setCurrentSessionId(remaining[0]?.id ?? null);
+      }
+      return remaining;
+    });
   };
 
   const buildStudentProfile = async (): Promise<StudentProfilePayload> => {
@@ -184,7 +245,7 @@ export default function AiChat() {
       burnoutScore = burnout.score;
       burnoutLevel = burnout.level;
     } catch {
-      // Keep safe defaults so chat still works even when analytics fetch fails.
+      // Keep safe defaults if analytics data is unavailable.
     }
 
     let predictedGpa = 0;
@@ -205,7 +266,7 @@ export default function AiChat() {
       gpaSubjectCount = weightedGpa.subjectCount;
       gpaHasValidData = weightedGpa.hasValidData;
     } catch {
-      // Keep GPA defaults if local storage data is missing or malformed.
+      // Keep GPA defaults if local storage is missing or malformed.
     }
 
     const gpaRisk = gpaHasValidData
@@ -255,21 +316,19 @@ export default function AiChat() {
     };
 
     setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id === currentSessionId) {
-          const updatedMessages = [...s.messages, newMessage];
-          return {
-            ...s,
-            messages: updatedMessages,
-            title:
-              s.messages.length === 0
-                ? userMessageText.substring(0, 40) + "..."
-                : s.title,
-            updatedAt: Date.now(),
-          };
-        }
-        return s;
-      }),
+      prev.map((session) =>
+        session.id === currentSessionId
+          ? {
+              ...session,
+              messages: [...session.messages, newMessage],
+              title:
+                session.messages.length === 0
+                  ? `${userMessageText.substring(0, 42)}${userMessageText.length > 42 ? "..." : ""}`
+                  : session.title,
+              updatedAt: Date.now(),
+            }
+          : session,
+      ),
     );
 
     try {
@@ -293,12 +352,12 @@ export default function AiChat() {
       const replyText = data.reply || "Sorry, I couldn't generate a response.";
 
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
+        prev.map((session) =>
+          session.id === currentSessionId
             ? {
-                ...s,
+                ...session,
                 messages: [
-                  ...s.messages,
+                  ...session.messages,
                   {
                     id: Date.now().toString(),
                     sender: "ai",
@@ -308,26 +367,27 @@ export default function AiChat() {
                 ],
                 updatedAt: Date.now(),
               }
-            : s,
+            : session,
         ),
       );
-    } catch (error: any) {
+    } catch {
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
+        prev.map((session) =>
+          session.id === currentSessionId
             ? {
-                ...s,
+                ...session,
                 messages: [
-                  ...s.messages,
+                  ...session.messages,
                   {
                     id: Date.now().toString(),
                     sender: "ai",
-                    text: `⚠️ **Error:** Unable to connect to AI Coach. Please try again.`,
+                    text: "Warning: Unable to connect to AI Coach. Please try again.",
                     timestamp: Date.now(),
                   },
                 ],
+                updatedAt: Date.now(),
               }
-            : s,
+            : session,
         ),
       );
     } finally {
@@ -360,25 +420,28 @@ export default function AiChat() {
       const data = await res.json();
 
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
+        prev.map((session) =>
+          session.id === currentSessionId
             ? {
-                ...s,
+                ...session,
                 messages: [
-                  ...s.messages,
+                  ...session.messages,
                   {
                     id: Date.now().toString(),
                     sender: "ai",
-                    text: `✅ **File Processed Successfully!**\n\nI have analyzed **${file.name}** and extracted ${data.concepts_extracted || 0} key learning concepts.\n\nYou can now ask me questions about this material. I'll guide you step by step using the content from your PDF.`,
+                    text: `File processed successfully.\n\nI analyzed **${file.name}** and extracted **${data.concepts_extracted || 0}** key learning concepts. You can now ask focused questions based on this material.`,
                     timestamp: Date.now(),
                   },
                 ],
+                updatedAt: Date.now(),
               }
-            : s,
+            : session,
         ),
       );
-    } catch (error: any) {
-      alert(`Upload failed: ${error.message}`);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Upload failed unexpectedly.";
+      alert(`Upload failed: ${message}`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -386,325 +449,342 @@ export default function AiChat() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-180px)] overflow-hidden bg-transparent text-slate-800 relative font-sans">
-      {/* Main Chat Area */}
-      <div className="flex flex-col flex-1 transition-all duration-300">
-        {/* Header */}
-        <header className="h-16 border-b border-slate-200/50 flex items-center justify-between px-6 bg-white/40 backdrop-blur-xl z-20 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 shadow-sm border border-white/60">
-              <Bot size={22} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">
-                EduSense AI Coach
-              </h1>
-              <p className="text-xs text-indigo-500 font-medium">
-                Your Personal Academic Tutor
-              </p>
-            </div>
-          </div>
+    <div className="relative flex h-[calc(100vh-250px)] min-h-[680px] overflow-hidden rounded-[20px] bg-transparent font-[family-name:var(--font-poppins)] text-slate-800">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,_rgba(99,102,241,0.08),_transparent_24%),radial-gradient(circle_at_50%_100%,_rgba(34,211,238,0.08),_transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.52),rgba(248,250,252,0.76))]" />
 
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
-            title="Toggle chat history"
-          >
-            {isSidebarOpen ? (
-              <PanelRightClose size={22} />
-            ) : (
-              <PanelRightOpen size={22} />
-            )}
-          </button>
-        </header>
-
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-transparent relative z-10">
-          {!currentSession || currentSession.messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-75 px-4">
-              <div className="bg-white/60 backdrop-blur-sm p-8 rounded-3xl mb-6 border border-white shadow-[0_8px_30px_-4px_rgba(15,23,42,0.04)] eds-fade-up">
-                <FileText
-                  size={64}
-                  className="text-indigo-400 mx-auto"
-                  strokeWidth={1.2}
-                />
+      <div className="relative flex min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="border-b border-slate-200/50 bg-white/30 px-4 py-2.5 backdrop-blur-xl md:px-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#312e81,#4f46e5)] text-white shadow-[0_14px_28px_-18px_rgba(79,70,229,0.45)]">
+                  <Bot size={17} />
+                </div>
+                <div>
+                  <h1 className="text-[15px] font-bold tracking-tight text-slate-900">
+                    AI Assistant
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    Calm, focused study help
+                  </p>
+                </div>
               </div>
-              <h2 className="text-3xl font-semibold mb-3 text-gray-700">
-                Ready to Learn?
-              </h2>
-              <p className="max-w-md text-gray-500 text-lg leading-relaxed">
-                Upload your lecture PDF using the paperclip icon below.
-                <br />
-                I'll extract the concepts and guide you through the material
-                step by step.
-              </p>
-            </div>
-          ) : (
-            currentSession.messages.map((msg) => (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={msg.id}
-                className={`flex gap-4 ${msg.sender === "user" ? "justify-end" : "justify-start"} max-w-4xl mx-auto`}
-              >
-                <div
-                  className={`w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center mt-1 ${
-                    msg.sender === "ai"
-                      ? "bg-indigo-100 text-indigo-600"
-                      : "bg-gray-800 text-white"
-                  }`}
+
+              <div className="flex items-center gap-2">
+                <div className="hidden rounded-full border border-slate-200 bg-white/88 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm sm:block">
+                  {sessions.length} saved sessions
+                </div>
+                <button
+                  onClick={() => setIsSidebarOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/88 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-white"
+                  title="Toggle chat history"
                 >
-                  {msg.sender === "ai" ? <Bot size={20} /> : <User size={20} />}
+                  {isSidebarOpen ? (
+                    <PanelRightClose size={16} />
+                  ) : (
+                    <PanelRightOpen size={16} />
+                  )}
+                  History
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-5">
+            {!currentSession || currentSession.messages.length === 0 ? (
+              <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-2 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-[linear-gradient(135deg,#312e81,#06b6d4)] text-white shadow-[0_18px_36px_-22px_rgba(79,70,229,0.85)]">
+                  <FileText size={26} />
+                </div>
+                <h2 className="mt-6 text-[2rem] font-extrabold tracking-tight text-slate-900">
+                  Hi, can I help you with anything?
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-slate-500">
+                  Ask study questions, summarize lecture notes, create quiz
+                  practice, or upload material to get more grounded answers.
+                </p>
+
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Paperclip size={15} />
+                    Upload Material
+                  </button>
+                  <button
+                    onClick={createNewSession}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <PlusCircle size={15} />
+                    New Session
+                  </button>
                 </div>
 
-                <div
-                  className={`p-5 rounded-3xl max-w-[80%] text-[15.2px] leading-relaxed ${
-                    msg.sender === "user"
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md border border-blue-500/20"
-                      : "bg-white border border-gray-200 shadow-sm text-gray-700 rounded-tl-none"
-                  }`}
-                >
-                  {msg.sender === "user" ? (
-                    <p className="whitespace-pre-wrap">{msg.text}</p>
-                  ) : (
-                    <div className="prose prose-indigo prose-base max-w-none">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: (props) => (
-                            <h1
-                              className="text-2xl font-bold mt-6 mb-4 text-gray-800"
-                              {...props}
-                            />
-                          ),
-                          h2: (props) => (
-                            <h2
-                              className="text-xl font-semibold mt-5 mb-3 text-indigo-700"
-                              {...props}
-                            />
-                          ),
-                          h3: (props) => (
-                            <h3
-                              className="text-lg font-medium mt-4 mb-2 text-gray-700"
-                              {...props}
-                            />
-                          ),
-                          strong: (props) => (
-                            <strong
-                              className="font-semibold text-indigo-700"
-                              {...props}
-                            />
-                          ),
-                          ul: (props) => (
-                            <ul
-                              className="list-disc pl-6 my-4 space-y-2"
-                              {...props}
-                            />
-                          ),
-                          ol: (props) => (
-                            <ol
-                              className="list-decimal pl-6 my-4 space-y-2"
-                              {...props}
-                            />
-                          ),
-                          li: (props) => (
-                            <li
-                              className="text-gray-700 leading-relaxed"
-                              {...props}
-                            />
-                          ),
-                          p: (props) => (
-                            <p
-                              className="my-3 leading-relaxed text-gray-700"
-                              {...props}
-                            />
-                          ),
-                          blockquote: (props) => (
-                            <blockquote
-                              className="border-l-4 border-indigo-300 pl-4 italic my-4 text-gray-600"
-                              {...props}
-                            />
-                          ),
-                          code: ({ inline, ...props }: any) =>
-                            inline ? (
-                              <code
-                                className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-sm"
-                                {...props}
-                              />
-                            ) : (
-                              <code
-                                className="block bg-gray-900 text-gray-100 p-4 rounded-2xl my-4 overflow-x-auto font-mono text-sm"
-                                {...props}
-                              />
-                            ),
-                        }}
-                      >
-                        {msg.text}
-                      </ReactMarkdown>
+                <div className="mt-8 grid w-full gap-2 sm:grid-cols-2">
+                  {starterPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => setInputValue(prompt)}
+                      className="rounded-[18px] border border-slate-200/90 bg-white/85 px-4 py-3 text-left text-sm font-medium text-slate-600 transition-all hover:-translate-y-0.5 hover:border-cyan-200 hover:bg-white"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto max-w-3xl">
+                <div className="rounded-[22px] border border-white/70 bg-white/35 px-3 py-4 shadow-[0_18px_36px_-34px_rgba(15,23,42,0.18)] backdrop-blur-sm md:px-4">
+                  <div className="flex flex-col gap-3">
+                {currentSession.messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex w-full ${
+                      msg.sender === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`${
+                        msg.sender === "user" ? "max-w-[54%] min-w-[180px]" : "max-w-[82%]"
+                      } ${
+                        msg.sender === "user"
+                          ? "rounded-[20px] rounded-tr-[8px] border border-indigo-500/10 bg-[linear-gradient(135deg,#4f7df5,#4f46e5)] px-4 py-3 text-white shadow-[0_16px_32px_-24px_rgba(79,70,229,0.45)]"
+                          : "rounded-[20px] rounded-tl-[8px] border border-slate-200/80 bg-white/96 px-4 py-3.5 text-slate-700 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+                      }`}
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                            msg.sender === "user"
+                              ? "text-blue-100/95"
+                              : "text-indigo-600"
+                          }`}
+                        >
+                          {msg.sender === "user" ? "You" : "EduSense AI"}
+                        </span>
+                        <span
+                          className={`text-[11px] ${
+                            msg.sender === "user"
+                              ? "text-blue-200/75"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {formatSessionTime(msg.timestamp)}
+                        </span>
+                      </div>
+
+                      {msg.sender === "user" ? (
+                        <p className="whitespace-pre-wrap text-[15px] font-medium leading-7">
+                          {msg.text}
+                        </p>
+                      ) : (
+                        <div className="prose prose-slate max-w-none prose-p:my-2 prose-p:leading-7 prose-headings:mb-3 prose-headings:text-slate-900 prose-strong:text-indigo-700 prose-li:my-1 prose-blockquote:border-indigo-300 prose-blockquote:text-slate-500">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={markdownComponents}
+                          >
+                            {msg.text}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+
+                {uploading && (
+                  <div className="flex w-full justify-start">
+                    <div className="max-w-[82%] rounded-[20px] rounded-tl-[8px] border border-slate-200/80 bg-white/96 px-4 py-3 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <Loader2 className="animate-spin text-indigo-500" size={20} />
+                        <span className="text-sm font-medium text-slate-600">
+                          Processing PDF and extracting concepts...
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="flex w-full justify-start">
+                    <div className="max-w-[82%] rounded-[20px] rounded-tl-[8px] border border-slate-200/80 bg-white/96 px-4 py-3 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-slate-600">
+                          AI Coach is thinking
+                        </span>
+                        <div className="flex gap-1">
+                          <span
+                            className="h-2 w-2 animate-bounce rounded-full bg-indigo-400"
+                            style={{ animationDelay: "0ms" }}
+                          />
+                          <span
+                            className="h-2 w-2 animate-bounce rounded-full bg-indigo-400"
+                            style={{ animationDelay: "150ms" }}
+                          />
+                          <span
+                            className="h-2 w-2 animate-bounce rounded-full bg-indigo-400"
+                            style={{ animationDelay: "300ms" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} className="h-2" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-200/50 bg-white/38 px-4 py-3 backdrop-blur-xl md:px-5">
+            <div className="mx-auto max-w-3xl">
+              <div className="rounded-[22px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.98))] p-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.14)]">
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.pptx"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                />
+
+                <div className="flex items-end gap-2.5">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={loading || uploading}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-slate-200 bg-white text-slate-500 transition hover:-translate-y-0.5 hover:border-cyan-200 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Upload study material"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+
+                  <div className="min-w-0 flex-1 rounded-[18px] border border-slate-200 bg-white px-4 py-2.5 focus-within:border-cyan-200 focus-within:ring-2 focus-within:ring-cyan-100">
+                    <textarea
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Ask anything about your material, revision plan, or difficult topic..."
+                      className="min-h-[52px] w-full resize-none bg-transparent py-1 text-[15px] leading-7 text-slate-700 outline-none placeholder:text-slate-400"
+                      rows={1}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!inputValue.trim() || loading || uploading}
+                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-[18px] px-4 text-sm font-semibold transition-all ${
+                      inputValue.trim()
+                        ? "bg-slate-950 text-white hover:-translate-y-0.5 hover:bg-slate-900"
+                        : "cursor-not-allowed bg-slate-200 text-slate-400"
+                    }`}
+                  >
+                    <Send size={18} />
+                    Send
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1">
+                  <p className="text-xs text-slate-400">
+                    Press Enter to send. Shift + Enter adds a new line.
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    AI Coach uses semantic search from uploaded materials.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              className="hidden shrink-0 border-l border-slate-200/70 bg-white/60 backdrop-blur-xl lg:flex"
+            >
+              <div className="flex w-80 flex-col">
+                <div className="border-b border-slate-200/70 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                        Sessions
+                      </p>
+                      <h3 className="mt-1 flex items-center gap-2 text-sm font-bold text-slate-800">
+                        <MessageSquare size={16} className="text-indigo-500" />
+                        Previous Conversations
+                      </h3>
+                    </div>
+                    <button
+                      onClick={createNewSession}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:border-indigo-200 hover:bg-indigo-50"
+                      title="New Chat"
+                    >
+                      <PlusCircle size={16} />
+                      New
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3">
+                  <div className="space-y-2">
+                    {sessions.map((session) => {
+                      const isActive = currentSessionId === session.id;
+                      return (
+                        <div
+                          key={session.id}
+                          onClick={() => setCurrentSessionId(session.id)}
+                          className={`group cursor-pointer rounded-[22px] border p-4 transition-all ${
+                            isActive
+                              ? "border-cyan-200 bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(236,254,255,0.96))] shadow-[0_16px_34px_-24px_rgba(6,182,212,0.6)]"
+                              : "border-transparent bg-white/78 hover:border-slate-200 hover:bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-slate-800">
+                                {session.title || "Untitled Session"}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-400">
+                                {session.messages.length} messages
+                              </p>
+                              <p className="mt-2 text-xs text-slate-500">
+                                {formatSessionTime(session.updatedAt)}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => deleteSession(e, session.id)}
+                              className="rounded-lg p-1.5 text-slate-400 opacity-0 transition group-hover:opacity-100 hover:bg-white hover:text-rose-500"
+                              aria-label="Delete session"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {sessions.length === 0 && (
+                    <div className="mt-12 rounded-[22px] border border-dashed border-slate-200 bg-white/70 p-5 text-center text-sm text-slate-400">
+                      No previous chats yet.
                     </div>
                   )}
                 </div>
-              </motion.div>
-            ))
+              </div>
+            </motion.aside>
           )}
-
-          {/* Upload & Loading Indicators */}
-          {uploading && (
-            <div className="flex gap-4 max-w-4xl mx-auto">
-              <div className="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <Bot size={20} />
-              </div>
-              <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm flex items-center gap-3">
-                <Loader2 className="animate-spin text-indigo-500" size={22} />
-                <span className="text-gray-600">
-                  Processing PDF and extracting concepts...
-                </span>
-              </div>
-            </div>
-          )}
-
-          {loading && (
-            <div className="flex gap-4 max-w-4xl mx-auto">
-              <div className="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <Bot size={20} />
-              </div>
-              <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-600">AI Coach is thinking</span>
-                  <div className="flex space-x-1">
-                    <span
-                      className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    ></span>
-                    <span
-                      className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    ></span>
-                    <span
-                      className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    ></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} className="h-8" />
-        </div>
-
-        {/* Input Area */}
-        <div className="p-4 bg-white/40 backdrop-blur-xl border-t border-slate-200/50 relative z-20">
-          <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-white/80 backdrop-blur-md border border-white rounded-3xl p-2 px-4 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-blue-400/30 focus-within:border-blue-300 transition-all">
-            <input
-              type="file"
-              accept=".pdf,.docx,.pptx"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-            />
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading || uploading}
-              className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-2xl transition-all disabled:opacity-50"
-              title="Upload study material (PDF)"
-            >
-              <Paperclip size={22} />
-            </button>
-
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder="Ask anything about your study material..."
-              className="flex-1 max-h-32 min-h-[52px] bg-transparent resize-y outline-none py-3 px-2 text-gray-700 leading-relaxed"
-              rows={1}
-            />
-
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || loading || uploading}
-              className={`p-3.5 rounded-2xl shrink-0 transition-all ${
-                inputValue.trim()
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              <Send
-                size={20}
-                className={inputValue.trim() ? "translate-x-0.5" : ""}
-              />
-            </button>
-          </div>
-
-          <p className="text-center text-xs text-gray-400 mt-3">
-            AI Coach uses semantic search from your uploaded PDFs • Answers are
-            based only on your material
-          </p>
-        </div>
+        </AnimatePresence>
       </div>
-
-      {/* Sidebar - Chat History */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            className="border-l border-slate-200/50 bg-white/50 backdrop-blur-xl flex flex-col shrink-0 z-20 shadow-[-10px_0_20px_-5px_rgba(0,0,0,0.05)]"
-          >
-            <div className="p-4 border-b border-slate-200/50 bg-transparent flex items-center justify-between">
-              <h3 className="font-semibold flex items-center gap-2 text-gray-700">
-                <MessageSquare size={18} className="text-indigo-500" />
-                Previous Sessions
-              </h3>
-              <button
-                onClick={createNewSession}
-                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
-                title="New Chat"
-              >
-                <PlusCircle size={22} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => setCurrentSessionId(session.id)}
-                  className={`group w-full text-left p-4 rounded-2xl cursor-pointer transition-all flex items-center justify-between ${
-                    currentSessionId === session.id
-                      ? "bg-indigo-100 text-indigo-900 shadow-sm"
-                      : "hover:bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  <div className="truncate text-sm font-medium pr-2">
-                    {session.title || "Untitled Session"}
-                  </div>
-                  <button
-                    onClick={(e) => deleteSession(e, session.id)}
-                    className="p-1.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
-
-              {sessions.length === 0 && (
-                <p className="text-sm text-gray-400 text-center mt-12">
-                  No previous chats yet
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
