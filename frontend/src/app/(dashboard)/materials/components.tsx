@@ -56,12 +56,14 @@ export function InviteMemberCard({
     const [loadingInvites, setLoadingInvites] = useState(true);
 
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const normalizedEmail = email.trim().toLowerCase();
-    const isValidEmail = EMAIL_REGEX.test(normalizedEmail);
+    const emailsList = email.split(/[,\s;]+/).map(e => e.trim()).filter(e => e !== "");
+    const isValidEmail = emailsList.length > 0 && emailsList.every(e => EMAIL_REGEX.test(e));
     const showError = touched && email.trim() !== "" && !isValidEmail;
-    const alreadyInvited = invites.some(
-        (invite) => invite.invitedEmail === normalizedEmail && invite.status === "pending"
+    
+    const alreadyInvitedEmails = emailsList.filter(e => 
+        invites.some(invite => invite.invitedEmail.toLowerCase() === e.toLowerCase() && invite.status === "pending")
     );
+    const hasAlreadyInvited = alreadyInvitedEmails.length > 0;
 
     useEffect(() => {
         let cancelled = false;
@@ -96,7 +98,7 @@ export function InviteMemberCard({
     }, [group.id]);
 
     const handleInvite = async () => {
-        if (!isValidEmail || alreadyInvited) return;
+        if (!isValidEmail || hasAlreadyInvited) return;
 
         setSubmitting(true);
         setSuccessMsg("");
@@ -104,20 +106,27 @@ export function InviteMemberCard({
         try {
             const data = await apiFetch(`/groups/${group.id}/invites`, {
                 method: "POST",
-                body: JSON.stringify({ invited_email: normalizedEmail }),
+                body: JSON.stringify({ invited_emails: emailsList }),
             });
-            const createdInvite = apiInviteToInvite(data);
-            setInvites((prev) => [createdInvite, ...prev]);
-            setSuccessMsg(
-                createdInvite.emailSent
-                    ? `Invite sent to ${createdInvite.invitedEmail}`
-                    : `Invite saved for ${createdInvite.invitedEmail}. Email delivery is not available right now.`
-            );
+            const createdInvites = Array.isArray(data) ? data.map(apiInviteToInvite) : [];
+            setInvites((prev) => [...createdInvites, ...prev]);
+            
+            if (createdInvites.length > 1) {
+                setSuccessMsg(`${createdInvites.length} invites sent successfully.`);
+            } else if (createdInvites.length === 1) {
+                const invite = createdInvites[0];
+                setSuccessMsg(
+                    invite.emailSent
+                        ? `Invite sent to ${invite.invitedEmail}`
+                        : `Invite saved for ${invite.invitedEmail}. Email delivery is not available right now.`
+                );
+            }
+            
             setEmail("");
             setTouched(false);
             setTimeout(() => setSuccessMsg(""), 3500);
         } catch (err: unknown) {
-            setErrorMsg(err instanceof Error ? err.message : "Failed to send invite");
+            setErrorMsg(err instanceof Error ? err.message : "Failed to send invites");
         } finally {
             setSubmitting(false);
         }
@@ -137,33 +146,39 @@ export function InviteMemberCard({
                 <div style={{ flex: 1, position: "relative" }}>
                     <input
                         className="pc-form-input"
-                        type="email"
-                        placeholder="Enter email address..."
+                        type="text"
+                        placeholder="Enter email addresses (separated by comma)..."
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); setTouched(true); setSuccessMsg(""); setErrorMsg(""); }}
                         onKeyDown={(e) => { if (e.key === "Enter") void handleInvite(); }}
                         style={{
                             background: "#F7F7FA",
-                            borderColor: showError ? "rgba(239,68,68,0.6)" : alreadyInvited && touched ? "rgba(239,68,68,0.6)" : undefined,
+                            borderColor: showError ? "rgba(239,68,68,0.6)" : hasAlreadyInvited && touched ? "rgba(239,68,68,0.6)" : undefined,
                             paddingRight: "2.4rem",
                         }}
                     />
-                    {isValidEmail && !alreadyInvited && (
+                    {isValidEmail && !hasAlreadyInvited && (
                         <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#34D399", fontSize: "1rem" }}>✓</span>
                     )}
                 </div>
                 <button
                     className="pc-invite-btn"
                     style={{ background: moduleColor }}
-                    disabled={!isValidEmail || alreadyInvited || submitting}
+                    disabled={!isValidEmail || hasAlreadyInvited || submitting}
                     onClick={() => void handleInvite()}
                 >
-                    {submitting ? "Sending..." : "Send Invite"}
+                    {submitting ? "Sending..." : "Send Invites"}
                 </button>
             </div>
 
-            {showError && <p className="pc-invite-hint pc-invite-error">Please enter a valid email address (e.g. name@domain.com)</p>}
-            {alreadyInvited && touched && <p className="pc-invite-hint pc-invite-error">This email already has a pending invite for this group.</p>}
+            {showError && <p className="pc-invite-hint pc-invite-error">Please enter valid email addresses (e.g. name@domain.com)</p>}
+            {hasAlreadyInvited && touched && (
+                <p className="pc-invite-hint pc-invite-error">
+                    {alreadyInvitedEmails.length === 1 
+                        ? `${alreadyInvitedEmails[0]} already has a pending invite.`
+                        : "Some emails already have pending invites."}
+                </p>
+            )}
             {errorMsg && <p className="pc-invite-hint pc-invite-error">{errorMsg}</p>}
             {successMsg && <p className="pc-invite-hint pc-invite-success">{successMsg}</p>}
 

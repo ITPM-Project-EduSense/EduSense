@@ -250,9 +250,9 @@ async def leave_group(
 
 @router.post(
     "/{group_id}/invites",
-    response_model=StudyGroupInviteResponse,
+    response_model=List[StudyGroupInviteResponse],
     status_code=status.HTTP_201_CREATED,
-    summary="Invite a member to a study group",
+    summary="Invite members to a study group",
 )
 async def create_group_invite(
     group_id: str,
@@ -264,43 +264,50 @@ async def create_group_invite(
         raise HTTPException(status_code=404, detail="Group not found")
 
     current_user_id = str(current_user.id)
-    invited_email = str(payload.invited_email).strip().lower()
-
     if current_user_id not in group.member_ids:
         raise HTTPException(status_code=403, detail="Only group members can send invites")
 
-    if invited_email == current_user.email:
-        raise HTTPException(status_code=400, detail="You are already part of this group")
+    created_invites = []
+    
+    for email_item in payload.invited_emails:
+        invited_email = str(email_item).strip().lower()
+        if not invited_email:
+            continue
 
-    existing_user = await User.find_one(User.email == invited_email)
-    if existing_user and str(existing_user.id) in group.member_ids:
-        raise HTTPException(status_code=400, detail="This user is already a member of the group")
+        if invited_email == current_user.email:
+            raise HTTPException(status_code=400, detail=f"You are already part of this group: {invited_email}")
 
-    existing_pending_invite = await StudyGroupInvite.find_one(
-        StudyGroupInvite.group_id == group_id,
-        StudyGroupInvite.invited_email == invited_email,
-        StudyGroupInvite.status == "pending",
-    )
-    if existing_pending_invite:
-        raise HTTPException(status_code=400, detail="A pending invite already exists for this email")
+        existing_user = await User.find_one(User.email == invited_email)
+        if existing_user and str(existing_user.id) in group.member_ids:
+            raise HTTPException(status_code=400, detail=f"User {invited_email} is already a member of the group")
 
-    invite = StudyGroupInvite(
-        group_id=group_id,
-        group_name=group.name,
-        group_module=group.module,
-        invited_email=invited_email,
-        invited_by_user_id=current_user_id,
-        invited_by_name=current_user.full_name,
-    )
-    invite.email_sent = await EmailService.send_group_invite_email(
-        email=invited_email,
-        group_name=group.name,
-        module=group.module,
-        inviter_name=current_user.full_name,
-        join_url=f"{settings.FRONTEND_URL}/materials",
-    )
-    await invite.insert()
-    return invite_to_response(invite)
+        existing_pending_invite = await StudyGroupInvite.find_one(
+            StudyGroupInvite.group_id == group_id,
+            StudyGroupInvite.invited_email == invited_email,
+            StudyGroupInvite.status == "pending",
+        )
+        if existing_pending_invite:
+            raise HTTPException(status_code=400, detail=f"A pending invite already exists for {invited_email}")
+
+        invite = StudyGroupInvite(
+            group_id=group_id,
+            group_name=group.name,
+            group_module=group.module,
+            invited_email=invited_email,
+            invited_by_user_id=current_user_id,
+            invited_by_name=current_user.full_name,
+        )
+        invite.email_sent = await EmailService.send_group_invite_email(
+            email=invited_email,
+            group_name=group.name,
+            module=group.module,
+            inviter_name=current_user.full_name,
+            join_url=f"{settings.FRONTEND_URL}/materials",
+        )
+        await invite.insert()
+        created_invites.append(invite_to_response(invite))
+        
+    return created_invites
 
 
 @router.get(
