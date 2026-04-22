@@ -413,10 +413,13 @@ async def list_group_materials(
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    if str(current_user.id) not in group.member_ids:
+        raise HTTPException(status_code=403, detail="Only group members can view study materials")
+
     materials = await get_group_materials(group_id=group_id)
     return {
         "success": True,
-        "can_upload": str(current_user.id) in group.member_ids,
+        "can_upload": True,  # Already verified membership above
         "materials": [material_to_response(material, current_user) for material in materials],
     }
 
