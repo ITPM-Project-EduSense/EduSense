@@ -32,7 +32,7 @@ class MeetingService:
         return datetime.fromisoformat(raw)
 
     @staticmethod
-    def validate_manual_meeting_link(platform: Literal["zoom", "teams"], link: str) -> str:
+    def validate_manual_meeting_link(platform: Literal["zoom", "teams", "google"], link: str) -> str:
         normalized = (link or "").strip()
         if not normalized.startswith("http"):
             raise ValueError("Please provide a valid meeting URL")
@@ -48,10 +48,13 @@ class MeetingService:
         if platform == "zoom" and "zoom" not in normalized:
             raise ValueError("Please provide a valid Zoom meeting URL")
 
+        if platform == "google" and "meet.google.com" not in normalized:
+            raise ValueError("Please provide a valid Google Meet URL (e.g., meet.google.com/xxx-xxxx-xxx)")
+
         return normalized
 
     @staticmethod
-    def get_join_links(platform: Literal["zoom", "teams"], meeting_link: str, meeting_code: Optional[str] = None) -> Dict[str, str]:
+    def get_join_links(platform: Literal["zoom", "teams", "google"], meeting_link: str, meeting_code: Optional[str] = None) -> Dict[str, str]:
         web_link = meeting_link
         if platform == "teams":
             app_link = (
@@ -60,6 +63,9 @@ class MeetingService:
                 else meeting_link
             )
             return {"web_link": web_link, "app_link": app_link}
+
+        if platform == "google":
+            return {"web_link": web_link, "app_link": web_link}
 
         app_link = (
             f"zoommtg://zoom.us/join?action=join&confno={meeting_code}"
@@ -70,7 +76,7 @@ class MeetingService:
     @staticmethod
     def build_active_meeting(
         *,
-        platform: Literal["zoom", "teams"],
+        platform: Literal["zoom", "teams", "google"],
         meeting_link: str,
         started_by: str,
         started_by_id: str,
@@ -249,6 +255,30 @@ class MeetingService:
         }
     
     @staticmethod
+    async def create_google_meeting(
+        group_id: str,
+        group_name: str,
+        initiator_id: str
+    ) -> Dict[str, Any]:
+        """
+        Create a Google Meet for the study group.
+        (Placeholder integration)
+        """
+        if MeetingService.USE_PLACEHOLDER:
+            meeting_id = f"{uuid.uuid4().hex[:3]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:3]}"
+            return {
+                "platform": "google",
+                "meeting_link": f"https://meet.google.com/{meeting_id}",
+                "meeting_code": meeting_id,
+                "started_at": datetime.utcnow().isoformat(),
+                "initiator_id": initiator_id,
+                "group_id": group_id,
+            }
+        
+        # Placeholder for real Google Calendar/Meet API
+        raise NotImplementedError("Production Google Meet integration not yet implemented")
+
+    @staticmethod
     async def validate_group_member(user_id: str, group_member_ids: list) -> bool:
         """
         Validate if a user is a member of the group.
@@ -264,7 +294,7 @@ class MeetingService:
     
     @staticmethod
     def generate_meeting_object(
-        platform: Literal["zoom", "teams"],
+        platform: Literal["zoom", "teams", "google"],
         meeting_link: str,
         meeting_code: Optional[str] = None,
         meeting_password: Optional[str] = None,

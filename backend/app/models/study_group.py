@@ -7,7 +7,7 @@ from typing_extensions import Literal
 
 class MeetingRecord(BaseModel):
     """Record of a completed or ongoing meeting."""
-    platform: Literal["zoom", "teams"]
+    platform: Literal["zoom", "teams", "google"]
     meeting_link: str
     meeting_code: Optional[str] = None
     source: Optional[Literal["manual_link", "graph_api"]] = None

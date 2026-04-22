@@ -111,7 +111,7 @@ export const MeetingPanel = ({ group, moduleColor }: MeetingPanelProps) => {
         void fetchTelemetrySummary();
     }, [showHistory, group.id, group.isJoined, refreshKey]);
 
-    const handleStartManualMeeting = async (platform: 'zoom' | 'teams', meetingLink: string) => {
+    const handleStartManualMeeting = async (platform: 'zoom' | 'teams' | 'google', meetingLink: string) => {
         setLoading(true);
         setError('');
         setPollingPaused(false);
@@ -300,6 +300,7 @@ export const MeetingPanel = ({ group, moduleColor }: MeetingPanelProps) => {
     const getPlatformIcon = (platform: string) => {
         if (platform === 'zoom') return '🔵';
         if (platform === 'teams') return '◼️';
+        if (platform === 'google') return '🟢';
         return '📹';
     };
 

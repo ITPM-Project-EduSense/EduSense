@@ -26,7 +26,7 @@ class JoinTelemetryPayload(BaseModel):
 
 
 class ManualMeetingStartPayload(BaseModel):
-    platform: Literal["zoom", "teams"]
+    platform: Literal["zoom", "teams", "google"]
     meeting_link: str
     meeting_code: Optional[str] = None
     meeting_password: Optional[str] = None
@@ -107,7 +107,7 @@ async def expire_stale_active_meeting_if_needed(group: StudyGroup) -> bool:
 )
 async def start_meeting(
     group_id: str,
-    platform: Literal["zoom", "teams"],
+    platform: Literal["zoom", "teams", "google"],
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -133,8 +133,14 @@ async def start_meeting(
                 group_name=group.name,
                 initiator_id=str(current_user.id)
             )
-        else:  # teams
+        elif platform == "teams":
             meeting_response = await MeetingService.create_teams_meeting(
+                group_id=group_id,
+                group_name=group.name,
+                initiator_id=str(current_user.id)
+            )
+        else:  # google
+            meeting_response = await MeetingService.create_google_meeting(
                 group_id=group_id,
                 group_name=group.name,
                 initiator_id=str(current_user.id)
