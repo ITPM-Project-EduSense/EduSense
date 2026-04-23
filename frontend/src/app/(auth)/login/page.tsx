@@ -51,7 +51,7 @@ export default function LoginPage() {
         }),
       });
 
-      router.push("/dashboard");
+      window.location.assign("/dashboard");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Login failed";
       setError(message);
@@ -230,7 +230,7 @@ export default function LoginPage() {
             </div>
 
             <GoogleSignInButton
-              onSuccess={() => router.push("/dashboard")}
+              onSuccess={() => window.location.assign("/dashboard")}
               onError={(message) => setError(message)}
             />
 

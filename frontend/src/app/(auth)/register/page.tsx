@@ -218,7 +218,7 @@ export default function RegisterPage() {
             </div>
 
             <GoogleSignInButton
-              onSuccess={() => router.push("/dashboard")}
+              onSuccess={() => window.location.assign("/dashboard")}
               onError={(message) => setError(message)}
             />
 

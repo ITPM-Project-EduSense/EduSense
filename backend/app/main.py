@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.database import connect_db, close_db
+from app.core.config import settings
 from app.core.firebase_admin import initialize_firebase_admin
 from app.routes.task_routes import router as task_router
 from app.routes.schedule_routes import router as schedule_router
@@ -55,6 +56,9 @@ ALLOWED_ORIGINS = {
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 }
+
+if settings.FRONTEND_URL:
+    ALLOWED_ORIGINS.add(settings.FRONTEND_URL.rstrip("/"))
 
 
 def _cors_error_headers(request: Request) -> dict:

@@ -1259,39 +1259,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-
-      <style jsx global>{`
-        @keyframes auroraSweep {
-          0% { transform: translateX(-4%) rotate(0deg); filter: hue-rotate(0deg); }
-          50% { transform: translateX(4%) rotate(10deg); filter: hue-rotate(18deg); }
-          100% { transform: translateX(-4%) rotate(0deg); filter: hue-rotate(0deg); }
-        }
-
-        @keyframes stickerDrift {
-          0% { transform: translateY(0px) rotate(-5deg); }
-          35% { transform: translateY(-10px) rotate(4deg); }
-          70% { transform: translateY(4px) rotate(-3deg); }
-          100% { transform: translateY(0px) rotate(-5deg); }
-        }
-
-        @keyframes gradientFlow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-
-        @keyframes chipFloat {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-3px); }
-          100% { transform: translateY(0px); }
-        }
-
-        @keyframes beamPulse {
-          0% { opacity: 0.35; transform: scaleX(0.7); }
-          50% { opacity: 1; transform: scaleX(1.05); }
-          100% { opacity: 0.35; transform: scaleX(0.7); }
-        }
-      `}</style>
     </div>
   );
 }
