@@ -30,13 +30,13 @@ async def lifespan(app: FastAPI):
     - Connects to MongoDB on startup
     - Closes MongoDB connection on shutdown
     """
-    print("🚀 Starting EduSense Backend...")
+    print("Starting EduSense Backend...")
     initialize_firebase_admin()
     await connect_db()
 
     yield  # Application runs here
 
-    print("🛑 Shutting down EduSense Backend...")
+    print("Shutting down EduSense Backend...")
     await close_db()
 
 

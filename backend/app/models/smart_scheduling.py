@@ -1,5 +1,6 @@
 from datetime import datetime, date
-from typing import Literal, Optional
+from typing import Optional, List
+from typing_extensions import Literal
 
 from beanie import Document
 from pydantic import BaseModel, Field
@@ -77,7 +78,7 @@ class StudyPlanOut(BaseModel):
     task_id: str
     total_hours: float
     created_at: datetime
-    sessions: list[StudySessionOut]
+    sessions: List[StudySessionOut]
 
 
 class RegeneratePlanRequest(BaseModel):

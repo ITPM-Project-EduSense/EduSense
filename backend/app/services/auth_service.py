@@ -1,7 +1,7 @@
 import asyncio
 import secrets
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Dict
 
 import httpx
 from fastapi import HTTPException
@@ -16,7 +16,7 @@ from app.services.email_service import EmailService
 
 class AuthService:
     @staticmethod
-    async def _verify_firebase_token_via_rest(id_token: str) -> dict[str, Any]:
+    async def _verify_firebase_token_via_rest(id_token: str) -> Dict[str, Any]:
         """Fallback verification for local/dev environments.
 
         Uses Firebase Identity Toolkit `accounts:lookup`, which validates the ID token
@@ -73,7 +73,7 @@ class AuthService:
         }
 
     @staticmethod
-    async def verify_firebase_token(id_token: str) -> dict[str, Any]:
+    async def verify_firebase_token(id_token: str) -> Dict[str, Any]:
         ensure_firebase_initialized()
 
         try:
@@ -102,7 +102,7 @@ class AuthService:
         }
 
     @staticmethod
-    async def create_or_update_user(firebase_payload: dict[str, Any]) -> User:
+    async def create_or_update_user(firebase_payload: Dict[str, Any]) -> User:
         uid = firebase_payload["uid"]
         email = firebase_payload["email"]
         name = firebase_payload.get("name")

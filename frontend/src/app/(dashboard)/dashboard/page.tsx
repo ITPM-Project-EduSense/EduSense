@@ -17,6 +17,9 @@ import {
   Workflow,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { ActiveMeetingsCard } from "../materials/components";
+import { apiGroupToGroup } from "../materials/utils";
+import type { Group } from "../materials/types";
 
 const flowPalette = [
   {
@@ -114,6 +117,8 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCard, setOpenCard] = useState<number | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -129,7 +134,20 @@ export default function DashboardPage() {
       }
     };
 
+    const loadDashboardGroups = async () => {
+      try {
+        setLoadingGroups(true);
+        const data = await apiFetch("/groups/");
+        setGroups(Array.isArray(data) ? data.map(apiGroupToGroup) : []);
+      } catch {
+        setGroups([]);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
     load();
+    loadDashboardGroups();
   }, []);
 
   const stats = useMemo(() => {
@@ -271,6 +289,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {!loadingGroups && <ActiveMeetingsCard groups={groups} />}
 
       {/* Task Overview */}
       <section>

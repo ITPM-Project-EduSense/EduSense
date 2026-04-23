@@ -10,20 +10,26 @@ Uses Google Gemini AI to:
 
 import json
 import re
+import requests
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-import google.genai as genai
 from app.core.config import settings
 
+def _generate_content_rest(prompt: str) -> str:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={settings.GEMINI_API_KEY}"
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+    response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+    response.raise_for_status()
+    data = response.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        raise ValueError(f"Unexpected response structure: {data}")
 
-# Initialize client lazily to ensure environment variables are loaded
-_client = None
-
-def get_client():
-    global _client
-    if _client is None:
-        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    return _client
 
 
 async def generate_study_schedule(
@@ -97,11 +103,8 @@ RULES:
 """
 
     try:
-        response = get_client().models.generate_content(
-            model="gemini-2.0-flash-lite",
-            contents=prompt
-        )
-        response_text = response.text.strip()
+        response_text = _generate_content_rest(prompt)
+        response_text = response_text.strip()
 
         # Clean up response - remove markdown code blocks if present
         response_text = re.sub(r'^```json\s*', '', response_text)

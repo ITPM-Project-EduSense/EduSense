@@ -7,19 +7,24 @@ Falls back to offline rule-based methods when API quota is exhausted (429 errors
 
 from typing import List
 from fastapi import HTTPException
-import google.genai as genai
+import requests
 from app.core.config import settings
 from app.services.concept_rule_engine import generate_embedding_simple
 
+def _embed_content_rest(text: str) -> List[float]:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={settings.GEMINI_API_KEY}"
+    payload = {
+        "model": "models/text-embedding-004",
+        "content": {"parts": [{"text": text}]}
+    }
+    response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+    response.raise_for_status()
+    data = response.json()
+    try:
+        return data["embedding"]["values"]
+    except KeyError:
+        raise ValueError(f"Unexpected response structure: {data}")
 
-# Initialize client lazily to ensure environment variables are loaded
-_client = None
-
-def get_client():
-    global _client
-    if _client is None:
-        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    return _client
 
 
 async def generate_embedding(text: str) -> List[float]:
@@ -53,13 +58,9 @@ async def generate_embedding(text: str) -> List[float]:
     
     try:
         # Try Gemini API embeddings first
-        result = get_client().models.embed_content(
-            model="text-embedding-004",
-            contents=text
-        )
+        embedding = _embed_content_rest(text)
         
-        if result and hasattr(result, 'embeddings') and result.embeddings:
-            embedding = result.embeddings[0].values
+        if embedding:
             return list(embedding)
             
     except Exception as e:

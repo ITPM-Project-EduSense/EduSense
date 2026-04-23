@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 interface CreateMeetingModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onStartManual: (platform: 'zoom' | 'teams', meetingLink: string) => Promise<void>;
+    onStartManual: (platform: 'zoom' | 'teams' | 'google', meetingLink: string) => Promise<void>;
     loading: boolean;
 }
 
@@ -16,7 +16,7 @@ export const CreateMeetingModal = ({
     onStartManual,
     loading,
 }: CreateMeetingModalProps) => {
-    const [selectedPlatform, setSelectedPlatform] = useState<'zoom_manual' | 'teams_manual' | null>(null);
+    const [selectedPlatform, setSelectedPlatform] = useState<'zoom_manual' | 'teams_manual' | 'google_manual' | null>(null);
     const [manualLink, setManualLink] = useState('');
 
     const trimmedLink = manualLink.trim();
@@ -42,14 +42,25 @@ export const CreateMeetingModal = ({
             }
         }
 
+        if (selectedPlatform === 'google_manual') {
+            if (!trimmedLink.toLowerCase().includes('meet.google.com')) {
+                return "Please paste a Google Meet invite link (meet.google.com/xxx-xxxx-xxx).";
+            }
+        }
+
         return "";
     })();
 
     const handleStart = async () => {
-        if (selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual') {
+        if (selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual' || selectedPlatform === 'google_manual') {
             const link = trimmedLink;
             if (!link || manualLinkError) return;
-            await onStartManual(selectedPlatform === 'teams_manual' ? 'teams' : 'zoom', link);
+            
+            let platform: 'zoom' | 'teams' | 'google' = 'google';
+            if (selectedPlatform === 'teams_manual') platform = 'teams';
+            else if (selectedPlatform === 'zoom_manual') platform = 'zoom';
+            
+            await onStartManual(platform, link);
             setSelectedPlatform(null);
             setManualLink('');
             return;
@@ -132,12 +143,38 @@ export const CreateMeetingModal = ({
                                 </div>
                             </div>
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setSelectedPlatform('google_manual')}
+                            className={`w-full rounded-2xl border p-5 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-blue-200 ${
+                                selectedPlatform === 'google_manual'
+                                    ? 'border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.2)] ring-1 ring-blue-200'
+                                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                            }`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-3xl font-extrabold text-white">
+                                    G
+                                </div>
+                                <div>
+                                    <p className="text-sm font-extrabold text-slate-800">Use Existing Google Meet Link</p>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Paste a Google Meet invite URL (meet.google.com).
+                                    </p>
+                                </div>
+                            </div>
+                        </button>
                     </div>
 
-                    {(selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual') && (
+                    {(selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual' || selectedPlatform === 'google_manual') && (
                         <div className="mt-6">
                             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                {selectedPlatform === 'teams_manual' ? 'Teams Meeting Link' : 'Zoom Meeting Link'}
+                                {selectedPlatform === 'teams_manual'
+                                    ? 'Teams Meeting Link'
+                                    : selectedPlatform === 'zoom_manual'
+                                        ? 'Zoom Meeting Link'
+                                        : 'Google Meet Link'}
                             </label>
                             <input
                                 type="url"
@@ -145,7 +182,9 @@ export const CreateMeetingModal = ({
                                 onChange={(event) => setManualLink(event.target.value)}
                                 placeholder={selectedPlatform === 'teams_manual'
                                     ? 'https://teams.microsoft.com/l/meetup-join/...'
-                                    : 'https://zoom.us/j/...'}
+                                    : selectedPlatform === 'zoom_manual'
+                                        ? 'https://zoom.us/j/...'
+                                        : 'https://meet.google.com/xxx-xxxx-xxx'}
                                 className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-700 outline-none transition-all ${
                                     manualLinkError
                                         ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -176,7 +215,7 @@ export const CreateMeetingModal = ({
                             disabled={
                                 !selectedPlatform ||
                                 loading ||
-                                ((selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual') && (trimmedLink === '' || manualLinkError !== ''))
+                                ((selectedPlatform === 'teams_manual' || selectedPlatform === 'zoom_manual' || selectedPlatform === 'google_manual') && (trimmedLink === '' || manualLinkError !== ''))
                             }
                             className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                         >

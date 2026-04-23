@@ -1,5 +1,6 @@
 import hashlib
 import asyncio
+from typing import Optional
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException, Request
@@ -26,7 +27,7 @@ def verify_password(password: str, password_hash: str) -> bool:
     return hashlib.sha256(password.encode("utf-8")).hexdigest() == password_hash
 
 
-def create_access_token(payload: dict, expires_minutes: int | None = None) -> str:
+def create_access_token(payload: dict, expires_minutes: Optional[int] = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )

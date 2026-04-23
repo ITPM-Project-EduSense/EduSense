@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Optional
+from typing_extensions import Literal
 
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -27,12 +28,7 @@ class StudyGroupInvite(Document):
 
 
 class StudyGroupInviteCreate(BaseModel):
-    invited_email: EmailStr
-
-    @field_validator("invited_email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr) -> str:
-        return str(value).strip().lower()
+    invited_emails: List[EmailStr]
 
 
 class StudyGroupInviteResponse(BaseModel):

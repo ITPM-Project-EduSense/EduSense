@@ -10,7 +10,7 @@ async def connect_db():
     """Initialize MongoDB connection and Beanie ODM."""
     global client
     # debug the URL to ensure it's loaded
-    print(f"🔧 Using DATABASE_URL={settings.DATABASE_URL}")
+    print(f"Using DATABASE_URL={settings.DATABASE_URL}")
     client = AsyncIOMotorClient(settings.DATABASE_URL)
     db = client[settings.DATABASE_NAME]
 
@@ -49,7 +49,7 @@ async def connect_db():
         ],
     )
 
-    print(f"✅ Connected to MongoDB: {settings.DATABASE_NAME}")
+    print(f"Connected to MongoDB: {settings.DATABASE_NAME}")
 
 
 async def close_db():
@@ -57,4 +57,4 @@ async def close_db():
     global client
     if client:
         client.close()
-        print("❌ MongoDB connection closed")
+        print("MongoDB connection closed")

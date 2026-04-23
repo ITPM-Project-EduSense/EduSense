@@ -40,7 +40,7 @@ export interface GroupMaterial {
 
 // ── NEW: Meeting Types ──
 export interface ActiveMeeting {
-    platform: "zoom" | "teams";
+    platform: "zoom" | "teams" | "google";
     meeting_link: string;
     web_link?: string | null;
     app_link?: string | null;
@@ -57,7 +57,7 @@ export interface ActiveMeeting {
 }
 
 export interface MeetingRecord {
-    platform: "zoom" | "teams";
+    platform: "zoom" | "teams" | "google";
     source?: "manual_link" | "graph_api" | null;
     provider_status?: "success" | "failed" | "expired" | null;
     provider_error?: string | null;

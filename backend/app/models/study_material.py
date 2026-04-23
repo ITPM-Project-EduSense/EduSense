@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import List, Optional
+from typing_extensions import Literal
 from beanie import Document
 from pydantic import Field
 

@@ -1,12 +1,13 @@
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
-from typing import List, Optional, Literal, Dict, Any
+from typing import List, Optional, Dict, Any
+from typing_extensions import Literal
 
 
 class MeetingRecord(BaseModel):
     """Record of a completed or ongoing meeting."""
-    platform: Literal["zoom", "teams"]
+    platform: Literal["zoom", "teams", "google"]
     meeting_link: str
     meeting_code: Optional[str] = None
     source: Optional[Literal["manual_link", "graph_api"]] = None
