@@ -1,9 +1,10 @@
+import html
 import re
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, status, Depends, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from beanie import PydanticObjectId
 
 from app.models.study_group import StudyGroup, StudyGroupCreate, StudyGroupResponse, StudyGroupUpdate
@@ -44,6 +45,15 @@ def group_to_response(group: StudyGroup, current_user: Optional[User] = None) ->
         active_meeting=group.active_meeting,
         meeting_history=group.meeting_history,
     )
+
+
+def build_material_text_fallback(material: StudyMaterial) -> str:
+    return material.extracted_text or f"{material.filename}\n\nPreview is unavailable."
+
+
+def build_material_download_name(material: StudyMaterial) -> str:
+    stem = Path(material.filename).stem or "material"
+    return f"{stem}.txt"
 
 
 def invite_to_response(invite: StudyGroupInvite) -> StudyGroupInviteResponse:
@@ -541,7 +551,28 @@ async def view_group_material(
 
     material = await get_group_material_or_404(group_id, material_id)
     if not material.file_path or not Path(material.file_path).is_file():
-        raise HTTPException(status_code=404, detail="Original file is not available for this material")
+        safe_title = html.escape(material.filename)
+        safe_content = html.escape(build_material_text_fallback(material))
+        return HTMLResponse(
+            content=(
+                "<!doctype html>"
+                "<html><head><meta charset='utf-8'>"
+                f"<title>{safe_title}</title>"
+                "<style>"
+                "body{font-family:Arial,sans-serif;max-width:960px;margin:0 auto;padding:24px;"
+                "background:#f8fafc;color:#0f172a;line-height:1.6}"
+                "h1{font-size:1.5rem;margin-bottom:0.5rem}"
+                ".note{margin-bottom:1rem;color:#475569}"
+                "pre{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #e2e8f0;"
+                "border-radius:12px;padding:16px}"
+                "</style></head><body>"
+                f"<h1>{safe_title}</h1>"
+                "<p class='note'>The original uploaded file is not available on this device, "
+                "so this preview is shown from the stored extracted content.</p>"
+                f"<pre>{safe_content}</pre>"
+                "</body></html>"
+            )
+        )
 
     return FileResponse(
         path=material.file_path,
@@ -569,7 +600,13 @@ async def download_group_material(
 
     material = await get_group_material_or_404(group_id, material_id)
     if not material.file_path or not Path(material.file_path).is_file():
-        raise HTTPException(status_code=404, detail="Original file is not available for this material")
+        fallback_bytes = build_material_text_fallback(material).encode("utf-8")
+        filename = build_material_download_name(material)
+        return Response(
+            content=fallback_bytes,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     return FileResponse(
         path=material.file_path,
