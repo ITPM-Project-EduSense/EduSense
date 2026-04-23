@@ -5,6 +5,8 @@ export default function PdfUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       setFile(e.target.files[0]);
@@ -19,7 +21,7 @@ export default function PdfUploadPage() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/upload-pdf", {
+      const response = await fetch(`${API_BASE}/upload-pdf`, {
         method: "POST",
         body: formData,
       });
