@@ -15,7 +15,7 @@ import {
 
 import Ai from "@/components/ai-coach/AiChat";
 import PdfSummarizer from "@/components/ai-coach/PdfSummarizer";
-import SmartQuiz from "@/components/ai-coach/SmartQuiz";
+import SmartQuizV2 from "@/components/ai-coach/SmartQuizV2";
 import PdfUploaderModal from "@/components/ai-coach/PdfUploaderModal";
 import PdfViewer from "@/components/ai-coach/PdfViewer";
 import { UploadedPdf } from "@/components/ai-coach/types";
@@ -106,111 +106,111 @@ export default function AiPage() {
 
           <div className="relative flex flex-col items-center text-center">
             <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-700">
-                  <Sparkles size={13} />
-                  AI Study Studio
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                  Professional learning workspace
-                </span>
-              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-700">
+                <Sparkles size={13} />
+                AI Study Studio
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                Professional learning workspace
+              </span>
+            </div>
 
-              <div className="mt-3 max-w-3xl">
-                <h1 className="mx-auto max-w-2xl text-[1.45rem] font-extrabold leading-tight tracking-tight text-slate-900 md:text-[1.7rem]">
-                  Focused AI assistance for your study workflow
-                </h1>
-                <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-6 text-slate-600">
-                  Chat with your coach, generate polished summaries, create quiz
-                  practice, and review material from one clean workspace.
+            <div className="mt-3 max-w-3xl">
+              <h1 className="mx-auto max-w-2xl text-[1.45rem] font-extrabold leading-tight tracking-tight text-slate-900 md:text-[1.7rem]">
+                Focused AI assistance for your study workflow
+              </h1>
+              <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-6 text-slate-600">
+                Chat with your coach, generate polished summaries, create quiz
+                practice, and review material from one clean workspace.
+              </p>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_-18px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900"
+              >
+                <Upload size={16} />
+                Upload Study Material
+              </button>
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-4 py-2.5 text-sm text-slate-600">
+                <Bot size={16} className="text-indigo-600" />
+                <span className="font-medium text-slate-700">
+                  {activeTabConfig.label}
+                </span>
+                <ChevronRight size={16} className="text-slate-400" />
+                <span>{activeTabConfig.description}</span>
+              </div>
+            </div>
+
+            {(subject || taskId) && (
+              <div className="mt-3 w-full max-w-2xl rounded-[20px] border border-indigo-100/90 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                    <Sparkles size={13} />
+                    Productivity Flow
+                  </span>
+                  {subject && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                      Module: {subject}
+                    </span>
+                  )}
+                  {taskId && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                      Task linked
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-[13px] text-slate-600">
+                  Use the assistant to break this task down, stay focused, and
+                  get study help that matches your current module context.
                 </p>
               </div>
-
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_-18px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900"
-                >
-                  <Upload size={16} />
-                  Upload Study Material
-                </button>
-                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-4 py-2.5 text-sm text-slate-600">
-                  <Bot size={16} className="text-indigo-600" />
-                  <span className="font-medium text-slate-700">
-                    {activeTabConfig.label}
-                  </span>
-                  <ChevronRight size={16} className="text-slate-400" />
-                  <span>{activeTabConfig.description}</span>
-                </div>
-              </div>
-
-              {(subject || taskId) && (
-                <div className="mt-3 w-full max-w-2xl rounded-[20px] border border-indigo-100/90 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-3 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                      <Sparkles size={13} />
-                      Productivity Flow
-                    </span>
-                    {subject && (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                        Module: {subject}
-                      </span>
-                    )}
-                    {taskId && (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                        Task linked
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-[13px] text-slate-600">
-                    Use the assistant to break this task down, stay focused, and
-                    get study help that matches your current module context.
-                  </p>
-                </div>
-              )}
+            )}
           </div>
         </section>
 
         <section className="rounded-[20px] border border-white/70 bg-white/82 p-2 shadow-[0_20px_60px_-38px_rgba(15,23,42,0.12)] backdrop-blur-xl">
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-[16px] border px-3 py-2.5 text-left transition-all duration-300 ${
-                      isActive
-                        ? "border-cyan-200 bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(236,254,255,0.96))] shadow-[0_10px_28px_-24px_rgba(6,182,212,0.55)]"
-                        : "border-slate-200 bg-white/75 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`flex h-8 w-8 items-center justify-center rounded-[14px] ${
-                          isActive
-                            ? "bg-slate-950 text-white"
-                            : "bg-slate-100 text-slate-600"
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`rounded-[16px] border px-3 py-2.5 text-left transition-all duration-300 ${
+                    isActive
+                      ? "border-cyan-200 bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(236,254,255,0.96))] shadow-[0_10px_28px_-24px_rgba(6,182,212,0.55)]"
+                      : "border-slate-200 bg-white/75 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`flex h-8 w-8 items-center justify-center rounded-[14px] ${
+                        isActive
+                          ? "bg-slate-950 text-white"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      <Icon size={16} />
+                    </span>
+                    <div>
+                      <p
+                        className={`text-[14px] font-bold ${
+                          isActive ? "text-slate-900" : "text-slate-700"
                         }`}
                       >
-                        <Icon size={16} />
-                      </span>
-                      <div>
-                        <p
-                          className={`text-[14px] font-bold ${
-                            isActive ? "text-slate-900" : "text-slate-700"
-                          }`}
-                        >
-                          {tab.label}
-                        </p>
-                        <p className="mt-0.5 text-[12px] leading-5 text-slate-500">
-                          {tab.description}
-                        </p>
-                      </div>
+                        {tab.label}
+                      </p>
+                      <p className="mt-0.5 text-[12px] leading-5 text-slate-500">
+                        {tab.description}
+                      </p>
                     </div>
-                  </button>
-                );
-              })}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -224,7 +224,9 @@ export default function AiPage() {
             {activeTab === "summary" && (
               <PdfSummarizer uploadedPdfs={uploadedPdfs} />
             )}
-            {activeTab === "quiz" && <SmartQuiz uploadedPdfs={uploadedPdfs} />}
+            {activeTab === "quiz" && (
+              <SmartQuizV2 uploadedPdfs={uploadedPdfs} />
+            )}
             {activeTab === "pdf" && <PdfViewer uploadedPdfs={uploadedPdfs} />}
           </div>
         </section>
