@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Set
+from typing import Any, Dict, Optional, Set
 from urllib.parse import quote
 
 from app.models.study_material import StudyMaterial
@@ -22,7 +22,7 @@ def derive_task_workflow(
     task: Task,
     has_materials: bool,
     has_schedule: bool,
-    now: datetime | None = None,
+    now: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Derive a consistent workflow state and next action for a task."""
     current_time = now or datetime.utcnow()

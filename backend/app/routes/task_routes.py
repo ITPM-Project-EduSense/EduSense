@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 from beanie import PydanticObjectId
 from app.models.task import Task, TaskCreate, TaskUpdate, TaskResponse
@@ -34,7 +34,7 @@ async def get_user_task_or_404(task_id: str, current_user: User) -> Task:
     return task
 
 
-def task_to_response(task: Task, workflow: dict | None = None) -> TaskResponse:
+def task_to_response(task: Task, workflow: Optional[dict] = None) -> TaskResponse:
     """Convert a Task document to a TaskResponse schema."""
     return TaskResponse(
         id=str(task.id),
