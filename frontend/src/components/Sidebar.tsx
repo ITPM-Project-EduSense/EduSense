@@ -40,7 +40,6 @@ const navBottom: NavItem[] = [
   { name: "User Management", href: "/users", icon: Users },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Profile", href: "/profile", icon: UserCircle },
 ];
 
 type CurrentUser = {
@@ -72,14 +71,14 @@ export default function Sidebar({
   const isDark = theme === "dark";
 
   const itemClass = (isActive: boolean) =>
-    `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+    `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
       isActive
         ? isDark
-          ? "bg-sky-500/20 text-sky-200 border border-sky-400/30"
-          : "bg-blue-50 text-blue-700 border border-blue-100"
+          ? "bg-gradient-to-r from-sky-700/60 to-sky-500/30 text-sky-100 border border-sky-400/30 shadow-md"
+          : "bg-gradient-to-r from-blue-200/80 to-blue-50 text-blue-800 border border-blue-200 shadow"
         : isDark
-          ? "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          ? "text-slate-300 hover:bg-sky-800/40 hover:text-sky-100 hover:shadow-lg"
+          : "text-slate-600 hover:bg-blue-100/60 hover:text-blue-900 hover:shadow"
     }`;
 
   return (
@@ -92,11 +91,14 @@ export default function Sidebar({
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 border-r transition-[width,transform] duration-300 lg:translate-x-0 ${
-          isDark ? "border-slate-800 bg-slate-950/95" : "border-slate-200 bg-white"
+        className={`fixed inset-y-0 left-0 z-50 border-r shadow-xl transition-[width,transform] duration-300 lg:translate-x-0 ${
+          isDark
+            ? "border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800/95"
+            : "border-slate-200 bg-gradient-to-b from-blue-50 via-white to-slate-100"
         } ${
           open ? "translate-x-0" : "-translate-x-full"
         } ${collapsed ? "lg:w-22" : "w-65"}`}
+        style={{ boxShadow: isDark ? '0 4px 32px 0 rgba(30,41,59,0.25)' : '0 4px 32px 0 rgba(59,130,246,0.10)' }}
       >
         <div
           className={`flex items-center border-b px-4 py-4 ${
