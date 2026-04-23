@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Bot,
@@ -50,7 +50,7 @@ const tabs = [
   },
 ] as const;
 
-export default function AiPage() {
+function AiPageContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("chat");
   const [showUploadModal, setShowUploadModal] = useState(false);
