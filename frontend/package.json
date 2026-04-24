@@ -9,7 +9,13 @@
     "lint": "eslint",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test:ai": "playwright test tests/e2e/ai-page.spec.ts",
+    "test:peerconnect": "playwright test tests/e2e/peerconnect.spec.ts",
+    "test:e2e:open": "playwright test && playwright show-report",
+    "test:ai:open": "playwright test tests/e2e/ai-page.spec.ts && playwright show-report",
+    "test:peerconnect:open": "playwright test tests/e2e/peerconnect.spec.ts && playwright show-report"
   },
   "dependencies": {
     "firebase": "^12.11.0",
