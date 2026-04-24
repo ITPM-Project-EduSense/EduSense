@@ -33,7 +33,7 @@ test.describe("PeerConnect", () => {
       {
         name: "session",
         value: "playwright-session",
-        domain: "127.0.0.1",
+        domain: "localhost",
         path: "/",
         httpOnly: false,
         secure: false,
@@ -56,10 +56,17 @@ test.describe("PeerConnect", () => {
       },
     ];
 
-    await page.route("**/api/groups/", async (route) => {
+    await page.route("**/*", async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
       const method = route.request().method();
 
-      if (method === "GET") {
+      if (!path.includes("/api/groups")) {
+        await route.fallback();
+        return;
+      }
+
+      if (path.endsWith("/api/groups/") && method === "GET") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -68,7 +75,7 @@ test.describe("PeerConnect", () => {
         return;
       }
 
-      if (method === "POST") {
+      if (path.endsWith("/api/groups/") && method === "POST") {
         const payload = JSON.parse(route.request().postData() || "{}");
         const created = {
           id: `group-${groups.length + 1}`,
@@ -91,97 +98,129 @@ test.describe("PeerConnect", () => {
         return;
       }
 
-      await route.fallback();
-    });
-
-    await page.route("**/api/groups/invites/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(invites),
-      });
-    });
-
-    await page.route("**/api/groups/*/join", async (route) => {
-      const match = route.request().url().match(/\/groups\/([^/]+)\/join/);
-      const groupId = match?.[1];
-      const current = groups.find((group) => group.id === groupId);
-      if (!current) {
-        await route.fulfill({ status: 404, body: JSON.stringify({ detail: "Not found" }) });
+      if (path.endsWith("/api/groups/invites/me") && method === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(invites),
+        });
         return;
       }
 
-      const updated = {
-        ...current,
-        is_joined: true,
-        members: current.members + 1,
-      };
-      groups = groups.map((group) => (group.id === groupId ? updated : group));
+      if (/\/api\/groups\/[^/]+\/join$/.test(path) && method === "POST") {
+        const match = path.match(/\/groups\/([^/]+)\/join$/);
+        const groupId = match?.[1];
+        const current = groups.find((group) => group.id === groupId);
+        if (!current) {
+          await route.fulfill({
+            status: 404,
+            contentType: "application/json",
+            body: JSON.stringify({ detail: "Not found" }),
+          });
+          return;
+        }
 
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(updated),
-      });
-    });
+        const updated = {
+          ...current,
+          is_joined: true,
+          members: current.members + 1,
+        };
+        groups = groups.map((group) => (group.id === groupId ? updated : group));
 
-    await page.route("**/api/groups/invites/*/accept", async (route) => {
-      invites = [];
-      const joined = {
-        ...groups[0],
-        is_joined: true,
-        members: groups[0].members + 1,
-      };
-      groups = groups.map((group) => (group.id === joined.id ? joined : group));
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(updated),
+        });
+        return;
+      }
 
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(joined),
-      });
+      if (/\/api\/groups\/invites\/[^/]+\/accept$/.test(path) && method === "POST") {
+        invites = [];
+        const joined = {
+          ...groups[0],
+          is_joined: true,
+          members: groups[0].members + 1,
+        };
+        groups = groups.map((group) => (group.id === joined.id ? joined : group));
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(joined),
+        });
+        return;
+      }
+
+      if (/\/api\/groups\/invites\/[^/]+\/decline$/.test(path) && method === "POST") {
+        invites = [];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ success: true }),
+        });
+        return;
+      }
+
+      await route.fallback();
     });
 
     await page.goto("/materials");
   });
 
   test("shows groups, filters them, and joins a group", async ({ page }) => {
+    const exactGroupName = (name: string) => page.getByText(name, { exact: true });
+
     await expect(
       page.getByRole("heading", { name: "PeerConnect Materials Hub" }),
     ).toBeVisible();
 
-    await expect(page.getByText("CS2040 Midterm Sprint")).toBeVisible();
-    await expect(page.getByText("CS2103 Revision Circle")).toBeVisible();
+    await expect(exactGroupName("CS2040 Midterm Sprint")).toBeVisible();
+    await expect(exactGroupName("CS2103 Revision Circle")).toBeVisible();
 
     await page.getByRole("button", { name: "CS2040" }).click();
-    await expect(page.getByText("CS2040 Midterm Sprint")).toBeVisible();
-    await expect(page.getByText("CS2103 Revision Circle")).toHaveCount(0);
+    await expect(exactGroupName("CS2040 Midterm Sprint")).toBeVisible();
+    await expect(exactGroupName("CS2103 Revision Circle")).toHaveCount(0);
 
     await page.getByPlaceholder("Search by group name, module, or tags...").fill("CS2103");
     await page.getByRole("button", { name: "All" }).click();
-    await expect(page.getByText("CS2103 Revision Circle")).toBeVisible();
-    await expect(page.getByText("CS2040 Midterm Sprint")).toHaveCount(0);
+    await expect(exactGroupName("CS2103 Revision Circle")).toBeVisible();
+    await expect(exactGroupName("CS2040 Midterm Sprint")).toHaveCount(0);
 
     await page.getByPlaceholder("Search by group name, module, or tags...").fill("");
     await page.getByRole("button", { name: /^Join$/ }).first().click();
     await expect(page.getByRole("button", { name: /joined/i }).first()).toBeVisible();
   });
 
+  test("accepts an incoming invite and removes it from the invite list", async ({ page }) => {
+    await expect(page.getByText("CS2040 Midterm Sprint", { exact: true })).toBeVisible();
+    await expect(page.getByText("Jane Doe invited you to this study group.")).toBeVisible();
+
+    const inviteCard = page.locator(".pc-incoming-item").filter({
+      has: page.getByText("Jane Doe invited you to this study group."),
+    });
+    await inviteCard.getByRole("button", { name: /^Join$/ }).click();
+
+    await expect(page.getByText("Jane Doe invited you to this study group.")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /joined/i }).first()).toBeVisible();
+  });
+
   test("creates a new study group from the modal", async ({ page }) => {
     await page.getByRole("button", { name: /create new group/i }).click();
 
-    await expect(page.getByText("Create Study Group")).toBeVisible();
+    const createHeading = page.getByRole("heading", { name: /create study group/i });
+    await expect(createHeading).toBeVisible();
 
-    const inputs = page.locator("input");
-    await inputs.nth(0).fill("AI Systems Guild");
-    await inputs.nth(1).fill("Nina Patel");
-    await inputs.nth(2).fill("nina@example.com");
+    const modal = createHeading.locator("xpath=ancestor::div[contains(@class,'shadow-2xl')][1]");
+    await modal.getByPlaceholder("e.g. Midterm Grind Team").fill("AI Systems Guild");
+    await modal.getByPlaceholder("e.g. Jane Doe").fill("Nina Patel");
+    await modal.getByPlaceholder("e.g. leader@example.com").fill("nina@example.com");
+    await modal.locator("select").selectOption("CS2040");
+    await modal.locator('input[type="number"]').fill("5");
+    await modal.getByPlaceholder("e.g. Mon & Wed, 8pm").fill("Tue, 7pm");
+    await modal.getByPlaceholder("e.g. NoobsWelcome, FastPaced").fill("AI, Research");
 
-    await page.locator("select").first().selectOption("CS2040");
-    await inputs.nth(3).fill("Tue, 7pm");
-    await inputs.nth(4).fill("5");
-    await inputs.nth(5).fill("AI, Research");
-
-    await page.getByRole("button", { name: /^Create Group$/ }).click();
+    await modal.getByRole("button", { name: /^Create Group$/ }).click();
 
     await expect(page.getByText("AI Systems Guild")).toBeVisible();
   });
