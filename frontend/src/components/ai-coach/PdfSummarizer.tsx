@@ -321,34 +321,6 @@ export default function PdfSummarizer({
                   </div>
                 </div>
               )}
-
-            {result.detailed_summary && (
-              <div className="border-t border-dashed border-gray-300 pt-10">
-                <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                  <h4 className="text-2xl font-bold text-gray-900">
-                    Full Detailed Analysis
-                  </h4>
-                  <button
-                    onClick={() =>
-                      downloadMarkdown(
-                        result.detailed_summary || "",
-                        result.filename || "summary",
-                      )
-                    }
-                    className="flex items-center gap-2 rounded-2xl bg-gray-900 px-6 py-3 text-white shadow-md transition-all hover:bg-black"
-                  >
-                    <Download size={20} />
-                    Download as Markdown
-                  </button>
-                </div>
-
-                <div className="prose prose-lg prose-indigo max-w-none rounded-3xl border border-gray-200 bg-zinc-50 p-10">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {result.detailed_summary}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

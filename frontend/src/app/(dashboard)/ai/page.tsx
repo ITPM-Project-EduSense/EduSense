@@ -50,13 +50,26 @@ const tabs = [
   },
 ] as const;
 
+type TabId = (typeof tabs)[number]["id"];
+
+function isTabId(value: string | null): value is TabId {
+  return tabs.some((tab) => tab.id === value);
+}
+
 function AiPageContent() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeTab, setActiveTab] = useState<TabId>("chat");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadedPdfs, setUploadedPdfs] = useState<UploadedPdf[]>([]);
   const subject = searchParams.get("subject");
   const taskId = searchParams.get("task_id");
+  const tabParam = searchParams.get("tab");
+
+  useEffect(() => {
+    if (isTabId(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -97,7 +110,10 @@ function AiPageContent() {
   const activeTabConfig = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
   return (
-    <div className="eds-page-shell min-h-screen font-[family-name:var(--font-poppins)] p-4 md:p-5">
+    <div
+      data-testid="ai-page-shell"
+      className="eds-page-shell min-h-screen font-[family-name:var(--font-poppins)] p-4 md:p-5"
+    >
       <div className="mx-auto flex max-w-5xl flex-col gap-3">
         <section className="relative overflow-hidden rounded-[24px] border border-white/70 bg-white/78 p-4 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.12)] backdrop-blur-xl">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_28%),radial-gradient(circle_at_82%_22%,_rgba(14,165,233,0.14),_transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.5),rgba(248,250,252,0.2))]" />
@@ -127,6 +143,7 @@ function AiPageContent() {
 
             <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
               <button
+                data-testid="ai-upload-material-button"
                 onClick={() => setShowUploadModal(true)}
                 className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_-18px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900"
               >
@@ -177,6 +194,7 @@ function AiPageContent() {
               const isActive = activeTab === tab.id;
               return (
                 <button
+                  data-testid={`ai-tab-${tab.id}`}
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`rounded-[16px] border px-3 py-2.5 text-left transition-all duration-300 ${
@@ -219,7 +237,10 @@ function AiPageContent() {
           <div className="pointer-events-none absolute -top-8 right-8 h-28 w-28 rounded-full bg-cyan-200/30 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-10 h-24 w-24 rounded-full bg-indigo-200/30 blur-3xl" />
 
-          <div className="relative min-h-[720px] rounded-[20px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.74),rgba(248,250,252,0.78))]">
+          <div
+            data-testid="ai-active-tab-panel"
+            className="relative min-h-[720px] rounded-[20px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.74),rgba(248,250,252,0.78))]"
+          >
             {activeTab === "chat" && <Ai />}
             {activeTab === "summary" && (
               <PdfSummarizer uploadedPdfs={uploadedPdfs} />
@@ -238,5 +259,21 @@ function AiPageContent() {
         onUploadSuccess={handleUploadSuccess}
       />
     </div>
+  );
+}
+
+export default function AiPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="eds-page-shell min-h-screen p-4 md:p-5">
+          <div className="mx-auto max-w-5xl rounded-[20px] border border-slate-200 bg-white/80 p-8 text-sm text-slate-600">
+            Loading AI workspace...
+          </div>
+        </div>
+      }
+    >
+      <AiPageContent />
+    </Suspense>
   );
 }
