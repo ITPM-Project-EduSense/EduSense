@@ -1,6 +1,10 @@
 import { apiFetch } from './api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE?.includes("railway.app") &&
+  process.env.NEXT_PUBLIC_API_BASE.startsWith("http://")
+    ? process.env.NEXT_PUBLIC_API_BASE.replace("http://", "https://")
+    : process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
 
 // ==================== TYPE DEFINITIONS ====================
 
