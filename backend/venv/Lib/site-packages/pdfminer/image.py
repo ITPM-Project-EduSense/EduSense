@@ -2,23 +2,24 @@ import os
 import os.path
 import struct
 from io import BytesIO
-from typing import BinaryIO, Literal
+from typing import BinaryIO, Tuple
 
-from pdfminer.jbig2 import JBIG2StreamReader, JBIG2StreamWriter
-from pdfminer.layout import LTImage
-from pdfminer.pdfcolor import (
-    LITERAL_DEVICE_CMYK,
-    LITERAL_DEVICE_GRAY,
-    LITERAL_DEVICE_RGB,
-    LITERAL_INLINE_DEVICE_GRAY,
-    LITERAL_INLINE_DEVICE_RGB,
-)
-from pdfminer.pdfexceptions import PDFValueError
-from pdfminer.pdftypes import (
+try:
+    from typing import Literal
+except ImportError:
+    # Literal was introduced in Python 3.8
+    from typing_extensions import Literal  # type: ignore[assignment]
+
+from .jbig2 import JBIG2StreamReader, JBIG2StreamWriter
+from .layout import LTImage
+from .pdfcolor import LITERAL_DEVICE_CMYK
+from .pdfcolor import LITERAL_DEVICE_GRAY
+from .pdfcolor import LITERAL_DEVICE_RGB
+from .pdftypes import (
     LITERALS_DCT_DECODE,
-    LITERALS_FLATE_DECODE,
     LITERALS_JBIG2_DECODE,
     LITERALS_JPX_DECODE,
+    LITERALS_FLATE_DECODE,
 )
 
 PIL_ERROR_MESSAGE = (
@@ -45,7 +46,7 @@ class BMPWriter:
         elif bits == 24:
             ncols = 0
         else:
-            raise PDFValueError(bits)
+            raise ValueError(bits)
         self.linesize = align32((self.width * self.bits + 7) // 8)
         self.datasize = self.linesize * self.height
         headersize = 14 + 40 + ncols * 4
@@ -65,13 +66,7 @@ class BMPWriter:
         )
         assert len(info) == 40, str(len(info))
         header = struct.pack(
-            "<ccIHHI",
-            b"B",
-            b"M",
-            headersize + self.datasize,
-            0,
-            0,
-            headersize,
+            "<ccIHHI", b"B", b"M", headersize + self.datasize, 0, 0, headersize
         )
         assert len(header) == 14, str(len(header))
         self.fp.write(header)
@@ -109,13 +104,10 @@ class ImageWriter:
 
         filters = image.stream.get_filters()
 
-        if not filters:
-            name = self._save_bytes(image)
-
-        elif filters[-1][0] in LITERALS_DCT_DECODE:
+        if len(filters) == 1 and filters[0][0] in LITERALS_DCT_DECODE:
             name = self._save_jpeg(image)
 
-        elif filters[-1][0] in LITERALS_JPX_DECODE:
+        elif len(filters) == 1 and filters[0][0] in LITERALS_JPX_DECODE:
             name = self._save_jpeg2000(image)
 
         elif self._is_jbig2_iamge(image):
@@ -124,16 +116,10 @@ class ImageWriter:
         elif image.bits == 1:
             name = self._save_bmp(image, width, height, (width + 7) // 8, image.bits)
 
-        elif image.bits == 8 and (
-            LITERAL_DEVICE_RGB in image.colorspace
-            or LITERAL_INLINE_DEVICE_RGB in image.colorspace
-        ):
+        elif image.bits == 8 and LITERAL_DEVICE_RGB in image.colorspace:
             name = self._save_bmp(image, width, height, width * 3, image.bits * 3)
 
-        elif image.bits == 8 and (
-            LITERAL_DEVICE_GRAY in image.colorspace
-            or LITERAL_INLINE_DEVICE_GRAY in image.colorspace
-        ):
+        elif image.bits == 8 and LITERAL_DEVICE_GRAY in image.colorspace:
             name = self._save_bmp(image, width, height, width, image.bits)
 
         elif len(filters) == 1 and filters[0][0] in LITERALS_FLATE_DECODE:
@@ -146,42 +132,44 @@ class ImageWriter:
 
     def _save_jpeg(self, image: LTImage) -> str:
         """Save a JPEG encoded image"""
-        data = image.stream.get_data()
+        raw_data = image.stream.get_rawdata()
+        assert raw_data is not None
 
         name, path = self._create_unique_image_name(image, ".jpg")
         with open(path, "wb") as fp:
             if LITERAL_DEVICE_CMYK in image.colorspace:
                 try:
                     from PIL import Image, ImageChops  # type: ignore[import]
-                except ImportError as err:
-                    raise ImportError(PIL_ERROR_MESSAGE) from err
+                except ImportError:
+                    raise ImportError(PIL_ERROR_MESSAGE)
 
-                ifp = BytesIO(data)
-                img = Image.open(ifp)
-                inverted = ImageChops.invert(img)
-                rgb_img = inverted.convert("RGB")
-                rgb_img.save(fp, "JPEG")
+                ifp = BytesIO(raw_data)
+                i = Image.open(ifp)
+                i = ImageChops.invert(i)
+                i = i.convert("RGB")
+                i.save(fp, "JPEG")
             else:
-                fp.write(data)
+                fp.write(raw_data)
 
         return name
 
     def _save_jpeg2000(self, image: LTImage) -> str:
         """Save a JPEG 2000 encoded image"""
-        data = image.stream.get_data()
+        raw_data = image.stream.get_rawdata()
+        assert raw_data is not None
 
         name, path = self._create_unique_image_name(image, ".jp2")
         with open(path, "wb") as fp:
             try:
                 from PIL import Image  # type: ignore[import]
-            except ImportError as err:
-                raise ImportError(PIL_ERROR_MESSAGE) from err
+            except ImportError:
+                raise ImportError(PIL_ERROR_MESSAGE)
 
             # if we just write the raw data, most image programs
             # that I have tried cannot open the file. However,
             # open and saving with PIL produces a file that
             # seems to be easily opened by other programs
-            ifp = BytesIO(data)
+            ifp = BytesIO(raw_data)
             i = Image.open(ifp)
             i.save(fp, "JPEG2000")
         return name
@@ -203,7 +191,7 @@ class ImageWriter:
                     "There should never be more than one JBIG2Globals "
                     "associated with a JBIG2 embedded image"
                 )
-                raise PDFValueError(msg)
+                raise ValueError(msg)
             if len(global_streams) == 1:
                 input_stream.write(global_streams[0].get_data().rstrip(b"\n"))
             input_stream.write(image.stream.get_data())
@@ -216,12 +204,7 @@ class ImageWriter:
         return name
 
     def _save_bmp(
-        self,
-        image: LTImage,
-        width: int,
-        height: int,
-        bytes_per_line: int,
-        bits: int,
+        self, image: LTImage, width: int, height: int, bytes_per_line: int, bits: int
     ) -> str:
         """Save a BMP encoded image"""
         name, path = self._create_unique_image_name(image, ".bmp")
@@ -241,12 +224,10 @@ class ImageWriter:
         channels = len(image.stream.get_data()) / width / height / (image.bits / 8)
         with open(path, "wb") as fp:
             try:
-                from PIL import (
-                    Image,  # type: ignore[import]
-                    ImageOps,
-                )
-            except ImportError as err:
-                raise ImportError(PIL_ERROR_MESSAGE) from err
+                from PIL import Image  # type: ignore[import]
+                from PIL import ImageOps
+            except ImportError:
+                raise ImportError(PIL_ERROR_MESSAGE)
 
             mode: Literal["1", "L", "RGB", "CMYK"]
             if image.bits == 1:
@@ -268,7 +249,7 @@ class ImageWriter:
 
     def _save_raw(self, image: LTImage) -> str:
         """Save an image with unknown encoding"""
-        ext = f".{image.bits}.{image.srcsize[0]}x{image.srcsize[1]}.img"
+        ext = ".%d.%dx%d.img" % (image.bits, image.srcsize[0], image.srcsize[1])
         name, path = self._create_unique_image_name(image, ext)
 
         with open(path, "wb") as fp:
@@ -278,17 +259,17 @@ class ImageWriter:
     @staticmethod
     def _is_jbig2_iamge(image: LTImage) -> bool:
         filters = image.stream.get_filters()
-        for filter_name, _params in filters:
+        for filter_name, params in filters:
             if filter_name in LITERALS_JBIG2_DECODE:
                 return True
         return False
 
-    def _create_unique_image_name(self, image: LTImage, ext: str) -> tuple[str, str]:
+    def _create_unique_image_name(self, image: LTImage, ext: str) -> Tuple[str, str]:
         name = image.name + ext
         path = os.path.join(self.outdir, name)
         img_index = 0
         while os.path.exists(path):
-            name = f"{image.name}.{img_index}{ext}"
+            name = "%s.%d%s" % (image.name, img_index, ext)
             path = os.path.join(self.outdir, name)
             img_index += 1
         return name, path

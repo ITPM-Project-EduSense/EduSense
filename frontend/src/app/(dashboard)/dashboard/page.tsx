@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api";
 import {
-  AlertTriangle,
+  Activity,
   ArrowRight,
   BookOpen,
   CalendarClock,
@@ -12,16 +11,53 @@ import {
   Clock3,
   Flame,
   ListTodo,
-  Plus,
-  TrendingUp,
+  MessageCircle,
   Sparkles,
-  Brain,
-  Activity,
+  TrendingUp,
+  Workflow,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 import { ActiveMeetingsCard } from "../materials/components";
 import { apiGroupToGroup } from "../materials/utils";
 import type { Group } from "../materials/types";
 
+const flowPalette = [
+  {
+    border: "border-cyan-300/45",
+    panel: "from-cyan-400/18 via-sky-400/10 to-white/0",
+    glow: "shadow-[0_18px_40px_-24px_rgba(34,211,238,0.7)]",
+    accent: "from-cyan-400 to-sky-500",
+    line: "from-cyan-300 via-sky-300 to-indigo-300",
+  },
+  {
+    border: "border-fuchsia-300/40",
+    panel: "from-fuchsia-400/18 via-violet-400/10 to-white/0",
+    glow: "shadow-[0_18px_40px_-24px_rgba(217,70,239,0.65)]",
+    accent: "from-fuchsia-400 to-violet-500",
+    line: "from-fuchsia-300 via-violet-300 to-indigo-300",
+  },
+  {
+    border: "border-emerald-300/40",
+    panel: "from-emerald-400/18 via-teal-400/10 to-white/0",
+    glow: "shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]",
+    accent: "from-emerald-400 to-teal-500",
+    line: "from-emerald-300 via-teal-300 to-cyan-300",
+  },
+  {
+    border: "border-amber-300/40",
+    panel: "from-amber-300/18 via-orange-300/10 to-white/0",
+    glow: "shadow-[0_18px_40px_-24px_rgba(251,191,36,0.65)]",
+    accent: "from-amber-400 to-orange-500",
+    line: "from-amber-300 via-orange-300 to-rose-300",
+  },
+  {
+    border: "border-indigo-300/40",
+    panel: "from-indigo-400/18 via-blue-400/10 to-white/0",
+    glow: "shadow-[0_18px_40px_-24px_rgba(99,102,241,0.68)]",
+    accent: "from-indigo-400 to-blue-500",
+    line: "from-indigo-300 via-blue-300 to-cyan-300",
+  },
+];
 type Task = {
   id: string;
   title: string;
@@ -35,28 +71,22 @@ type Task = {
   updated_at: string;
 };
 
-type OverloadWarning = {
-  type: string;
-  severity: string;
-  message: string;
-  tasks?: string[];
-};
-
-type OverloadBreakdownItem = {
-  score: number;
-  weight: number;
-  weighted_score: number;
-  reason: string;
-};
-
-type OverloadRisk = {
-  risk_score: number;
-  risk_level: string;
-  active_tasks: number;
-  warnings: OverloadWarning[];
-  suggestion: string;
-  breakdown: Record<string, OverloadBreakdownItem>;
-};
+function getFeatureDescription(title: string) {
+  switch (title) {
+    case "Create Task":
+      return "Easily add new study tasks to your workflow. Track deadlines, priorities, and subjects for smarter planning.";
+    case "Attach Materials":
+      return "Link lecture notes, PDFs, and resources to each task. Keep all your study materials organized and accessible.";
+    case "AI Schedule":
+      return "Let AI generate a personalized study plan based on your priorities, deadlines, and workload.";
+    case "PeerConnect":
+      return "Collaborate with peers in your module circle. Share progress, ask questions, and study together.";
+    case "AI Coach":
+      return "Get AI-powered coaching and tips to boost your study momentum and stay on track.";
+    default:
+      return "Learn more about this feature.";
+  }
+}
 
 function daysUntil(deadline: string) {
   const diff = new Date(deadline).getTime() - Date.now();
@@ -85,19 +115,17 @@ function urgencyClass(days: number) {
 export default function DashboardPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [risk, setRisk] = useState<OverloadRisk | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openCard, setOpenCard] = useState<number | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [taskData, riskData] = await Promise.all([
-          apiFetch("/tasks"),
-          apiFetch("/tasks/overload-risk").catch(() => null),
-        ]);
+        const taskData = await apiFetch("/tasks");
 
         setTasks(Array.isArray(taskData) ? taskData : []);
-        setRisk(riskData && typeof riskData === "object" ? (riskData as OverloadRisk) : null);
       } catch (error) {
         console.error("Dashboard load failed:", error);
         setTasks([]);
@@ -121,9 +149,6 @@ export default function DashboardPage() {
     load();
     loadDashboardGroups();
   }, []);
-
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loadingGroups, setLoadingGroups] = useState(false);
 
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -162,6 +187,63 @@ export default function DashboardPage() {
 
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [tasks]);
+
+  const productivityPulse = useMemo(() => {
+    const active = Math.max(1, stats.pending + stats.inProgress);
+    const momentum = Math.min(100, Math.round((stats.inProgress / active) * 100 + stats.completionRate * 0.35));
+    return momentum;
+  }, [stats]);
+
+  const flowSteps = useMemo(
+    () => [
+      {
+        title: "Create Task",
+        caption: `${stats.total} tracked tasks`,
+        icon: ListTodo,
+        tone: "from-blue-500 to-indigo-500",
+        eyebrow: "Capture the plan",
+        detail: "Start with the task, deadline, and subject so the rest of the workflow has clear context.",
+        action: "Set the study goal",
+      },
+      {
+        title: "Attach Materials",
+        caption: `${subjectDistribution.length} active modules`,
+        icon: BookOpen,
+        tone: "from-cyan-500 to-sky-500",
+        eyebrow: "Organize resources",
+        detail: "Keep notes, PDFs, and lecture files tied to the task so nothing gets lost between sessions.",
+        action: "Link relevant material",
+      },
+      {
+        title: "AI Schedule",
+        caption: `${priorityQueue.length} ready to plan`,
+        icon: Sparkles,
+        tone: "from-fuchsia-500 to-violet-500",
+        eyebrow: "Generate momentum",
+        detail: "Turn priorities and deadlines into a focused plan with blocks that feel realistic to follow.",
+        action: "Build the study plan",
+      },
+      {
+        title: "PeerConnect",
+        caption: "Study with the right module circle",
+        icon: Workflow,
+        tone: "from-amber-500 to-orange-500",
+        eyebrow: "Collaborate clearly",
+        detail: "Bring in the right study partners when a topic needs discussion, review, or shared accountability.",
+        action: "Open your study circle",
+      },
+      {
+        title: "AI Coach",
+        caption: `${productivityPulse}% momentum`,
+        icon: MessageCircle,
+        tone: "from-emerald-500 to-teal-500",
+        eyebrow: "Improve continuously",
+        detail: "Use coaching prompts and nudges to maintain rhythm and recover quickly when progress slows down.",
+        action: "Get focused guidance",
+      },
+    ],
+    [priorityQueue.length, productivityPulse, stats.total, subjectDistribution.length]
+  );
 
   const openPlannerForTask = (taskId: string) => {
     router.push(`/planner?task_id=${taskId}`);
@@ -210,7 +292,7 @@ export default function DashboardPage() {
 
       {!loadingGroups && <ActiveMeetingsCard groups={groups} />}
 
-      {/* ── Section: Quick Stats ── */}
+      {/* Task Overview */}
       <section>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1 rounded-full bg-gradient-to-b from-indigo-400 to-purple-600" />
@@ -226,37 +308,67 @@ export default function DashboardPage() {
               value: stats.total,
               icon: ListTodo,
               tone: "text-blue-600 bg-blue-50 border-blue-100",
+              accent: "from-blue-500 to-indigo-500",
+              meta: `${stats.pending} active in queue`,
             },
             {
               label: "Completed",
               value: stats.completed,
               icon: CheckCircle2,
               tone: "text-emerald-600 bg-emerald-50 border-emerald-100",
+              accent: "from-emerald-500 to-teal-500",
+              meta: `${stats.completionRate}% completion rate`,
             },
             {
               label: "In Progress",
               value: stats.inProgress,
               icon: Clock3,
               tone: "text-amber-600 bg-amber-50 border-amber-100",
+              accent: "from-amber-500 to-orange-500",
+              meta: `${productivityPulse}% momentum`,
             },
             {
               label: "Overdue",
               value: stats.overdue,
               icon: Flame,
               tone: "text-rose-600 bg-rose-50 border-rose-100",
+              accent: "from-rose-500 to-pink-500",
+              meta: stats.overdue > 0 ? "Needs attention today" : "All caught up",
             },
           ].map((card) => {
             const Icon = card.icon;
             return (
-              <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+              <article key={card.label} className="group relative overflow-hidden rounded-3xl border border-white/60 bg-white/75 p-5 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_-18px_rgba(59,130,246,0.35)]">
+                <div className={`pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${card.accent}`} />
+                <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-slate-100/70 blur-2xl transition-transform duration-300 group-hover:scale-110" />
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">{card.label}</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-900">{loading ? "--" : card.value}</p>
+                    <p className="text-sm font-bold text-slate-500">{card.label}</p>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{loading ? "--" : card.value}</p>
+                    <p className="mt-2 text-xs font-semibold text-slate-400">{card.meta}</p>
                   </div>
-                  <div className={`rounded-xl border p-2 ${card.tone}`}>
+                  <div className={`rounded-2xl border p-2.5 shadow-inner shadow-white/50 ${card.tone}`}>
                     <Icon size={18} />
                   </div>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${card.accent}`}
+                    style={{
+                      width: loading
+                        ? "22%"
+                        : `${Math.max(
+                            18,
+                            card.label === "Total Tasks"
+                              ? Math.min(100, stats.total * 8)
+                              : card.label === "Completed"
+                              ? stats.completionRate
+                              : card.label === "In Progress"
+                              ? Math.min(100, productivityPulse)
+                              : Math.min(100, stats.overdue * 22)
+                          )}%`,
+                    }}
+                  />
                 </div>
               </article>
             );
@@ -264,6 +376,200 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <section>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-5 w-1 rounded-full bg-gradient-to-b from-cyan-400 to-blue-600" />
+          <Workflow size={14} className="text-cyan-600" />
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+            Smart Flow
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <article className="eds-flow-stage rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_22px_60px_-28px_rgba(15,23,42,0.28)] backdrop-blur-xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Journey Diagram</p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900">3D Study Workflow</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-500">
+                  The platform now flows from task setup into materials, AI planning, collaboration, and focused coaching.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2 text-xs font-bold text-slate-500 shadow-sm">
+                {flowSteps.length} connected stages
+              </div>
+            </div>
+
+            <div className="eds-flow-board relative overflow-hidden rounded-[26px] border border-[#21356f] bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_32%),linear-gradient(135deg,#081226_0%,#0d1a3d_52%,#16255f_100%)] p-4 md:p-6">
+              <div className="flow-board-grid pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
+              <div className="flow-board-aurora pointer-events-none absolute inset-[-18%]" />
+              <div className="flow-board-shimmer pointer-events-none absolute inset-y-0 left-[-18%] w-[42%]" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/8 to-transparent" />
+              <div className="flow-board-orb flow-board-orb-cyan pointer-events-none absolute -right-12 top-10 h-52 w-52 rounded-full bg-cyan-300/18 blur-3xl" />
+              <div className="flow-board-orb flow-board-orb-indigo pointer-events-none absolute -left-10 bottom-0 h-44 w-44 rounded-full bg-indigo-300/20 blur-3xl" />
+              <div className="flow-board-vignette pointer-events-none absolute inset-0" />
+
+              <div className="relative mx-auto max-w-6xl">
+                <div className="relative">
+                  <div className="pointer-events-none absolute bottom-8 left-1/2 top-8 hidden w-px -translate-x-1/2 bg-white/10 md:block" />
+                  <div className="flow-line-core pointer-events-none absolute bottom-10 left-1/2 top-10 hidden w-[6px] -translate-x-1/2 rounded-full bg-gradient-to-b from-cyan-300 via-indigo-300 to-fuchsia-300 opacity-90 md:block" />
+                  <div className="flow-line-halo pointer-events-none absolute left-1/2 top-10 hidden h-24 w-24 -translate-x-1/2 rounded-full bg-cyan-300/15 blur-3xl md:block" />
+
+                  <div className="space-y-4 md:space-y-5">
+                    {flowSteps.map((step, index) => {
+                      const Icon = step.icon;
+                      const isLeft = index % 2 === 0;
+                      const stageNo = String(index + 1).padStart(2, "0");
+                      const palette = flowPalette[index % flowPalette.length];
+                      const status =
+                        index === 0 ? "active" : index === flowSteps.length - 1 ? "done" : "next";
+                      const statusLabel =
+                        status === "active" ? "Active now" : status === "done" ? "Outcome ready" : "Coming next";
+                      const statusClasses =
+                        status === "active"
+                          ? "border-emerald-300/35 bg-emerald-400/15 text-emerald-100"
+                          : status === "done"
+                          ? "border-indigo-300/30 bg-indigo-400/14 text-indigo-100"
+                          : "border-white/12 bg-white/8 text-slate-200";
+
+                      return (
+                        <div
+                          key={step.title}
+                          className={`relative md:flex ${isLeft ? "md:justify-start" : "md:justify-end"}`}
+                        >
+                          <div className={`relative w-full md:w-[44%] ${isLeft ? "md:pr-16" : "md:pl-16"}`}>
+                            <div
+                              className={`pointer-events-none absolute top-1/2 hidden h-px w-16 -translate-y-1/2 md:block ${
+                                isLeft ? "right-5 bg-gradient-to-r" : "left-5 bg-gradient-to-l"
+                              } ${palette.line}`}
+                            />
+
+                            <article
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`Show details for ${step.title}`}
+                              onClick={() => setOpenCard(index)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") setOpenCard(index);
+                              }}
+                              className={`eds-flow-node group relative cursor-pointer overflow-hidden rounded-[24px] border bg-white/[0.08] p-4 text-left text-white backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-300/80 ${palette.border} ${palette.glow} ${status === "active" ? "md:scale-[1.01]" : ""}`}
+                              style={{
+                                transitionProperty: "box-shadow, border-color, transform, background",
+                                willChange: "transform, box-shadow",
+                              }}
+                            >
+                              <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.panel}`} />
+                              <div className="pointer-events-none absolute inset-x-5 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
+                              <div className="relative flex items-start justify-between gap-3">
+                                <div className="space-y-2.5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold tracking-[0.18em] text-slate-100">
+                                      STAGE {stageNo}
+                                    </span>
+                                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusClasses}`}>
+                                      {statusLabel}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300/80">
+                                      {step.eyebrow}
+                                    </p>
+                                    <h3 className="mt-1.5 text-lg font-bold tracking-tight text-white">{step.title}</h3>
+                                  </div>
+                                </div>
+
+                                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br ${palette.accent} shadow-[0_14px_30px_-18px_rgba(15,23,42,0.75)] ring-1 ring-white/20`}>
+                                  <Icon size={19} className="text-white" />
+                                </span>
+                              </div>
+
+                              <div className="relative mt-3 grid gap-3">
+                                <p className="max-w-md text-[13px] leading-5 text-slate-200/88">{step.detail}</p>
+
+                                <div className="grid gap-2.5 rounded-[18px] border border-white/10 bg-slate-950/20 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                      Key signal
+                                    </p>
+                                    <p className="mt-1 text-[13px] font-semibold text-white">{step.caption}</p>
+                                  </div>
+                                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-cyan-100">
+                                    {step.action}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                                    <div
+                                      className={`h-full rounded-full bg-gradient-to-r ${step.tone} ${
+                                        status === "active" ? "animate-pulse" : ""
+                                      }`}
+                                      style={{ width: status === "active" ? "78%" : status === "done" ? "100%" : "52%" }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300/80">
+                                    {status}
+                                  </span>
+                                </div>
+                              </div>
+                            </article>
+                          </div>
+
+                          <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block">
+                            <div className={`relative flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-slate-950/70 ${status === "active" ? "shadow-[0_0_0_10px_rgba(16,185,129,0.18)]" : "shadow-[0_0_0_8px_rgba(99,102,241,0.14)]"}`}>
+                              <div className={`absolute inset-1 rounded-full bg-gradient-to-br ${status === "active" ? "from-emerald-300 to-cyan-300" : "from-indigo-300 to-cyan-300"}`} />
+                              <div className="relative h-2.5 w-2.5 rounded-full bg-white" />
+                            </div>
+                          </div>
+
+                          {openCard === index && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={() => setOpenCard(null)}>
+                              <div className="relative w-full max-w-xl overflow-hidden rounded-[28px] border border-cyan-300/40 bg-[linear-gradient(180deg,#0b1633_0%,#0f1d44_100%)] p-8 text-white shadow-[0_30px_80px_-28px_rgba(8,18,38,0.95)]" onClick={(e) => e.stopPropagation()}>
+                                <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${step.tone}`} />
+                                <button className="absolute right-4 top-4 text-2xl text-white/70 hover:text-white" onClick={() => setOpenCard(null)} aria-label="Close">&times;</button>
+
+                                <div className="flex items-start gap-4">
+                                  <span className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${palette.accent} ring-1 ring-white/20`}>
+                                    <Icon size={24} className="text-white" />
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">
+                                      Stage {stageNo}
+                                    </p>
+                                    <h3 className="mt-2 text-2xl font-bold tracking-tight">{step.title}</h3>
+                                    <p className="mt-2 text-sm text-slate-300">{step.detail}</p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-6 grid gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5 md:grid-cols-2">
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Current signal</p>
+                                    <p className="mt-2 text-base font-semibold text-white">{step.caption}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Workflow value</p>
+                                    <p className="mt-2 text-sm leading-6 text-slate-200">{getFeatureDescription(step.title)}</p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5 flex flex-wrap items-center gap-2">
+                                  <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${statusClasses}`}>{statusLabel}</span>
+                                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-cyan-100">{step.action}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
       {/* ── Section: Priority & Upcoming ── */}
       <section>
         <div className="mb-4 flex items-center gap-3">
@@ -358,113 +664,134 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ── Section: Risk & Progress Analysis ── */}
-      <section>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="h-5 w-1 rounded-full bg-gradient-to-b from-indigo-400 to-purple-600" />
-          <Brain size={14} className="text-indigo-500" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            Intelligence Zone
-          </h2>
-        </div>
+      <style jsx>{`
+        .flow-board-grid {
+          animation: flowGridShift 18s linear infinite;
+        }
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <AlertTriangle size={18} className="text-slate-700" />
-              <h2 className="text-lg font-semibold text-slate-900">Workload Risk</h2>
-            </div>
+        .flow-board-aurora {
+          background:
+            radial-gradient(circle at 18% 24%, rgba(34, 211, 238, 0.18), transparent 24%),
+            radial-gradient(circle at 78% 18%, rgba(168, 85, 247, 0.16), transparent 28%),
+            radial-gradient(circle at 58% 78%, rgba(59, 130, 246, 0.14), transparent 26%);
+          filter: blur(10px);
+          animation: flowAurora 14s ease-in-out infinite alternate;
+        }
 
-            {risk ? (
-              <>
-                <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-slate-700">Risk Score</p>
-                    <p className="text-lg font-semibold text-slate-900">{risk.risk_score}/10</p>
-                  </div>
-                  <div className="mt-3 h-2.5 rounded-full bg-slate-300">
-                    <div className="h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600" style={{ width: `${Math.min(risk.risk_score * 10, 100)}%` }} />
-                  </div>
-                  <p className="mt-2 text-xs uppercase tracking-wide font-semibold text-slate-600">{risk.risk_level} Risk Level</p>
-                </div>
+        .flow-board-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.14), transparent);
+          transform: skewX(-18deg);
+          filter: blur(10px);
+          animation: flowSweep 11s ease-in-out infinite;
+        }
 
-                <div className="mt-4 space-y-2">
-                  {(risk.warnings || []).slice(0, 3).map((warning, idx) => (
-                    <div key={`${warning.type}-${idx}`} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                      {warning.message}
-                    </div>
-                  ))}
-                  <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                    <p className="font-medium">💡 AI Suggestion</p>
-                    <p className="mt-1 text-xs">{risk.suggestion}</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-slate-500">Risk analysis will appear once task data is available.</p>
-            )}
-          </article>
+        .flow-board-orb {
+          animation: flowOrbFloat 12s ease-in-out infinite;
+        }
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <TrendingUp size={18} className="text-slate-700" />
-              <h2 className="text-lg font-semibold text-slate-900">Progress Snapshot</h2>
-            </div>
+        .flow-board-orb-cyan {
+          animation-delay: -2s;
+        }
 
-            <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-              <p className="text-sm text-slate-600">Completion Rate</p>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-3xl font-bold text-slate-900">{stats.completionRate}%</p>
-                <BookOpen size={24} className="text-slate-400" />
-              </div>
-              <div className="mt-4 h-2.5 rounded-full bg-slate-300">
-                <div className="h-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600" style={{ width: `${stats.completionRate}%` }} />
-              </div>
-            </div>
+        .flow-board-orb-indigo {
+          animation-duration: 15s;
+          animation-delay: -6s;
+        }
 
-            <div className="mt-4 space-y-3">
-              <p className="text-sm font-medium text-slate-700">Top Subjects</p>
-              {subjectDistribution.length === 0 && (
-                <p className="text-sm text-slate-500">No subject distribution available yet.</p>
-              )}
-              {subjectDistribution.map(([subject, count]) => (
-                <div key={subject} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm hover:border-indigo-200 transition-colors">
-                  <span className="font-medium text-slate-700">{subject}</span>
-                  <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{count}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </div>
-      </section>
+        .flow-board-vignette {
+          background:
+            radial-gradient(circle at 50% 50%, transparent 48%, rgba(8, 18, 38, 0.16) 100%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 22%, transparent 78%, rgba(15, 23, 42, 0.18));
+        }
 
-      {/* ── Action Footer ── */}
-      <section className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5">
-        <div>
-          <h3 className="font-semibold text-slate-900">Ready to plan?</h3>
-          <p className="text-sm text-slate-600">Create a study plan for your top priority task</p>
-        </div>
+        .flow-line-core {
+          box-shadow: 0 0 22px rgba(103, 232, 249, 0.22);
+          animation: flowLinePulse 4.5s ease-in-out infinite;
+        }
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              priorityQueue[0]
-                ? openPlannerForTask(priorityQueue[0].id)
-                : router.push("/planner")
-            }
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            Plan Top Task
-          </button>
-          <button
-            onClick={() => router.push("/planner")}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-medium text-white hover:from-indigo-700 hover:to-purple-700 transition-all"
-          >
-            <Plus size={16} />
-            Generate Plan
-          </button>
-        </div>
-      </section>
+        .flow-line-halo {
+          animation: flowHaloDrift 6s ease-in-out infinite;
+        }
+
+        @keyframes flowGridShift {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          50% {
+            transform: translate3d(-10px, 8px, 0);
+          }
+          100% {
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        @keyframes flowAurora {
+          0% {
+            transform: translate3d(-2%, -1%, 0) scale(1);
+            opacity: 0.7;
+          }
+          50% {
+            transform: translate3d(3%, 2%, 0) scale(1.06);
+            opacity: 1;
+          }
+          100% {
+            transform: translate3d(-1%, 4%, 0) scale(1.02);
+            opacity: 0.84;
+          }
+        }
+
+        @keyframes flowSweep {
+          0% {
+            transform: translateX(0) skewX(-18deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.55;
+          }
+          50% {
+            transform: translateX(240%) skewX(-18deg);
+            opacity: 0.2;
+          }
+          100% {
+            transform: translateX(420%) skewX(-18deg);
+            opacity: 0;
+          }
+        }
+
+        @keyframes flowOrbFloat {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          50% {
+            transform: translate3d(-18px, 14px, 0) scale(1.08);
+          }
+        }
+
+        @keyframes flowLinePulse {
+          0%,
+          100% {
+            opacity: 0.82;
+            filter: saturate(1);
+          }
+          50% {
+            opacity: 1;
+            filter: saturate(1.28);
+          }
+        }
+
+        @keyframes flowHaloDrift {
+          0%,
+          100% {
+            transform: translateX(-50%) translateY(0) scale(0.92);
+            opacity: 0.26;
+          }
+          50% {
+            transform: translateX(-50%) translateY(26px) scale(1.08);
+            opacity: 0.42;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,13 +1,15 @@
-"""Standard encoding tables used in PDF.
+""" Standard encoding tables used in PDF.
 
 This table is extracted from PDF Reference Manual 1.6, pp.925
   "D.1 Latin Character Set and Encodings"
 
 """
 
-EncodingRow = tuple[str, int | None, int | None, int | None, int | None]
+from typing import List, Optional, Tuple
 
-ENCODING: list[EncodingRow] = [
+EncodingRow = Tuple[str, Optional[int], Optional[int], Optional[int], Optional[int]]
+
+ENCODING: List[EncodingRow] = [
     # (name, std, mac, win, pdf)
     ("A", 65, 65, 65, 65),
     ("AE", 225, 174, 198, 198),

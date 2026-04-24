@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, type CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Network, Sparkles, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { ApiError } from "@/lib/api";
@@ -13,6 +13,7 @@ import { apiGroupToGroup, apiInviteToInvite, apiMaterialToMaterial, formatFileSi
 
 export default function PeerConnectHome() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [groups, setGroups] = useState<Group[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,6 +55,27 @@ export default function PeerConnectHome() {
     const [deletingMaterialId, setDeletingMaterialId] = useState<string | null>(null);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [authRequired, setAuthRequired] = useState(false);
+
+    useEffect(() => {
+        const moduleParam = searchParams.get("module");
+        const taskParam = searchParams.get("task_id");
+        if (moduleParam) {
+            setSelectedModule(moduleParam);
+            const moduleCodeMatch = modules.some((m) => m.code === moduleParam);
+            setActiveFilter(moduleCodeMatch ? moduleParam : "All");
+            if (taskParam && !searchQuery) {
+                setSearchQuery(moduleParam);
+            }
+            setGroupModule((prev) => prev || moduleParam);
+        }
+    }, [searchParams, searchQuery]);
+
+    const normalizeSearch = (value: string) => value.toLowerCase().trim();
+    const isRelevantText = (text: string, query: string) => {
+        const normalizedText = normalizeSearch(text);
+        const normalizedQuery = normalizeSearch(query);
+        return normalizedText.includes(normalizedQuery) || normalizedText.replace(/\s+/g, "").includes(normalizedQuery.replace(/\s+/g, ""));
+    };
 
     const handleApiError = (error: unknown, fallback: string) => {
         if (error instanceof ApiError) {
@@ -201,9 +223,17 @@ export default function PeerConnectHome() {
     }, [selectedGroup?.id, authRequired]);
 
     const filteredGroups = groups.filter((g) => {
-        const q = searchQuery.toLowerCase();
-        return (activeFilter === "All" || g.module === activeFilter) &&
-            (!q || g.name.toLowerCase().includes(q) || g.module.toLowerCase().includes(q) || g.tags.some(t => t.toLowerCase().includes(q)));
+        const q = normalizeSearch(searchQuery);
+        const filterText = normalizeSearch(activeFilter);
+        const matchesFilter = activeFilter === "All" ||
+            isRelevantText(g.module, filterText) ||
+            isRelevantText(g.name, filterText) ||
+            g.tags.some((t) => isRelevantText(t, filterText));
+        const matchesSearch = !q ||
+            isRelevantText(g.name, q) ||
+            isRelevantText(g.module, q) ||
+            g.tags.some((t) => isRelevantText(t, q));
+        return matchesFilter && matchesSearch;
     });
 
     const handleCreate = async () => {
@@ -525,6 +555,13 @@ export default function PeerConnectHome() {
           cursor: pointer;
           transition: all 0.15s ease;
         }
+        .pc-relevance-note {
+          margin-top: -0.5rem;
+          margin-bottom: 1.3rem;
+          font-size: 0.88rem;
+          color: #475569;
+          line-height: 1.5;
+        }
         .pc-filter-chip:hover { border-color: rgba(59,130,246,0.28); background: #F8FAFC; color: #1E293B; }
         .pc-filter-chip.pc-active { background: #EFF6FF; border-color: rgba(59,130,246,0.30); color: #2563EB; }
 
@@ -555,6 +592,7 @@ export default function PeerConnectHome() {
         .pc-group-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
         .pc-tag { padding: 0.18rem 0.6rem; background: rgba(255,255,255,0.52); border: 1px solid rgba(96, 125, 173, 0.18); border-radius: 100px; font-size: 0.68rem; color: #334155; font-weight: 500; font-family: 'DM Sans', sans-serif; }
         .pc-group-footer { display: flex; align-items: center; justify-content: space-between; }
+        .pc-footer-actions { display: flex; align-items: center; gap: 0.5rem; }
         .pc-member-bar-wrap { flex: 1; margin-right: 1rem; }
         .pc-member-bar-label { font-size: 0.68rem; color: #475569; margin-bottom: 0.3rem; font-family: 'DM Sans', sans-serif; }
         .pc-member-bar { height: 3px; background: rgba(255,255,255,0.65); border-radius: 100px; overflow: hidden; }
@@ -929,7 +967,7 @@ export default function PeerConnectHome() {
                                     <div
                                         key={m.code}
                                         className={`pc-module-card ${activeFilter === m.code ? "pc-active" : ""}`}
-                                        style={{ "--card-color": m.color } as any}
+                                        style={{ "--card-color": m.color } as CSSProperties}
                                         onClick={() => setActiveFilter(activeFilter === m.code ? "All" : m.code)}
                                     >
                                         <div className="pc-module-dot" />
@@ -948,6 +986,11 @@ export default function PeerConnectHome() {
                                 Discover Peer Groups
                                 <span className="pc-count">{filteredGroups.length}</span>
                             </div>
+                            {selectedModule && (
+                                <div className="pc-relevance-note">
+                                    Showing groups relevant to <strong>{selectedModule}</strong>. Use the filter or search box to refine results.
+                                </div>
+                            )}
 
                             <div style={{ marginBottom: "2rem" }}>
                                 <div className="pc-filter-bar">

@@ -2,24 +2,22 @@
 
 import logging
 import sys
-from collections.abc import Container, Iterator
 from io import StringIO
-from typing import Any, BinaryIO, cast
+from typing import Any, BinaryIO, Container, Iterator, Optional, cast
 
-from pdfminer.converter import (
-    HOCRConverter,
-    HTMLConverter,
-    PDFPageAggregator,
-    TextConverter,
+from .converter import (
     XMLConverter,
+    HTMLConverter,
+    TextConverter,
+    PDFPageAggregator,
+    HOCRConverter,
 )
-from pdfminer.image import ImageWriter
-from pdfminer.layout import LAParams, LTPage
-from pdfminer.pdfdevice import PDFDevice, TagExtractor
-from pdfminer.pdfexceptions import PDFValueError
-from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
-from pdfminer.pdfpage import PDFPage
-from pdfminer.utils import AnyIO, FileOrName, open_filename
+from .image import ImageWriter
+from .layout import LAParams, LTPage
+from .pdfdevice import PDFDevice, TagExtractor
+from .pdfinterp import PDFResourceManager, PDFPageInterpreter
+from .pdfpage import PDFPage
+from .utils import open_filename, FileOrName, AnyIO
 
 
 def extract_text_to_fp(
@@ -27,14 +25,14 @@ def extract_text_to_fp(
     outfp: AnyIO,
     output_type: str = "text",
     codec: str = "utf-8",
-    laparams: LAParams | None = None,
+    laparams: Optional[LAParams] = None,
     maxpages: int = 0,
-    page_numbers: Container[int] | None = None,
+    page_numbers: Optional[Container[int]] = None,
     password: str = "",
     scale: float = 1.0,
     rotation: int = 0,
     layoutmode: str = "normal",
-    output_dir: str | None = None,
+    output_dir: Optional[str] = None,
     strip_control: bool = False,
     debug: bool = False,
     disable_caching: bool = False,
@@ -77,18 +75,14 @@ def extract_text_to_fp(
         imagewriter = ImageWriter(output_dir)
 
     rsrcmgr = PDFResourceManager(caching=not disable_caching)
-    device: PDFDevice | None = None
+    device: Optional[PDFDevice] = None
 
     if output_type != "text" and outfp == sys.stdout:
         outfp = sys.stdout.buffer
 
     if output_type == "text":
         device = TextConverter(
-            rsrcmgr,
-            outfp,
-            codec=codec,
-            laparams=laparams,
-            imagewriter=imagewriter,
+            rsrcmgr, outfp, codec=codec, laparams=laparams, imagewriter=imagewriter
         )
 
     elif output_type == "xml":
@@ -114,11 +108,7 @@ def extract_text_to_fp(
 
     elif output_type == "hocr":
         device = HOCRConverter(
-            rsrcmgr,
-            outfp,
-            codec=codec,
-            laparams=laparams,
-            stripcontrol=strip_control,
+            rsrcmgr, outfp, codec=codec, laparams=laparams, stripcontrol=strip_control
         )
 
     elif output_type == "tag":
@@ -126,8 +116,8 @@ def extract_text_to_fp(
         device = TagExtractor(rsrcmgr, cast(BinaryIO, outfp), codec=codec)
 
     else:
-        msg = f"Output type can be text, html, xml or tag but is {output_type}"
-        raise PDFValueError(msg)
+        msg = f"Output type can be text, html, xml or tag but is " f"{output_type}"
+        raise ValueError(msg)
 
     assert device is not None
     interpreter = PDFPageInterpreter(rsrcmgr, device)
@@ -147,11 +137,11 @@ def extract_text_to_fp(
 def extract_text(
     pdf_file: FileOrName,
     password: str = "",
-    page_numbers: Container[int] | None = None,
+    page_numbers: Optional[Container[int]] = None,
     maxpages: int = 0,
     caching: bool = True,
     codec: str = "utf-8",
-    laparams: LAParams | None = None,
+    laparams: Optional[LAParams] = None,
 ) -> str:
     """Parse and return the text contained in a PDF file.
 
@@ -190,10 +180,10 @@ def extract_text(
 def extract_pages(
     pdf_file: FileOrName,
     password: str = "",
-    page_numbers: Container[int] | None = None,
+    page_numbers: Optional[Container[int]] = None,
     maxpages: int = 0,
     caching: bool = True,
-    laparams: LAParams | None = None,
+    laparams: Optional[LAParams] = None,
 ) -> Iterator[LTPage]:
     """Extract and yield LTPage objects
 
@@ -216,11 +206,7 @@ def extract_pages(
         device = PDFPageAggregator(resource_manager, laparams=laparams)
         interpreter = PDFPageInterpreter(resource_manager, device)
         for page in PDFPage.get_pages(
-            fp,
-            page_numbers,
-            maxpages=maxpages,
-            password=password,
-            caching=caching,
+            fp, page_numbers, maxpages=maxpages, password=password, caching=caching
         ):
             interpreter.process_page(page)
             layout = device.get_result()

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 from beanie import PydanticObjectId
 from app.models.task import Task, TaskCreate, TaskUpdate, TaskResponse
@@ -10,6 +10,7 @@ from app.services.priority_service import (
     get_priority_breakdown,
 )
 from app.services.overload_service import detect_overload_risk
+from app.services.workflow_service import get_task_workflow, get_user_workflow_overview
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -33,7 +34,7 @@ async def get_user_task_or_404(task_id: str, current_user: User) -> Task:
     return task
 
 
-def task_to_response(task: Task) -> TaskResponse:
+def task_to_response(task: Task, workflow: Optional[dict] = None) -> TaskResponse:
     """Convert a Task document to a TaskResponse schema."""
     return TaskResponse(
         id=str(task.id),
@@ -46,6 +47,8 @@ def task_to_response(task: Task) -> TaskResponse:
         difficulty=task.difficulty,
         status=task.status,
         priority_score=task.priority_score,
+        workflow_stage=(workflow or {}).get("stage"),
+        next_action=(workflow or {}).get("next_action"),
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -99,7 +102,25 @@ async def get_all_tasks(current_user: User = Depends(get_current_user)):
     # Sort by priority (highest first)
     tasks.sort(key=lambda t: t.priority_score or 0, reverse=True)
 
-    return [task_to_response(t) for t in tasks]
+    response_items = []
+    for task in tasks:
+        workflow = await get_task_workflow(task)
+        response_items.append(task_to_response(task, workflow=workflow))
+
+    return response_items
+
+
+# ─── GET /tasks/workflow/overview ─── Unified workflow overview ───
+@router.get(
+    "/workflow/overview",
+    summary="Get unified workflow overview for all tasks",
+)
+async def get_workflow_overview(current_user: User = Depends(get_current_user)):
+    """
+    Returns a normalized workflow view that connects tasks, materials, and planning.
+    Use this endpoint to drive a single cross-feature journey in the UI.
+    """
+    return await get_user_workflow_overview(str(current_user.id))
 
 
 # ─── GET /tasks/overload-risk ─── Detect overload risk ───
@@ -156,7 +177,28 @@ async def get_task(task_id: str, current_user: User = Depends(get_current_user))
     task.priority_score = calculate_priority_score(task)
     await task.set({"priority_score": task.priority_score})
 
-    return task_to_response(task)
+    workflow = await get_task_workflow(task)
+    return task_to_response(task, workflow=workflow)
+
+
+# ─── GET /tasks/{task_id}/workflow ─── Task-specific workflow state ───
+@router.get(
+    "/{task_id}/workflow",
+    summary="Get workflow state and next best action for a task",
+)
+async def get_single_task_workflow(task_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Returns current workflow stage, blockers, and recommended next action for one task.
+    """
+    task = await get_user_task_or_404(task_id, current_user)
+    workflow = await get_task_workflow(task)
+    return {
+        "task_id": str(task.id),
+        "title": task.title,
+        "subject": task.subject,
+        "deadline": task.deadline.isoformat(),
+        **workflow,
+    }
 
 
 # ─── GET /tasks/{task_id}/priority ─── Get priority breakdown ───
@@ -208,7 +250,8 @@ async def update_task(
     task.priority_score = calculate_priority_score(task)
     await task.set({"priority_score": task.priority_score})
 
-    return task_to_response(task)
+    workflow = await get_task_workflow(task)
+    return task_to_response(task, workflow=workflow)
 
 
 # ─── DELETE /tasks/{task_id} ─── Delete a task ───

@@ -1,16 +1,17 @@
-"""Python implementation of Arcfour encryption algorithm.
+""" Python implementation of Arcfour encryption algorithm.
 See https://en.wikipedia.org/wiki/RC4
 This code is in the public domain.
 
 """
 
-from collections.abc import Sequence
+
+from typing import Sequence
 
 
 class Arcfour:
     def __init__(self, key: Sequence[int]) -> None:
         # because Py3 range is not indexable
-        s = list(range(256))
+        s = [i for i in range(256)]
         j = 0
         klen = len(key)
         for i in range(256):

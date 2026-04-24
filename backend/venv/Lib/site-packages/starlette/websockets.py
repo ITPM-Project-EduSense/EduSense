@@ -5,7 +5,7 @@ import json
 from collections.abc import AsyncIterator, Iterable
 from typing import Any, cast
 
-from starlette.requests import HTTPConnection, StateT
+from starlette.requests import HTTPConnection
 from starlette.responses import Response
 from starlette.types import Message, Receive, Scope, Send
 
@@ -23,7 +23,7 @@ class WebSocketDisconnect(Exception):
         self.reason = reason or ""
 
 
-class WebSocket(HTTPConnection[StateT]):
+class WebSocket(HTTPConnection):
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         super().__init__(scope)
         assert scope["type"] == "websocket"

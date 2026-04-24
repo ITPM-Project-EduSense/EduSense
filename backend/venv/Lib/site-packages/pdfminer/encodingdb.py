@@ -1,12 +1,10 @@
 import logging
 import re
-from collections.abc import Iterable
-from typing import ClassVar, cast
+from typing import Dict, Iterable, Optional, cast
 
-from pdfminer.glyphlist import glyphname2unicode
-from pdfminer.latin_enc import ENCODING
-from pdfminer.pdfexceptions import PDFKeyError
-from pdfminer.psparser import PSLiteral
+from .glyphlist import glyphname2unicode
+from .latin_enc import ENCODING
+from .psparser import PSLiteral
 
 HEXADECIMAL = re.compile(r"[0-9a-fA-F]+")
 
@@ -28,9 +26,9 @@ def name2unicode(name: str) -> str:
     otherwise a KeyError
     """
     if not isinstance(name, str):
-        raise PDFKeyError(
-            f'Could not convert unicode name "{name}" to character because '
-            f"it should be of type str but is of type {type(name)}",
+        raise KeyError(
+            'Could not convert unicode name "%s" to character because '
+            "it should be of type str but is of type %s" % (name, type(name))
         )
 
     name = name.split(".")[0]
@@ -39,33 +37,34 @@ def name2unicode(name: str) -> str:
     if len(components) > 1:
         return "".join(map(name2unicode, components))
 
-    elif name in glyphname2unicode:
-        return glyphname2unicode[name]
+    else:
+        if name in glyphname2unicode:
+            return glyphname2unicode[name]
 
-    elif name.startswith("uni"):
-        name_without_uni = name.strip("uni")
+        elif name.startswith("uni"):
+            name_without_uni = name.strip("uni")
 
-        if HEXADECIMAL.match(name_without_uni) and len(name_without_uni) % 4 == 0:
-            unicode_digits = [
-                int(name_without_uni[i : i + 4], base=16)
-                for i in range(0, len(name_without_uni), 4)
-            ]
-            for digit in unicode_digits:
-                raise_key_error_for_invalid_unicode(digit)
-            characters = map(chr, unicode_digits)
-            return "".join(characters)
+            if HEXADECIMAL.match(name_without_uni) and len(name_without_uni) % 4 == 0:
+                unicode_digits = [
+                    int(name_without_uni[i : i + 4], base=16)
+                    for i in range(0, len(name_without_uni), 4)
+                ]
+                for digit in unicode_digits:
+                    raise_key_error_for_invalid_unicode(digit)
+                characters = map(chr, unicode_digits)
+                return "".join(characters)
 
-    elif name.startswith("u"):
-        name_without_u = name.strip("u")
+        elif name.startswith("u"):
+            name_without_u = name.strip("u")
 
-        if HEXADECIMAL.match(name_without_u) and 4 <= len(name_without_u) <= 6:
-            unicode_digit = int(name_without_u, base=16)
-            raise_key_error_for_invalid_unicode(unicode_digit)
-            return chr(unicode_digit)
+            if HEXADECIMAL.match(name_without_u) and 4 <= len(name_without_u) <= 6:
+                unicode_digit = int(name_without_u, base=16)
+                raise_key_error_for_invalid_unicode(unicode_digit)
+                return chr(unicode_digit)
 
-    raise PDFKeyError(
-        f'Could not convert unicode name "{name}" to character because '
-        "it does not match specification",
+    raise KeyError(
+        'Could not convert unicode name "%s" to character because '
+        "it does not match specification" % name
     )
 
 
@@ -76,18 +75,19 @@ def raise_key_error_for_invalid_unicode(unicode_digit: int) -> None:
     :raises KeyError if unicode digit is invalid
     """
     if 55295 < unicode_digit < 57344:
-        raise PDFKeyError(
-            f"Unicode digit {unicode_digit} is invalid because "
-            "it is in the range D800 through DFFF",
+        raise KeyError(
+            "Unicode digit %d is invalid because "
+            "it is in the range D800 through DFFF" % unicode_digit
         )
 
 
 class EncodingDB:
-    std2unicode: ClassVar[dict[int, str]] = {}
-    mac2unicode: ClassVar[dict[int, str]] = {}
-    win2unicode: ClassVar[dict[int, str]] = {}
-    pdf2unicode: ClassVar[dict[int, str]] = {}
-    for name, std, mac, win, pdf in ENCODING:
+
+    std2unicode: Dict[int, str] = {}
+    mac2unicode: Dict[int, str] = {}
+    win2unicode: Dict[int, str] = {}
+    pdf2unicode: Dict[int, str] = {}
+    for (name, std, mac, win, pdf) in ENCODING:
         c = name2unicode(name)
         if std:
             std2unicode[std] = c
@@ -98,7 +98,7 @@ class EncodingDB:
         if pdf:
             pdf2unicode[pdf] = c
 
-    encodings: ClassVar[dict[str, dict[int, str]]] = {
+    encodings = {
         "StandardEncoding": std2unicode,
         "MacRomanEncoding": mac2unicode,
         "WinAnsiEncoding": win2unicode,
@@ -107,10 +107,8 @@ class EncodingDB:
 
     @classmethod
     def get_encoding(
-        cls,
-        name: str,
-        diff: Iterable[object] | None = None,
-    ) -> dict[int, str]:
+        cls, name: str, diff: Optional[Iterable[object]] = None
+    ) -> Dict[int, str]:
         cid2unicode = cls.encodings.get(name, cls.std2unicode)
         if diff:
             cid2unicode = cid2unicode.copy()

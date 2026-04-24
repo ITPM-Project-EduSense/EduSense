@@ -1,17 +1,13 @@
-#!c:\Users\palih\Desktop\New folder\EduSense\backend\venv\Scripts\python.exe
+#!C:\Users\kanis\Documents\GitHub\EduSense\backend\venv\Scripts\python.exe
 """A command line tool for extracting text and images from PDF and
-output it to plain text, html, xml or tags.
-"""
-
+output it to plain text, html, xml or tags."""
 import argparse
 import logging
 import sys
-from collections.abc import Container, Iterable
-from typing import Any
+from typing import Any, Container, Iterable, List, Optional
 
 import pdfminer.high_level
 from pdfminer.layout import LAParams
-from pdfminer.pdfexceptions import PDFValueError
 from pdfminer.utils import AnyIO
 
 logging.basicConfig()
@@ -19,35 +15,35 @@ logging.basicConfig()
 OUTPUT_TYPES = ((".htm", "html"), (".html", "html"), (".xml", "xml"), (".tag", "tag"))
 
 
-def float_or_disabled(x: str) -> float | None:
+def float_or_disabled(x: str) -> Optional[float]:
     if x.lower().strip() == "disabled":
         return None
     try:
         return float(x)
-    except ValueError as err:
-        raise argparse.ArgumentTypeError(f"invalid float value: {x}") from err
+    except ValueError:
+        raise argparse.ArgumentTypeError("invalid float value: {}".format(x))
 
 
 def extract_text(
     files: Iterable[str] = [],
     outfile: str = "-",
-    laparams: LAParams | None = None,
+    laparams: Optional[LAParams] = None,
     output_type: str = "text",
     codec: str = "utf-8",
     strip_control: bool = False,
     maxpages: int = 0,
-    page_numbers: Container[int] | None = None,
+    page_numbers: Optional[Container[int]] = None,
     password: str = "",
     scale: float = 1.0,
     rotation: int = 0,
     layoutmode: str = "normal",
-    output_dir: str | None = None,
+    output_dir: Optional[str] = None,
     debug: bool = False,
     disable_caching: bool = False,
-    **kwargs: Any,
-) -> None:
+    **kwargs: Any
+) -> AnyIO:
     if not files:
-        raise PDFValueError("Must provide files to work upon!")
+        raise ValueError("Must provide files to work upon!")
 
     if output_type == "text" and outfile != "-":
         for override, alttype in OUTPUT_TYPES:
@@ -58,15 +54,13 @@ def extract_text(
         outfp: AnyIO = sys.stdout
         if sys.stdout.encoding is not None:
             codec = "utf-8"
-        for fname in files:
-            with open(fname, "rb") as fp:
-                pdfminer.high_level.extract_text_to_fp(fp, **locals())
     else:
-        # Use context manager for file output, ensuring proper cleanup
-        with open(outfile, "wb") as outfp:
-            for fname in files:
-                with open(fname, "rb") as fp:
-                    pdfminer.high_level.extract_text_to_fp(fp, **locals())
+        outfp = open(outfile, "wb")
+
+    for fname in files:
+        with open(fname, "rb") as fp:
+            pdfminer.high_level.extract_text_to_fp(fp, **locals())
+    return outfp
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -83,7 +77,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--version",
         "-v",
         action="version",
-        version=f"pdfminer.six v{pdfminer.__version__}",
+        version="pdfminer.six v{}".format(pdfminer.__version__),
     )
     parser.add_argument(
         "--debug",
@@ -101,8 +95,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parse_params = parser.add_argument_group(
-        "Parser",
-        description="Used during PDF parsing",
+        "Parser", description="Used during PDF parsing"
     )
     parse_params.add_argument(
         "--page-numbers",
@@ -144,8 +137,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     la_params = LAParams()  # will be used for defaults
     la_param_group = parser.add_argument_group(
-        "Layout analysis",
-        description="Used during layout analysis.",
+        "Layout analysis", description="Used during layout analysis."
     )
     la_param_group.add_argument(
         "--no-laparams",
@@ -219,8 +211,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     output_params = parser.add_argument_group(
-        "Output",
-        description="Used during output generation.",
+        "Output", description="Used during output generation."
     )
     output_params.add_argument(
         "--outfile",
@@ -277,13 +268,14 @@ def create_parser() -> argparse.ArgumentParser:
         "-S",
         default=False,
         action="store_true",
-        help="Remove control statement from text. Only used when output_type is xml.",
+        help="Remove control statement from text. "
+        "Only used when output_type is xml.",
     )
 
     return parser
 
 
-def parse_args(args: list[str] | None) -> argparse.Namespace:
+def parse_args(args: Optional[List[str]]) -> argparse.Namespace:
     parsed_args = create_parser().parse_args(args=args)
 
     # Propagate parsed layout parameters to LAParams object
@@ -314,9 +306,10 @@ def parse_args(args: list[str] | None) -> argparse.Namespace:
     return parsed_args
 
 
-def main(args: list[str] | None = None) -> int:
+def main(args: Optional[List[str]] = None) -> int:
     parsed_args = parse_args(args)
-    extract_text(**vars(parsed_args))
+    outfp = extract_text(**vars(parsed_args))
+    outfp.close()
     return 0
 
 

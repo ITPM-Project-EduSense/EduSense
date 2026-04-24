@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/api";
 import {
   Calendar,
@@ -10,19 +11,25 @@ import {
   Circle,
   Clock3,
   Filter,
-  Pencil,
   Plus,
   Search,
   Trash2,
   ListTodo,
   Sparkles,
   Activity,
-  AlertTriangle,
-  BookOpen,
-  Flame,
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  Brain,
+  Target,
+  Gauge,
+  ClipboardList,
+  Workflow,
+  ArrowRight,
+  Network,
+  MessageSquare,
+  BarChart3,
+  PieChart,
 } from "lucide-react";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
@@ -40,8 +47,42 @@ type Task = {
   difficulty: TaskDifficulty;
   status: TaskStatus;
   priority_score: number | null;
+  workflow_stage?: WorkflowStage;
+  next_action?: string;
   created_at: string;
   updated_at: string;
+};
+
+type WorkflowStage =
+  | "draft"
+  | "material_ready"
+  | "planned"
+  | "in_progress"
+  | "at_risk"
+  | "completed";
+
+type WorkflowTaskItem = {
+  task_id: string;
+  title: string;
+  subject: string;
+  deadline: string;
+  stage: WorkflowStage;
+  next_action: string;
+  recommended_route: string;
+  has_materials: boolean;
+  has_schedule: boolean;
+  is_overdue: boolean;
+  progress_pct: number;
+  planner_route?: string;
+  collaboration_route?: string;
+  coach_route?: string;
+  analytics_route?: string;
+};
+
+type WorkflowOverview = {
+  total_tasks: number;
+  stage_counts: Record<WorkflowStage, number>;
+  tasks: WorkflowTaskItem[];
 };
 
 type TaskForm = {
@@ -90,13 +131,6 @@ function statusClass(value: TaskStatus) {
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
-function priorityColor(score: number | null) {
-  if (!score) return "bg-slate-100";
-  if (score >= 7) return "bg-rose-300";
-  if (score >= 4) return "bg-amber-300";
-  return "bg-emerald-300";
-}
-
 function getDaysInMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
@@ -105,9 +139,44 @@ function getFirstDayOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 }
 
+function workflowStageClass(stage: WorkflowStage) {
+  if (stage === "completed") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (stage === "at_risk") return "bg-rose-50 text-rose-700 border-rose-200";
+  if (stage === "in_progress") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (stage === "planned") return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (stage === "material_ready") return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function workflowStageLabel(stage: WorkflowStage) {
+  if (stage === "material_ready") return "material ready";
+  if (stage === "in_progress") return "in progress";
+  if (stage === "at_risk") return "at risk";
+  return stage;
+}
+
+function fallbackRouteForStage(stage?: WorkflowStage, taskId?: string) {
+  if (stage === "draft") return "/materials";
+  if (stage === "material_ready") return `/planner?task_id=${taskId}`;
+  if (stage === "planned") return `/planner?task_id=${taskId}`;
+  if (stage === "in_progress") return `/planner?task_id=${taskId}`;
+  if (stage === "at_risk") return `/planner?task_id=${taskId}`;
+  if (stage === "completed") return "/analytics";
+  return `/planner?task_id=${taskId}`;
+}
+
+function taskTypeTone(taskType: TaskType) {
+  if (taskType === "assignment") return "from-fuchsia-500 to-pink-500";
+  if (taskType === "exam") return "from-rose-500 to-orange-500";
+  if (taskType === "coding") return "from-cyan-500 to-blue-500";
+  return "from-emerald-500 to-teal-500";
+}
+
 export default function TasksPage() {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [workflowOverview, setWorkflowOverview] = useState<WorkflowOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,10 +188,10 @@ export default function TasksPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(defaultForm);
-
+  
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  
   const [showCalendarView, setShowCalendarView] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -130,8 +199,12 @@ export default function TasksPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiFetch("/tasks");
-      setTasks(Array.isArray(data) ? data : []);
+      const [tasksData, workflowData] = await Promise.all([
+        apiFetch("/tasks"),
+        apiFetch("/tasks/workflow/overview"),
+      ]);
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+      setWorkflowOverview(workflowData as WorkflowOverview);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to load tasks";
       setError(message);
@@ -139,6 +212,10 @@ export default function TasksPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     loadTasks();
@@ -154,12 +231,97 @@ export default function TasksPage() {
     });
   }, [tasks, search, statusFilter, difficultyFilter]);
 
+  const workflowByTaskId = useMemo(() => {
+    const map = new Map<string, WorkflowTaskItem>();
+    if (!workflowOverview?.tasks) return map;
+    for (const item of workflowOverview.tasks) {
+      map.set(item.task_id, item);
+    }
+    return map;
+  }, [workflowOverview]);
+
   const stats = useMemo(() => {
     const total = tasks.length;
     const pending = tasks.filter((t) => t.status === "pending").length;
     const inProgress = tasks.filter((t) => t.status === "in_progress").length;
     const completed = tasks.filter((t) => t.status === "completed").length;
     return { total, pending, inProgress, completed };
+  }, [tasks]);
+
+  const statusMix = useMemo(() => {
+    const total = Math.max(tasks.length, 1);
+    return [
+      {
+        label: "Pending",
+        value: stats.pending,
+        pct: Math.round((stats.pending / total) * 100),
+        tone: "from-blue-500 to-indigo-500",
+        bg: "bg-blue-50",
+      },
+      {
+        label: "In Progress",
+        value: stats.inProgress,
+        pct: Math.round((stats.inProgress / total) * 100),
+        tone: "from-amber-500 to-orange-500",
+        bg: "bg-amber-50",
+      },
+      {
+        label: "Completed",
+        value: stats.completed,
+        pct: Math.round((stats.completed / total) * 100),
+        tone: "from-emerald-500 to-teal-500",
+        bg: "bg-emerald-50",
+      },
+    ];
+  }, [stats, tasks.length]);
+
+  const difficultyMix = useMemo(() => {
+    const easy = tasks.filter((task) => task.difficulty === "easy").length;
+    const medium = tasks.filter((task) => task.difficulty === "medium").length;
+    const hard = tasks.filter((task) => task.difficulty === "hard").length;
+    const total = Math.max(tasks.length, 1);
+    return [
+      { label: "Easy", value: easy, pct: Math.round((easy / total) * 100), tone: "from-emerald-400 to-teal-500" },
+      { label: "Medium", value: medium, pct: Math.round((medium / total) * 100), tone: "from-amber-400 to-orange-500" },
+      { label: "Hard", value: hard, pct: Math.round((hard / total) * 100), tone: "from-rose-500 to-pink-500" },
+    ];
+  }, [tasks]);
+
+  const subjectLoad = useMemo(() => {
+    const map = new Map<string, { count: number; hours: number }>();
+    for (const task of tasks) {
+      const current = map.get(task.subject) || { count: 0, hours: 0 };
+      map.set(task.subject, {
+        count: current.count + 1,
+        hours: current.hours + task.estimated_hours,
+      });
+    }
+    const entries = [...map.entries()]
+      .map(([subject, data]) => ({ subject, ...data }))
+      .sort((a, b) => b.count - a.count || b.hours - a.hours)
+      .slice(0, 5);
+    const maxCount = Math.max(1, ...entries.map((entry) => entry.count));
+    return entries.map((entry) => ({
+      ...entry,
+      width: `${Math.max((entry.count / maxCount) * 100, 16)}%`,
+    }));
+  }, [tasks]);
+
+  const taskTypeMix = useMemo(() => {
+    const counts: Record<TaskType, number> = {
+      reading: 0,
+      assignment: 0,
+      exam: 0,
+      coding: 0,
+    };
+    for (const task of tasks) counts[task.task_type] += 1;
+    const max = Math.max(1, ...Object.values(counts));
+    return (Object.entries(counts) as Array<[TaskType, number]>).map(([taskType, value]) => ({
+      taskType,
+      value,
+      width: `${Math.max((value / max) * 100, value > 0 ? 14 : 8)}%`,
+      tone: taskTypeTone(taskType),
+    }));
   }, [tasks]);
 
   const openCreate = () => {
@@ -269,8 +431,51 @@ export default function TasksPage() {
     router.push(`/analytics?date=${dateStr}`);
   };
 
+  const formDeadlineDaysLeft = useMemo(() => {
+    if (!form.deadline) return null;
+    const deadlineMs = new Date(form.deadline).getTime();
+    if (Number.isNaN(deadlineMs)) return null;
+    return Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60 * 24));
+  }, [form.deadline]);
+
+  const recommendedDailyHours = useMemo(() => {
+    if (formDeadlineDaysLeft === null || formDeadlineDaysLeft <= 0) return null;
+    return Math.max(0.5, Number((form.estimated_hours / formDeadlineDaysLeft).toFixed(1)));
+  }, [form.estimated_hours, formDeadlineDaysLeft]);
+
+  const urgencyConfig = useMemo(() => {
+    if (formDeadlineDaysLeft === null) {
+      return {
+        label: "No deadline yet",
+        tone: "text-slate-600 bg-slate-100 border-slate-200",
+      };
+    }
+    if (formDeadlineDaysLeft < 0) {
+      return {
+        label: `Overdue by ${Math.abs(formDeadlineDaysLeft)} day${Math.abs(formDeadlineDaysLeft) > 1 ? "s" : ""}`,
+        tone: "text-rose-700 bg-rose-100 border-rose-200",
+      };
+    }
+    if (formDeadlineDaysLeft <= 2) {
+      return {
+        label: "Critical window",
+        tone: "text-rose-700 bg-rose-100 border-rose-200",
+      };
+    }
+    if (formDeadlineDaysLeft <= 7) {
+      return {
+        label: "Tight schedule",
+        tone: "text-amber-700 bg-amber-100 border-amber-200",
+      };
+    }
+    return {
+      label: "Healthy timeline",
+      tone: "text-emerald-700 bg-emerald-100 border-emerald-200",
+    };
+  }, [formDeadlineDaysLeft]);
+
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
+    <div className="eds-page-shell mx-auto w-full max-w-7xl space-y-6 rounded-3xl p-4 lg:p-6">
       {/* ── Page Header with Gradient (EDS) ── */}
       <section className="eds-hero-card">
         {/* Ambient glow blobs */}
@@ -320,105 +525,133 @@ export default function TasksPage() {
         </div>
       </section>
 
-      {/* ── Section: Quick Stats ── */}
-      <section className="eds-fade-up" style={{ animationDelay: "100ms" }}>
+      {/* ── Section: Workflow Overview ── */}
+      <section className="eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "80ms" }}>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
+          <Workflow size={14} className="text-blue-500" />
           <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
-            Performance & Insights
+            Workflow Engine
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Overdue Tasks Alert */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(225,29,72,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(225,29,72,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-600">Overdue Tasks</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {loading ? "--" : tasks.filter(t => t.status !== "completed" && daysLeft(t.deadline) < 0).length}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-rose-500">Need immediate attention</p>
-              </div>
-              <div className="rounded-xl bg-gradient-to-br from-rose-100 to-red-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <AlertTriangle size={18} className="text-rose-600" />
-              </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          {([
+            ["draft", "Draft"],
+            ["material_ready", "Materials Ready"],
+            ["planned", "Planned"],
+            ["in_progress", "In Progress"],
+            ["at_risk", "At Risk"],
+            ["completed", "Completed"],
+          ] as Array<[WorkflowStage, string]>).map(([key, label]) => (
+            <div key={key} className="rounded-xl border border-slate-200/70 bg-white/80 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+              <p className="mt-1 text-2xl font-extrabold text-slate-800">{workflowOverview?.stage_counts?.[key] ?? 0}</p>
             </div>
-          </article>
+          ))}
+        </div>
+      </section>
 
-          {/* Completion Rate */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div className="w-full">
-                <p className="text-sm font-bold text-slate-600">Completion Rate</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {loading ? "--" : `${Math.round((stats.completed / (stats.total || 1)) * 100)}%`}
-                </p>
-                <div className="mt-3 h-1.5 w-full max-w-[124px] overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000"
-                    style={{ width: `${Math.round((stats.completed / (stats.total || 1)) * 100)}%` }}
-                  />
+      <section className="eds-fade-up grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]" style={{ animationDelay: "90ms" }}>
+        <article className="rounded-3xl border border-white/60 bg-white/72 p-5 shadow-[0_12px_36px_-16px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Task Atlas</p>
+              <h2 className="mt-1 text-xl font-extrabold text-slate-900">Workload Composition</h2>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2 text-slate-500 shadow-sm">
+              <PieChart size={18} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {statusMix.map((item) => (
+              <div key={item.label} className={`rounded-2xl border border-white/70 p-4 shadow-sm ${item.bg}`}>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-slate-700">{item.label}</p>
+                  <span className="rounded-full bg-white/85 px-2 py-0.5 text-xs font-bold text-slate-500">{item.pct}%</span>
+                </div>
+                <p className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">{item.value}</p>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
+                  <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: `${Math.max(item.pct, item.value > 0 ? 14 : 8)}%` }} />
                 </div>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <CheckCircle2 size={18} className="text-emerald-600" />
-              </div>
-            </div>
-          </article>
+            ))}
+          </div>
 
-          {/* Avg Task Complexity */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-600">Avg. Difficulty</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {loading ? "--" : (
-                    tasks.length > 0
-                      ? tasks.reduce((sum, t) => sum + (t.difficulty === "hard" ? 3 : t.difficulty === "medium" ? 2 : 1), 0) / tasks.length
-                      : 0
-                  ).toFixed(1)}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-amber-500">
-                  {tasks.length > 0
-                    ? tasks.filter(t => t.difficulty === "hard").length > tasks.length / 2
-                      ? "Challenging workload"
-                      : "Balanced workload"
-                    : "No tasks yet"
-                  }
-                </p>
-              </div>
-              <div className="rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <Flame size={18} className="text-amber-600" />
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Difficulty Balance</p>
+              <div className="mt-4 space-y-3">
+                {difficultyMix.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1.5 flex items-center justify-between text-sm">
+                      <span className="font-semibold text-slate-700">{item.label}</span>
+                      <span className="text-slate-400">{item.value} tasks</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-white">
+                      <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: `${Math.max(item.pct, item.value > 0 ? 14 : 7)}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </article>
 
-          {/* Most Active Subject */}
-          <article className="group rounded-2xl border border-white/50 bg-gradient-to-br from-white/90 to-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(59,130,246,0.1)] backdrop-blur-md hover:shadow-[0_8px_30px_-4px_rgba(59,130,246,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-600">Top Subject</p>
-                <p className="mt-2 truncate text-3xl font-extrabold text-slate-800 tracking-tight max-w-[140px]">
-                  {loading ? "--" : (
-                    tasks.length > 0
-                      ? Object.entries(
-                        tasks.reduce((acc, t) => ({
-                          ...acc,
-                          [t.subject]: (acc[t.subject as keyof typeof acc] || 0) + 1
-                        }), {} as Record<string, number>)
-                      ).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
-                      : "N/A"
-                  )}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-blue-500">Most tasks assigned</p>
-              </div>
-              <div className="rounded-xl bg-gradient-to-br from-blue-100 to-indigo-50 p-2.5 shadow-inner shadow-white/50 group-hover:scale-110 transition-transform">
-                <BookOpen size={18} className="text-blue-600" />
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Task Type Mix</p>
+              <div className="mt-4 space-y-3">
+                {taskTypeMix.map((item) => (
+                  <div key={item.taskType}>
+                    <div className="mb-1.5 flex items-center justify-between text-sm">
+                      <span className="font-semibold capitalize text-slate-700">{item.taskType}</span>
+                      <span className="text-slate-400">{item.value}</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-white">
+                      <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: item.width }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </article>
-        </div>
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-white/60 bg-white/72 p-5 shadow-[0_12px_36px_-16px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Subject Pulse</p>
+              <h2 className="mt-1 text-xl font-extrabold text-slate-900">Module Load Map</h2>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2 text-slate-500 shadow-sm">
+              <BarChart3 size={18} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {subjectLoad.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-center text-sm text-slate-500">
+                Add tasks to see your module workload map.
+              </div>
+            )}
+
+            {subjectLoad.map((item) => (
+              <div key={item.subject} className="rounded-2xl border border-slate-200/70 bg-gradient-to-r from-white to-slate-50/70 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-800">{item.subject}</p>
+                    <p className="text-xs text-slate-400">{item.hours.toFixed(1)}h estimated workload</p>
+                  </div>
+                  <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">
+                    {item.count} tasks
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" style={{ width: item.width }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
       </section>
 
       {/* ── Section: Calendar View ── */}
@@ -474,9 +707,9 @@ export default function TasksPage() {
 
                   // Empty cells for days before month starts
                   for (let i = 0; i < firstDay; i++) {
-                    days.push(
-                      <div key={`empty-${i}`} className="h-32 rounded-lg bg-slate-50" />
-                    );
+                      days.push(
+                        <div key={`empty-${i}`} className="h-32 rounded-lg bg-slate-50" />
+                      );
                   }
 
                   // Calendar days
@@ -488,45 +721,47 @@ export default function TasksPage() {
 
                     days.push(
                       <button
-                        key={day}
-                        onClick={() => navigateToAnalytics(date)}
-                        className={`h-32 rounded-lg border-2 transition-all duration-200 p-2 flex flex-col overflow-hidden hover:shadow-md cursor-pointer ${isToday
+                          key={day}
+                          onClick={() => navigateToAnalytics(date)}
+                          className={`h-32 rounded-lg border-2 transition-all duration-200 p-2 flex flex-col overflow-hidden hover:shadow-md cursor-pointer ${
+                          isToday
                             ? "border-blue-400 bg-blue-50"
                             : "border-slate-200 bg-white hover:border-blue-300"
-                          }`}
+                        }`}
                       >
-                        {/* Day number */}
-                        <span className={`text-xs font-bold mb-1 ${isToday ? "text-blue-600" : "text-slate-600"}`}>
+                          {/* Day number */}
+                          <span className={`text-xs font-bold mb-1 ${isToday ? "text-blue-600" : "text-slate-600"}`}>
                           {day}
                         </span>
 
-                        {/* Tasks list */}
-                        <div className="flex-1 overflow-y-auto space-y-1 text-left min-w-0">
-                          {tasksForDay.length > 0 ? (
-                            tasksForDay.slice(0, 3).map((task) => (
-                              <div
-                                key={task.id}
-                                className={`text-xs rounded px-1.5 py-0.5 truncate font-medium ${(task.priority_score ?? 0) >= 7
-                                    ? "bg-rose-100 text-rose-700 border-l-2 border-rose-400"
-                                    : (task.priority_score ?? 0) >= 4
+                          {/* Tasks list */}
+                          <div className="flex-1 overflow-y-auto space-y-1 text-left min-w-0">
+                            {tasksForDay.length > 0 ? (
+                              tasksForDay.slice(0, 3).map((task) => (
+                                <div
+                                  key={task.id}
+                                  className={`text-xs rounded px-1.5 py-0.5 truncate font-medium ${
+                                      (task.priority_score ?? 0) >= 7
+                                      ? "bg-rose-100 text-rose-700 border-l-2 border-rose-400"
+                                        : (task.priority_score ?? 0) >= 4
                                       ? "bg-amber-100 text-amber-700 border-l-2 border-amber-400"
                                       : "bg-emerald-100 text-emerald-700 border-l-2 border-emerald-400"
                                   }`}
-                                title={`${task.title} (${task.subject})`}
-                              >
-                                <div className="truncate">{task.title}</div>
-                                <div className="text-xs opacity-75 truncate">{task.subject}</div>
+                                  title={`${task.title} (${task.subject})`}
+                                >
+                                  <div className="truncate">{task.title}</div>
+                                  <div className="text-xs opacity-75 truncate">{task.subject}</div>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-400">No tasks</span>
+                            )}
+                            {tasksForDay.length > 3 && (
+                              <div className="text-xs font-semibold text-slate-500 px-1.5">
+                                +{tasksForDay.length - 3} more
                               </div>
-                            ))
-                          ) : (
-                            <span className="text-xs text-slate-400">No tasks</span>
-                          )}
-                          {tasksForDay.length > 3 && (
-                            <div className="text-xs font-semibold text-slate-500 px-1.5">
-                              +{tasksForDay.length - 3} more
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
                       </button>
                     );
                   }
@@ -556,7 +791,7 @@ export default function TasksPage() {
       )}
 
       {/* ── Section: Filters ── */}
-      <section className="eds-fade-up" style={{ animationDelay: "200ms" }}>
+      <section className="eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "200ms" }}>
         <div className="mb-4 flex items-center gap-3">
           <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
           <Sparkles size={14} className="text-blue-500" />
@@ -615,7 +850,7 @@ export default function TasksPage() {
       )}
 
       {/* ── Section: Task List ── */}
-      <section className="col-span-1 lg:col-span-3 eds-fade-up" style={{ animationDelay: "300ms" }}>
+      <section className="col-span-1 lg:col-span-3 eds-fade-up rounded-2xl border border-blue-100/70 bg-white/65 p-4 shadow-[0_10px_35px_-8px_rgba(30,64,175,0.12)] backdrop-blur-xl lg:p-5" style={{ animationDelay: "300ms" }}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-5 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30" />
@@ -671,13 +906,20 @@ export default function TasksPage() {
               </div>
               <p className="text-base font-bold text-slate-700">No tasks found</p>
               <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto">
-                You've cleared your filter or finished everything. Enjoy your free time or add a new task!
+                You&apos;ve cleared your filter or finished everything. Enjoy your free time or add a new task!
               </p>
             </div>
           )}
 
           {filteredTasks.map((task, idx) => {
             const remaining = daysLeft(task.deadline);
+            const workflow = workflowByTaskId.get(task.id);
+            const workflowStage = workflow?.stage || task.workflow_stage || "draft";
+            const nextAction = workflow?.next_action || task.next_action || "Generate a plan and begin focused study sessions";
+            const nextRoute = workflow?.recommended_route || fallbackRouteForStage(workflowStage, task.id);
+            const plannerRoute = workflow?.planner_route || `/planner?task_id=${task.id}`;
+            const collaborationRoute = workflow?.collaboration_route || `/materials?module=${encodeURIComponent(task.subject)}&task_id=${task.id}`;
+            const coachRoute = workflow?.coach_route || `/ai?subject=${encodeURIComponent(task.subject)}&task_id=${task.id}`;
             return (
               <article
                 key={task.id}
@@ -703,8 +945,12 @@ export default function TasksPage() {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-extrabold shadow-sm ${workflowStageClass(workflowStage)}`}>
+                        <Workflow size={13} />
+                        {workflowStageLabel(workflowStage)}
+                      </span>
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${statusClass(task.status)}`}>
-                        {task.status === "completed" ? <CheckCircle2 size={14} /> : task.status === "in_progress" ? <Activity size={14} /> : <Circle size={14} />}
+                        {task.status === "completed" ? <CheckCircle2 size={14}/> : task.status === "in_progress" ? <Activity size={14}/> : <Circle size={14}/>} 
                         {task.status.replace("_", " ")}
                       </span>
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold shadow-sm transition-all duration-200 ${difficultyClass(task.difficulty)}`}>
@@ -724,8 +970,9 @@ export default function TasksPage() {
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Deadline</p>
                       <p className="mt-0.5 text-sm font-extrabold text-slate-700">{formatDate(task.deadline)}</p>
-                      <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ${remaining <= 1 ? "bg-rose-100 text-rose-700" : remaining <= 3 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                        }`}>
+                      <p className={`mt-1 text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ${
+                        remaining <= 1 ? "bg-rose-100 text-rose-700" : remaining <= 3 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                      }`}>
                         {remaining < 0 ? `Overdue ${Math.abs(remaining)}d` : `${remaining}d left`}
                       </p>
                     </div>
@@ -760,6 +1007,34 @@ export default function TasksPage() {
                   </div>
                 </div>
 
+                <div className="border-t border-white/40 bg-blue-50/50 px-5 py-3 lg:px-6">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Next Best Action</p>
+                  <p className="mt-1 text-sm font-medium text-slate-700">{nextAction}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => router.push(plannerRoute)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:bg-indigo-50"
+                    >
+                      <Sparkles size={12} />
+                      AI Schedule
+                    </button>
+                    <button
+                      onClick={() => router.push(collaborationRoute)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-sky-700 shadow-sm transition-all duration-200 hover:border-sky-300 hover:bg-sky-50"
+                    >
+                      <Network size={12} />
+                      PeerConnect
+                    </button>
+                    <button
+                      onClick={() => router.push(coachRoute)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-violet-700 shadow-sm transition-all duration-200 hover:border-violet-300 hover:bg-violet-50"
+                    >
+                      <MessageSquare size={12} />
+                      AI Coach
+                    </button>
+                  </div>
+                </div>
+
                 {/* Bottom section with actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 lg:px-6 bg-slate-50/40 border-t border-white/40">
                   <div className="flex-1" />
@@ -777,10 +1052,10 @@ export default function TasksPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => router.push(`/planner?task_id=${task.id}`)}
+                      onClick={() => router.push(nextRoute)}
                       className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-[0_4px_14px_rgba(59,130,246,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)]"
                     >
-                      <Sparkles size={14} /> Plan Task
+                      <ArrowRight size={14} /> Next Best Action
                     </button>
                     <button
                       onClick={() => removeTask(task)}
@@ -798,140 +1073,218 @@ export default function TasksPage() {
       </section>
 
       {/* ── Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xl animate-in zoom-in-95 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-slate-900">{editingTask ? "✏️ Edit Task" : "➕ Create New Task"}</h2>
-            <p className="mt-1 text-sm text-slate-600">Fill in the task details below and save your changes.</p>
-
-            <form onSubmit={submitForm} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Task Title</label>
-                <input
-                  value={form.title}
-                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="Enter task title"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Add task description (optional)"
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50 resize-none"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
-                  <input
-                    value={form.subject}
-                    onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-                    placeholder="e.g., Mathematics"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                    required
-                  />
+      {isClient && showModal && createPortal((
+        <div className="fixed inset-0 z-120 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center">
+          <div className="my-4 max-h-[92vh] w-full max-w-5xl overflow-y-auto animate-in zoom-in-95 rounded-3xl border border-white/30 bg-white shadow-2xl sm:my-6">
+            <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-indigo-300/20 blur-3xl" />
+              <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-white/15 p-3 ring-1 ring-white/25 backdrop-blur-sm">
+                    <ClipboardList size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">EduSense · Task Studio</p>
+                    <h2 className="text-2xl font-bold text-white">
+                      {editingTask ? "Refine Task" : "Create New Task"}
+                    </h2>
+                    <p className="mt-1 text-sm text-blue-100/90">Build a clear, realistic plan with timeline intelligence.</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Deadline</label>
-                  <input
-                    type="datetime-local"
-                    value={form.deadline}
-                    onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                    required
-                  />
-                </div>
+                <span className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold ${urgencyConfig.tone}`}>
+                  <Gauge size={13} />
+                  {urgencyConfig.label}
+                </span>
               </div>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Task Type</label>
-                  <select
-                    value={form.task_type}
-                    onChange={(e) => setForm((prev) => ({ ...prev, task_type: e.target.value as TaskType }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
+            <form onSubmit={submitForm} className="grid gap-6 p-6 lg:grid-cols-[1.35fr_1fr] lg:p-7">
+              <div className="space-y-5">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Target size={14} className="text-blue-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Core Details</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Task Title</label>
+                      <input
+                        value={form.title}
+                        onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="Enter task title"
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Description</label>
+                      <textarea
+                        value={form.description}
+                        onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="What exactly needs to be done?"
+                        rows={3}
+                        className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Subject</label>
+                        <input
+                          value={form.subject}
+                          onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+                          placeholder="e.g., Database Systems"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Deadline</label>
+                        <input
+                          type="datetime-local"
+                          value={form.deadline}
+                          onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-2">
+                    <CalendarClock size={14} className="text-indigo-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Effort & Priority</h3>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Task Type</label>
+                      <select
+                        value={form.task_type}
+                        onChange={(e) => setForm((prev) => ({ ...prev, task_type: e.target.value as TaskType }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      >
+                        <option value="reading">Reading</option>
+                        <option value="assignment">Assignment</option>
+                        <option value="exam">Exam</option>
+                        <option value="coding">Coding</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Estimated Hours</label>
+                      <input
+                        type="number"
+                        min={0.5}
+                        max={200}
+                        step={0.5}
+                        value={form.estimated_hours}
+                        onChange={(e) => setForm((prev) => ({ ...prev, estimated_hours: Number(e.target.value) || 1 }))}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Difficulty</label>
+                      <select
+                        value={form.difficulty}
+                        onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value as TaskDifficulty }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      >
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-700">Status</label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/60"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="flex flex-wrap justify-end gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
                   >
-                    <option value="reading">Reading</option>
-                    <option value="assignment">Assignment</option>
-                    <option value="exam">Exam</option>
-                    <option value="coding">Coding</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Estimated Hours</label>
-                  <input
-                    type="number"
-                    min={0.5}
-                    max={200}
-                    step={0.5}
-                    value={form.estimated_hours}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, estimated_hours: Number(e.target.value) || 1 }))
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                    required
-                  />
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : editingTask ? "Save Changes" : "Create Task"}
+                  </button>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Difficulty</label>
-                  <select
-                    value={form.difficulty}
-                    onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value as TaskDifficulty }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                  >
-                    <option value="easy">🟢 Easy</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="hard">🔴 Hard</option>
-                  </select>
+              <aside className="h-fit rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-5 shadow-sm lg:sticky lg:top-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Brain size={15} className="text-blue-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Task Intelligence</h3>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100/50"
-                  >
-                    <option value="pending">⏳ Pending</option>
-                    <option value="in_progress">⚙️ In Progress</option>
-                    <option value="completed">✅ Completed</option>
-                  </select>
-                </div>
-              </div>
 
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Saving..." : editingTask ? "Save Changes" : "Create Task"}
-                </button>
-              </div>
+                <div className="space-y-3 rounded-xl border border-white/70 bg-white/80 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
+                  <h4 className="text-base font-bold text-slate-800">
+                    {form.title.trim() || "Untitled Task"}
+                  </h4>
+                  <p className="text-sm font-medium text-slate-600">
+                    {form.subject.trim() || "No subject yet"}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${difficultyClass(form.difficulty)}`}>
+                      {form.difficulty}
+                    </span>
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(form.status)}`}>
+                      {form.status.replace("_", " ")}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="rounded-xl border border-slate-200 bg-white/85 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Days Remaining</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-800">
+                      {formDeadlineDaysLeft === null ? "--" : formDeadlineDaysLeft}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/85 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Suggested Daily Focus</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-800">
+                      {recommendedDailyHours === null ? "--" : `${recommendedDailyHours}h`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Planning Tip</p>
+                  <p className="mt-1 text-sm text-indigo-900/80">
+                    Keep the task scope specific and realistic. If this task exceeds 8 hours, split it into milestones after saving.
+                  </p>
+                </div>
+              </aside>
             </form>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ── Delete Confirmation Modal ── */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      {isClient && deleteConfirm && createPortal((
+        <div className="fixed inset-0 z-130 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-sm animate-in zoom-in-95 rounded-2xl border border-rose-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-rose-100 p-3">
@@ -944,7 +1297,7 @@ export default function TasksPage() {
             </div>
 
             <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">"{deleteConfirm.title}"</p>
+              <p className="text-sm font-semibold text-slate-900">&quot;{deleteConfirm.title}&quot;</p>
               <p className="mt-1 text-xs text-slate-600">Subject: {deleteConfirm.subject}</p>
               {deleteConfirm.description && (
                 <p className="mt-2 line-clamp-2 text-xs text-slate-500">{deleteConfirm.description}</p>
@@ -971,7 +1324,8 @@ export default function TasksPage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }
+

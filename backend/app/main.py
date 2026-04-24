@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.database import connect_db, close_db
+from app.core.config import settings
 from app.core.firebase_admin import initialize_firebase_admin
 from app.routes.task_routes import router as task_router
 from app.routes.schedule_routes import router as schedule_router
@@ -17,6 +18,7 @@ from app.routes.meeting_routes import router as meeting_router
 from app.routes.smart_schedule_routes import router as smart_schedule_router
 from app.routes.chat_route import router as chat_router
 from app.routes.pdf_routes import router as pdf_router
+from app.routes.quiz_score_routes import router as quiz_score_router
 
 # -------------------------------
 # Lifespan (Startup / Shutdown)
@@ -54,6 +56,9 @@ ALLOWED_ORIGINS = {
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 }
+
+if settings.FRONTEND_URL:
+    ALLOWED_ORIGINS.add(settings.FRONTEND_URL.rstrip("/"))
 
 
 def _cors_error_headers(request: Request) -> dict:
@@ -132,6 +137,7 @@ app.include_router(meeting_router, prefix="/api", tags=["Group Meetings"])
 app.include_router(smart_schedule_router, prefix="/api", tags=["Smart Scheduling"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(pdf_router, prefix="/api", tags=["Pdf"])
+app.include_router(quiz_score_router, prefix="/api", tags=["Quiz Scores"])
 
 # -------------------------------
 # Health Check Endpoint

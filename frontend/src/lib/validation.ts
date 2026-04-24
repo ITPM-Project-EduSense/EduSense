@@ -1,6 +1,7 @@
 export type FieldErrors = Record<string, string>;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_HAS_NUMBER_REGEX = /\d/;
 
 type ValidateFilesOptions = {
   allowedExtensions: string[];
@@ -38,8 +39,8 @@ export function validateRegisterInput(fullName: string, email: string, password:
     errors.fullName = "Full name must be at least 2 characters.";
   } else if (cleanName.length > 60) {
     errors.fullName = "Full name must be 60 characters or less.";
-  } else if (/^\d+$/.test(cleanName)) {
-    errors.fullName = "Name cannot contain only numbers.";
+  } else if (NAME_HAS_NUMBER_REGEX.test(cleanName)) {
+    errors.fullName = "cant enter numbers";
   }
 
   const cleanEmail = email.trim().toLowerCase();
@@ -57,6 +58,46 @@ export function validateRegisterInput(fullName: string, email: string, password:
   }
 
   return errors;
+}
+
+export function validateRegisterField(
+  field: "fullName" | "email" | "password",
+  value: string,
+): string {
+  if (field === "fullName") {
+    const cleanName = value.trim();
+    if (!cleanName) return "Full name is required.";
+    if (cleanName.length < 2) return "Full name must be at least 2 characters.";
+    if (cleanName.length > 60) return "Full name must be 60 characters or less.";
+    if (NAME_HAS_NUMBER_REGEX.test(cleanName)) return "cant enter numbers";
+    return "";
+  }
+
+  if (field === "email") {
+    const cleanEmail = value.trim().toLowerCase();
+    if (!cleanEmail) return "Email is required.";
+    if (!EMAIL_REGEX.test(cleanEmail)) return "Enter a valid email address.";
+    return "";
+  }
+
+  const cleanPassword = value.trim();
+  if (!cleanPassword) return "Password is required.";
+  if (cleanPassword.length < 6) return "Password must be at least 6 characters.";
+  return "";
+}
+
+export function validateLoginField(field: "email" | "password", value: string): string {
+  if (field === "email") {
+    const cleanEmail = value.trim().toLowerCase();
+    if (!cleanEmail) return "Email is required.";
+    if (!EMAIL_REGEX.test(cleanEmail)) return "Enter a valid email address.";
+    return "";
+  }
+
+  const cleanPassword = value.trim();
+  if (!cleanPassword) return "Password is required.";
+  if (cleanPassword.length < 6) return "Password must be at least 6 characters.";
+  return "";
 }
 
 export type TaskValidationInput = {

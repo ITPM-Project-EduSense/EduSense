@@ -1,10 +1,8 @@
-import itertools
-from collections.abc import Iterable
-from typing import Any
+from typing import Any, Iterable, List, Optional, Tuple
 
 from pdfminer import settings
 from pdfminer.pdfparser import PDFSyntaxError
-from pdfminer.pdftypes import dict_value, int_value, list_value
+from pdfminer.pdftypes import list_value, int_value, dict_value
 from pdfminer.utils import choplist
 
 
@@ -16,9 +14,9 @@ class NumberTree:
 
     def __init__(self, obj: Any):
         self._obj = dict_value(obj)
-        self.nums: Iterable[Any] | None = None
-        self.kids: Iterable[Any] | None = None
-        self.limits: Iterable[Any] | None = None
+        self.nums: Optional[Iterable[Any]] = None
+        self.kids: Optional[Iterable[Any]] = None
+        self.limits: Optional[Iterable[Any]] = None
 
         if "Nums" in self._obj:
             self.nums = list_value(self._obj["Nums"])
@@ -27,7 +25,7 @@ class NumberTree:
         if "Limits" in self._obj:
             self.limits = list_value(self._obj["Limits"])
 
-    def _parse(self) -> list[tuple[int, Any]]:
+    def _parse(self) -> List[Tuple[int, Any]]:
         items = []
         if self.nums:  # Leaf node
             for k, v in choplist(2, self.nums):
@@ -39,14 +37,14 @@ class NumberTree:
 
         return items
 
-    values: list[tuple[int, Any]]  # workaround decorators unsupported by mypy
+    values: List[Tuple[int, Any]]  # workaround decorators unsupported by mypy
 
     @property  # type: ignore[no-redef,misc]
-    def values(self) -> list[tuple[int, Any]]:
+    def values(self) -> List[Tuple[int, Any]]:
         values = self._parse()
 
         if settings.STRICT:
-            if not all(a[0] <= b[0] for a, b in itertools.pairwise(values)):
+            if not all(a[0] <= b[0] for a, b in zip(values, values[1:])):
                 raise PDFSyntaxError("Number tree elements are out of order")
         else:
             values.sort(key=lambda t: t[0])

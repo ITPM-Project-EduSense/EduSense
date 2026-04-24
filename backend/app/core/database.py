@@ -24,6 +24,7 @@ async def connect_db():
     from app.models.smart_scheduling import TaskResource, StudyPlan, StudySession
     from app.models.chat_history import ChatHistory
     from app.models.pdf_model import PdfMaterial, PdfConcept, PdfVectorCollection
+    from app.models.quiz_score_model import QuizScore
 
     await init_beanie(
         database=db,
@@ -43,7 +44,8 @@ async def connect_db():
             ChatHistory,
             PdfVectorCollection,
             PdfMaterial,
-            PdfConcept
+            PdfConcept,
+            QuizScore
         ],
     )
 

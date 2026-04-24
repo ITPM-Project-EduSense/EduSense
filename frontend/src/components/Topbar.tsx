@@ -1,12 +1,18 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { Menu, Search, Bell, Settings, UserCircle, LogOut } from "lucide-react";
+import {
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 type TopbarProps = {
   onMenuClick: () => void;
+  onSidebarToggle: () => void;
+  sidebarCollapsed: boolean;
   user: {
     full_name?: string;
     email?: string;
@@ -27,7 +33,13 @@ const pageTitles: Record<string, string> = {
   "/profile": "Profile",
 };
 
-export default function Topbar({ onMenuClick, user, theme = "light" }: TopbarProps) {
+export default function Topbar({
+  onMenuClick,
+  onSidebarToggle,
+  sidebarCollapsed,
+  user,
+  theme = "light",
+}: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isDark = theme === "dark";
@@ -71,21 +83,15 @@ export default function Topbar({ onMenuClick, user, theme = "light" }: TopbarPro
           <Menu size={18} />
         </button>
 
-        <Link
-          href="/landing"
-          className={`hidden items-center gap-2 rounded-lg border px-2 py-1.5 md:flex ${
-            isDark ? "border-slate-700 bg-slate-900/80" : "border-slate-200 bg-white"
+        <button
+          onClick={onSidebarToggle}
+          className={`hidden rounded-lg border p-2 lg:inline-flex ${
+            isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"
           }`}
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <Image
-            src="/logo.png"
-            alt="EduSense logo"
-            width={24}
-            height={24}
-            className="h-6 w-6 rounded-md object-cover"
-          />
-          <span className={`text-xs font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}>EduSense</span>
-        </Link>
+          {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
 
         <div>
           <p className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-slate-400" : "text-slate-500"}`}>Workspace</p>
@@ -94,30 +100,6 @@ export default function Topbar({ onMenuClick, user, theme = "light" }: TopbarPro
       </div>
 
       <div className="flex items-center gap-2 lg:gap-3">
-        <div
-          className={`hidden items-center gap-2 rounded-xl border px-3 py-2 md:flex md:w-72 ${
-            isDark ? "border-slate-700 bg-slate-900/70" : "border-slate-200 bg-white"
-          }`}
-        >
-          <Search size={16} className={isDark ? "text-slate-500" : "text-slate-400"} />
-          <input
-            type="text"
-            placeholder="Search"
-            className={`w-full bg-transparent text-sm outline-none ${
-              isDark ? "text-slate-200 placeholder:text-slate-500" : "text-slate-700 placeholder:text-slate-400"
-            }`}
-          />
-        </div>
-
-        <button
-          className={`rounded-lg border p-2 ${
-            isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"
-          }`}
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
-
         <button
           onClick={() => router.push("/settings")}
           className={`rounded-lg border p-2 ${
@@ -130,7 +112,7 @@ export default function Topbar({ onMenuClick, user, theme = "light" }: TopbarPro
 
         <button
           onClick={() => router.push("/users")}
-          className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
+          className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${
             isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"
           }`}
           aria-label="Profile"
@@ -142,10 +124,9 @@ export default function Topbar({ onMenuClick, user, theme = "light" }: TopbarPro
           >
             {userInitials}
           </span>
-          <span className={`hidden max-w-28 truncate text-xs font-medium md:inline ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+          <span className={`max-w-28 truncate text-xs font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>
             {user?.full_name || "Profile"}
           </span>
-          <UserCircle size={16} />
         </button>
 
         <button

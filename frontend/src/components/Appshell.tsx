@@ -1,13 +1,13 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
 import Topbar from "@/components/Topbar";
 
 const publicRoutes = ["/landing"];
 const SETTINGS_KEY = "edusense_user_settings_v1";
+const SIDEBAR_COLLAPSED_KEY = "edusense_sidebar_collapsed_v1";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -23,6 +23,38 @@ function applyTheme(mode: ThemeMode) {
   document.documentElement.setAttribute("data-theme", theme);
 }
 
+function getInitialSidebarCollapsed() {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function getInitialTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+
+  let mode: ThemeMode = "light";
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { theme?: ThemeMode };
+      if (parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "system") {
+        mode = parsed.theme;
+      }
+    }
+  } catch {
+    mode = "light";
+  }
+
+  return mode === "system"
+    ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light"
+    : mode;
+}
+
 type CurrentUser = {
   id: string;
   full_name?: string;
@@ -32,11 +64,11 @@ type CurrentUser = {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [activeTheme, setActiveTheme] = useState<"light" | "dark">("light");
+  const [activeTheme, setActiveTheme] = useState<"light" | "dark">(getInitialTheme);
 
   useEffect(() => {
     const loadCurrentUser = async () => {
@@ -64,7 +96,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isPublicRoute) return;
 
-    let mode: ThemeMode = "light";
+    let mode: ThemeMode = activeTheme;
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) {
@@ -74,12 +106,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
-      mode = "light";
+      mode = activeTheme;
     }
 
-    const initialTheme = resolveTheme(mode);
     applyTheme(mode);
-    setActiveTheme(initialTheme);
 
     if (mode !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -89,7 +119,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
-  }, [isPublicRoute]);
+  }, [activeTheme, isPublicRoute]);
+
+  useEffect(() => {
+    if (isPublicRoute) return;
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+    } catch {
+      // Ignore localStorage persistence issues for sidebar state.
+    }
+  }, [isPublicRoute, sidebarCollapsed]);
 
   useEffect(() => {
     if (isPublicRoute) return;
@@ -123,10 +162,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`min-h-screen ${shellBg}`}>
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} theme={activeTheme} />
+      <Sidebar
+        open={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+        user={user}
+        theme={activeTheme}
+      />
 
-      <main className="min-h-screen lg:ml-65">
-        <Topbar onMenuClick={() => setSidebarOpen(true)} user={user} theme={activeTheme} />
+      <main className={`min-h-screen transition-[margin] duration-300 ${sidebarCollapsed ? "lg:ml-22" : "lg:ml-65"}`}>
+        <Topbar
+          onMenuClick={() => setSidebarOpen(true)}
+          onSidebarToggle={() => setSidebarCollapsed((prev) => !prev)}
+          sidebarCollapsed={sidebarCollapsed}
+          user={user}
+          theme={activeTheme}
+        />
         {children}
       </main>
     </div>

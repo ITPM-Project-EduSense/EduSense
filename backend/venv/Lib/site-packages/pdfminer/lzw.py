@@ -1,14 +1,11 @@
 import logging
-from collections.abc import Iterator
 from io import BytesIO
-from typing import BinaryIO, cast
-
-from pdfminer.pdfexceptions import PDFEOFError, PDFException
+from typing import BinaryIO, Iterator, List, Optional, cast
 
 logger = logging.getLogger(__name__)
 
 
-class CorruptDataError(PDFException):
+class CorruptDataError(Exception):
     pass
 
 
@@ -19,8 +16,8 @@ class LZWDecoder:
         self.bpos = 8
         self.nbits = 9
         # NB: self.table stores None only in indices 256 and 257
-        self.table: list[bytes | None] = []
-        self.prevbuf: bytes | None = None
+        self.table: List[Optional[bytes]] = []
+        self.prevbuf: Optional[bytes] = None
 
     def readbits(self, bits: int) -> int:
         v = 0
@@ -42,7 +39,7 @@ class LZWDecoder:
                 bits -= r
                 x = self.fp.read(1)
                 if not x:
-                    raise PDFEOFError
+                    raise EOFError
                 self.buff = ord(x)
                 self.bpos = 0
         return v
