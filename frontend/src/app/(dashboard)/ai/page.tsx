@@ -239,6 +239,24 @@ function AiPageContent() {
       />
     </div>
   );
-} 
+}
 
-export default AiPageContent;
+function AiPageFallback() {
+  return (
+    <div className="eds-page-shell min-h-screen font-[family-name:var(--font-poppins)] p-4 md:p-5">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3">
+        <div className="h-44 animate-pulse rounded-[24px] bg-slate-200/80" />
+        <div className="h-28 animate-pulse rounded-[20px] bg-slate-200/80" />
+        <div className="h-[720px] animate-pulse rounded-[24px] bg-slate-200/80" />
+      </div>
+    </div>
+  );
+}
+
+export default function AiPage() {
+  return (
+    <Suspense fallback={<AiPageFallback />}>
+      <AiPageContent />
+    </Suspense>
+  );
+}
