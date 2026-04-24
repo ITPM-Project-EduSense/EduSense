@@ -239,4 +239,6 @@ function AiPageContent() {
       />
     </div>
   );
-}
+} 
+
+export default AiPageContent;
