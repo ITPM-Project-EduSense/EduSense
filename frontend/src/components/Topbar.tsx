@@ -1,6 +1,6 @@
 "use client";
 
-import { API_ROOT } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
 import {
   Menu,
   PanelLeftClose,
@@ -56,7 +56,7 @@ export default function Topbar({
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_ROOT}/api/auth/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });

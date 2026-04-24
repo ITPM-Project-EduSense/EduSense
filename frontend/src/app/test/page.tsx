@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { API_ROOT } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
 
 export default function PdfUploadPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -20,7 +20,7 @@ export default function PdfUploadPage() {
     formData.append("file", file);
 
     try {
-      const response = await fetch(`${API_ROOT}/upload-pdf`, {
+      const response = await fetch(`${API_BASE}/upload-pdf`, {
         method: "POST",
         body: formData,
       });

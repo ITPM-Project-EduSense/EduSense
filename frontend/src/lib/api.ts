@@ -1,16 +1,4 @@
-function normalizeApiBase(rawValue?: string) {
-  const fallback = "http://localhost:8000/api";
-  const value = (rawValue || fallback).trim();
-
-  if (value.includes("railway.app") && value.startsWith("http://")) {
-    return `https://${value.slice("http://".length)}`;
-  }
-
-  return value;
-}
-
-export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_BASE);
-export const API_ROOT = API_BASE.replace(/\/api\/?$/, "");
+export const API_BASE = "/api";
 
 export class ApiError extends Error {
   status: number;
@@ -77,7 +65,7 @@ function getApiErrorMessage(payload: unknown): string {
  * Simple health check (for testing backend connection)
  */
 export async function getHealth() {
-  const res = await fetch(`${API_ROOT}/`, {
+  const res = await fetch("/", {
     credentials: "include",
   });
 
