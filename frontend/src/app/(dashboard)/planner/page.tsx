@@ -165,7 +165,6 @@ function toSmartSchedule(task: Task, plan: GeneratedPlanResponse): SmartSchedule
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
-const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -1283,3 +1282,4 @@ export default function PlannerPage() {
     </Suspense>
   );
 }
+import { API_BASE as API } from "@/lib/api";

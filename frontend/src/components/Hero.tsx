@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, type Transition } from "framer-motion";
 import { CalendarClock, CheckCircle2, Sparkles, Target } from "lucide-react";
 import { useEffect, useState } from "react";
+import { API_BASE } from "@/lib/api";
 
 const floatTransition = (duration: number, delay = 0): Transition => ({
   duration,
@@ -21,9 +22,7 @@ export default function Hero() {
 
     const checkAuthStatus = async () => {
       try {
-        const apiBase =
-          process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        const response = await fetch(`${apiBase}/auth/status`, {
+        const response = await fetch(`${API_BASE}/auth/status`, {
           method: "GET",
           credentials: "include",
           headers: {

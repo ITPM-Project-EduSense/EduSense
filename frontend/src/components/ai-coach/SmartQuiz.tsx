@@ -3,9 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Brain, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { UploadedPdf } from "./types";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+import { API_BASE } from "@/lib/api";
 const QUIZ_STATE_KEY = "edu_ai_quiz_state_v1";
 
 interface QuizQuestion {

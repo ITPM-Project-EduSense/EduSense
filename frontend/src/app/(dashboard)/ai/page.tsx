@@ -19,9 +19,7 @@ import SmartQuizV2 from "@/components/ai-coach/SmartQuizV2";
 import PdfUploaderModal from "@/components/ai-coach/PdfUploaderModal";
 import PdfViewer from "@/components/ai-coach/PdfViewer";
 import { UploadedPdf } from "@/components/ai-coach/types";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+import { API_BASE } from "@/lib/api";
 
 const tabs = [
   {

@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { X, Upload, Loader2 } from "lucide-react";
 import { UploadedPdf } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
 interface Props {
   isOpen: boolean;
@@ -120,3 +119,4 @@ export default function PdfUploaderModal({ isOpen, onClose, onUploadSuccess }: P
     </div>
   );
 }
+import { API_BASE } from "@/lib/api";

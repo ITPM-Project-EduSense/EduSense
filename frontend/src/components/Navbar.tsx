@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { API_BASE } from "@/lib/api";
 
 interface User {
   email: string;
@@ -22,9 +23,7 @@ export default function Navbar() {
 
     const checkAuthStatus = async () => {
       try {
-        const apiBase =
-          process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        const response = await fetch(`${apiBase}/auth/status`, {
+        const response = await fetch(`${API_BASE}/auth/status`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -81,9 +80,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      const apiBase =
-        process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-      await fetch(`${apiBase}/auth/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
         headers: {

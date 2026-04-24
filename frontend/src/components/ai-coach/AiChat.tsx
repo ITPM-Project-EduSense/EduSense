@@ -17,7 +17,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { apiFetch } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 import {
   calculateAcademicRisk,
   type BurnoutLevel,
@@ -71,9 +71,6 @@ interface StudentProfilePayload {
     level: string;
   };
 }
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 
 const starterPrompts = [
   "Summarize this lecture in simple bullet points.",

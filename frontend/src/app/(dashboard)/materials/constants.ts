@@ -61,4 +61,4 @@ export const modules = [
     { code: "IS3103", name: "Info Systems", color: "#F472B6", members: 11 },
 ];
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+export { API_BASE } from "@/lib/api";

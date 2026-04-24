@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
+import { API_BASE } from "@/lib/api";
 
 const publicRoutes = ["/landing"];
 const SETTINGS_KEY = "edusense_user_settings_v1";
@@ -73,8 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadCurrentUser = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        const response = await fetch(`${apiBase}/auth/me`, {
+        const response = await fetch(`${API_BASE}/auth/me`, {
           method: "GET",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

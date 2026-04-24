@@ -13,9 +13,7 @@ import {
 import { UploadedPdf } from "./types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
+import { API_BASE } from "@/lib/api";
 const PDF_VIEWER_STATE_KEY = "edu_ai_pdf_viewer_state_v1";
 
 type PdfMaterialResponse = {
