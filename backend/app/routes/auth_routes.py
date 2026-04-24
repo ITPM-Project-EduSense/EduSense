@@ -45,7 +45,7 @@ async def login(payload: UserLogin, response: Response):
         value=result["token"],
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite=settings.COOKIE_SAMESITE,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -101,7 +101,7 @@ async def firebase_login(payload: FirebaseLoginRequest, response: Response):
                 value=legacy_token,
                 httponly=True,
                 secure=settings.COOKIE_SECURE,
-                samesite="lax",
+                samesite=settings.COOKIE_SAMESITE,
                 max_age=max_age,
                 expires=expires,
                 path="/",
