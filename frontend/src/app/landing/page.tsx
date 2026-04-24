@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
+import { API_BASE } from "@/lib/api";
 import {
   Brain,
   Calendar,
@@ -347,9 +348,7 @@ export default function LandingPage() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-
-        const response = await fetch(`${apiBase}/auth/status`, {
+        const response = await fetch(`${API_BASE}/auth/status`, {
           method: "GET",
           credentials: "include", // Send cookies with request
           headers: {
@@ -388,8 +387,7 @@ export default function LandingPage() {
       setProfileError(null);
 
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-        const response = await fetch(`${apiBase}/auth/me`, {
+        const response = await fetch(`${API_BASE}/auth/me`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -422,9 +420,7 @@ export default function LandingPage() {
   // Handle logout
   const handleLogout = async () => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-      
-      const response = await fetch(`${apiBase}/auth/logout`, {
+      const response = await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -470,8 +466,7 @@ export default function LandingPage() {
     setProfileError(null);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
-      const response = await fetch(`${apiBase}/users/update-profile`, {
+      const response = await fetch(`${API_BASE}/users/update-profile`, {
         method: "PUT",
         credentials: "include",
         headers: {

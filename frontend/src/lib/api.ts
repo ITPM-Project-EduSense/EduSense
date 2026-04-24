@@ -10,12 +10,13 @@ function normalizeApiBase(rawValue?: string) {
 }
 
 export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_BASE);
+export const API_ROOT = API_BASE.replace(/\/api\/?$/, "");
 
 export class ApiError extends Error {
   status: number;
-  payload: any;
+  payload: unknown;
 
-  constructor(message: string, status: number, payload: any) {
+  constructor(message: string, status: number, payload: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -23,15 +24,24 @@ export class ApiError extends Error {
   }
 }
 
-function getApiErrorMessage(payload: any): string {
+function getApiErrorMessage(payload: unknown): string {
   if (!payload) return "Something went wrong";
 
-  if (typeof payload.detail === "string") {
-    return payload.detail;
+  if (typeof payload !== "object") {
+    return "Something went wrong";
   }
 
-  if (Array.isArray(payload.detail)) {
-    const messages = payload.detail
+  const details = payload as {
+    detail?: unknown;
+    message?: unknown;
+  };
+
+  if (typeof details.detail === "string") {
+    return details.detail;
+  }
+
+  if (Array.isArray(details.detail)) {
+    const messages = details.detail
       .map((item: unknown) => {
         if (typeof item === "string") return item;
         if (item && typeof item === "object" && "msg" in item) {
@@ -47,13 +57,17 @@ function getApiErrorMessage(payload: any): string {
     }
   }
 
-  if (payload.detail && typeof payload.detail === "object") {
-    if (typeof payload.detail.message === "string") return payload.detail.message;
-    if (typeof payload.detail.msg === "string") return payload.detail.msg;
+  if (details.detail && typeof details.detail === "object") {
+    const nestedDetails = details.detail as {
+      message?: unknown;
+      msg?: unknown;
+    };
+    if (typeof nestedDetails.message === "string") return nestedDetails.message;
+    if (typeof nestedDetails.msg === "string") return nestedDetails.msg;
   }
 
-  if (typeof payload.message === "string") {
-    return payload.message;
+  if (typeof details.message === "string") {
+    return details.message;
   }
 
   return "Something went wrong";
@@ -63,7 +77,7 @@ function getApiErrorMessage(payload: any): string {
  * Simple health check (for testing backend connection)
  */
 export async function getHealth() {
-  const res = await fetch(`${API_BASE.replace("/api", "")}/`, {
+  const res = await fetch(`${API_ROOT}/`, {
     credentials: "include",
   });
 

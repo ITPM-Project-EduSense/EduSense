@@ -1,5 +1,6 @@
 "use client";
 
+import { API_ROOT } from "@/lib/api";
 import {
   Menu,
   PanelLeftClose,
@@ -55,8 +56,7 @@ export default function Topbar({
 
   const handleLogout = async () => {
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      await fetch(`${API}/api/auth/logout`, {
+      await fetch(`${API_ROOT}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
