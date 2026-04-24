@@ -60,6 +60,9 @@ ALLOWED_ORIGINS = {
 if settings.FRONTEND_URL:
     ALLOWED_ORIGINS.add(settings.FRONTEND_URL.rstrip("/"))
 
+for origin in settings.FRONTEND_URLS:
+    ALLOWED_ORIGINS.add(origin)
+
 
 def _cors_error_headers(request: Request) -> dict:
     """Attach CORS headers to error responses so browser can read the real error."""

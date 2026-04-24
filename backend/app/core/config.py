@@ -2,6 +2,11 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+
+def _parse_csv_env(name: str) -> list[str]:
+    raw_value = os.getenv(name, "")
+    return [item.strip().rstrip("/") for item in raw_value.split(",") if item.strip()]
+
 # Load .env from backend folder
 env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
@@ -39,7 +44,8 @@ class Settings:
     SMTP_USER = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
     FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@edusense.app")
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+    FRONTEND_URLS = _parse_csv_env("FRONTEND_URLS")
 
     # Reset Token
     RESET_TOKEN_EXPIRE_HOURS = int(os.getenv("RESET_TOKEN_EXPIRE_HOURS", 24))
