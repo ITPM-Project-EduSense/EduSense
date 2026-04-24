@@ -94,7 +94,7 @@ async def get_group_material_or_404(group_id: str, material_id: str) -> StudyMat
 
 # ─── POST /groups/ ─── Create a new study group ───
 @router.post(
-    "/",
+    "",
     response_model=StudyGroupResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new study group",
@@ -172,7 +172,7 @@ async def delete_group(
 
 # ─── GET /groups/ ─── List all study groups ───
 @router.get(
-    "/",
+    "",
     response_model=List[StudyGroupResponse],
     summary="List all study groups",
 )

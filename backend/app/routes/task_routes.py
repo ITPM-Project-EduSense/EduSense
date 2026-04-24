@@ -56,7 +56,7 @@ def task_to_response(task: Task, workflow: Optional[dict] = None) -> TaskRespons
 
 # ─── POST /tasks ─── Create a new task ───
 @router.post(
-    "/",
+    "",
     response_model=TaskResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new academic task",
@@ -84,7 +84,7 @@ async def create_task(task_data: TaskCreate, current_user: User = Depends(get_cu
 
 # ─── GET /tasks ─── Get all tasks ───
 @router.get(
-    "/",
+    "",
     response_model=List[TaskResponse],
     summary="Get all academic tasks",
 )
