@@ -240,3 +240,19 @@ function AiPageContent() {
     </div>
   );
 }
+
+export default function AiPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="eds-page-shell min-h-screen p-4 md:p-5">
+          <div className="mx-auto max-w-5xl rounded-[20px] border border-slate-200 bg-white/80 p-8 text-sm text-slate-600">
+            Loading AI workspace...
+          </div>
+        </div>
+      }
+    >
+      <AiPageContent />
+    </Suspense>
+  );
+}
