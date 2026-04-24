@@ -28,9 +28,14 @@ class User(Document):
 
     class Settings:
         name = "users"  # Mongo collection name
+        keep_nulls = False
         indexes = [
             IndexModel("email", unique=True),
-            IndexModel("firebase_uid", unique=True, sparse=True),
+            IndexModel(
+                "firebase_uid",
+                unique=True,
+                partialFilterExpression={"firebase_uid": {"$type": "string"}},
+            ),
         ]
 
 

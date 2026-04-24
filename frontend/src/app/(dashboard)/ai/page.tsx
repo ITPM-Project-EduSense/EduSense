@@ -240,3 +240,11 @@ function AiPageContent() {
     </div>
   );
 }
+
+export default function AiPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+      <AiPageContent />
+    </Suspense>
+  );
+}
