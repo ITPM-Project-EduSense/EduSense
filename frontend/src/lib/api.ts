@@ -1,4 +1,22 @@
-export const API_BASE = "/api";
+function normalizeApiBase(rawValue?: string) {
+  const trimmedValue = rawValue?.trim().replace(/\/+$/, "");
+
+  if (!trimmedValue) {
+    return "/api";
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    trimmedValue.startsWith("http://")
+  ) {
+    return `https://${trimmedValue.slice("http://".length)}`;
+  }
+
+  return trimmedValue;
+}
+
+export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_BASE);
 
 export class ApiError extends Error {
   status: number;
