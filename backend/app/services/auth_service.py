@@ -176,6 +176,10 @@ class AuthService:
         )
 
         await user.insert()
+        await User.get_pymongo_collection().update_one(
+            {"_id": user.id},
+            {"$unset": {"firebase_uid": ""}},
+        )
 
         return {
             "message": "Registered successfully",
