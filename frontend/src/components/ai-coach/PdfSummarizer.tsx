@@ -321,8 +321,6 @@ export default function PdfSummarizer({
                   </div>
                 </div>
               )}
-
-            
           </div>
         </div>
       )}
