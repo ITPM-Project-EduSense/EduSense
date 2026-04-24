@@ -3,16 +3,38 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const isVercelDeployment = Boolean(process.env.VERCEL);
+const defaultBackendOrigin = isVercelDeployment
+  ? "https://edusense-production.up.railway.app"
+  : "http://localhost:8000";
 const rawBackendOrigin =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.BACKEND_URL ||
-  "http://localhost:8000";
+  defaultBackendOrigin;
 const backendOrigin = rawBackendOrigin.replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
   turbopack: {
     root: projectRoot,
+  },
+  async headers() {
+    if (!isVercelDeployment) {
+      return [];
+    }
+
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            // Force any accidental insecure subrequest back onto HTTPS.
+            key: "Content-Security-Policy",
+            value: "upgrade-insecure-requests",
+          },
+        ],
+      },
+    ];
   },
   async rewrites() {
     return [
