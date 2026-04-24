@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { apiFetch } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 import {
   Calendar,
   CalendarClock,
@@ -214,6 +214,7 @@ export default function TasksPage() {
   };
 
   useEffect(() => {
+    console.info("EduSense tasks API_BASE:", API_BASE);
     setIsClient(true);
   }, []);
 

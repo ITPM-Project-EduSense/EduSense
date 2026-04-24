@@ -16,7 +16,7 @@ import {
   TrendingUp,
   Workflow,
 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 import { ActiveMeetingsCard } from "../materials/components";
 import { apiGroupToGroup } from "../materials/utils";
 import type { Group } from "../materials/types";
@@ -121,6 +121,7 @@ export default function DashboardPage() {
   const [loadingGroups, setLoadingGroups] = useState(false);
 
   useEffect(() => {
+    console.info("EduSense dashboard API_BASE:", API_BASE);
     const load = async () => {
       try {
         const taskData = await apiFetch("/tasks");
